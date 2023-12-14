@@ -7,8 +7,11 @@
 
 
 namespace gnilk {
-    class VirtualCPU {
 
+    class VirtualCPU {
+    public:
+        VirtualCPU() = default;
+        virtual ~VirtualCPU() = default;
     };
 }
 
