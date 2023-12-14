@@ -3,6 +3,13 @@
 //
 
 #include "Parser.h"
+/*
+ * TO-OD:
+ * - Move over Expression and Literals from 'astparser' project
+ * - Add 'register-literal' to Literals
+ * - Add more or less all AST handling from Expression and onwards; this enables: "move d0, <expression>"
+ */
+
 
 using namespace gnilk;
 using namespace gnilk::assembler;
@@ -59,6 +66,9 @@ ast::Statement::Ref Parser::ParseInstruction() {
         }
         instrStatment->SetOpSize(strToOpSize[opSize.value]);
     }
+    // Swap out below for:
+    // dst = ParseExpression();
+
     auto dst = Eat();
     if ((dst.type != TokenType::DataReg) && (dst.type != TokenType::AddressReg)) {
         fmt::println(stderr, "Destination must be DataRegister or AddressRegister, {} is neither", dst.value);
@@ -66,11 +76,28 @@ ast::Statement::Ref Parser::ParseInstruction() {
     }
     instrStatment->SetDst(dst.value);
 
-
+    // literal must be separated by ','
     Expect(TokenType::Comma, "Operand requires two arguments!");
-    // Fixme: Allow 'expression' here...
+
+
+    // Fixme: replace with: src = ParseExpression();
     auto src = Eat();
     instrStatment->SetSrc(src.value);
+
+    // Expressions are a little different, like:
+    //   move d0, a0             <- move reg to reg
+    //   move d0, (a0)           <- move dereferenced a0 to d0
+    //   move d0, (a0 + d1)      <- move relative to register, need to check op codes for this
+    //   move d0, (a0 + d1<<1)   <- move relative, but shift first
+    //   move d0, (a0 + offset)  <- move relative to abs. value
+    //
+    // also reversed/combined is possible:
+    //   move (a0+d1), (a1+d2)
+    //
+    // for add (?):
+    //    add.w d0, d1, d2        ; d0 = d1 + d2
+    //
+
 
     return instrStatment;
 }
