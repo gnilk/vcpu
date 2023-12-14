@@ -6,5 +6,7 @@
 #define AST_H
 
 #include "astbase.h"
+#include "instructions.h"
+
 
 #endif //AST_H

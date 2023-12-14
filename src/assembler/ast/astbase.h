@@ -23,6 +23,11 @@ namespace gnilk {
             kVarDeclaration,
             kFunctionDeclaration,
 
+            kInstructionStatement,
+            kMoveInstrStatement,        // not sure - this should be a two-parameter instruction
+            kJumpInstrStatement,
+
+
             kIfStatement,         // Expression or Statement (I think this should be a statement)
             kWhileStatement,      // Expression?
             kBreakStatement,
