@@ -163,12 +163,21 @@ namespace gnilk {
         }
         bool Step();
 
-        const Registers &GetRegisters() {
+        const Registers &GetRegisters() const {
+            return registers;
+        }
+
+        Registers &GetRegisters() {
             return registers;
         }
 
     protected:
-        void ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode);
+        void ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
+
+        RegisterValue ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister);
+        RegisterValue ReadSrcImmediateMode(OperandSize szOperand);
+
+
     protected:
         template<typename T>
         T FetchFromInstrPtr() {

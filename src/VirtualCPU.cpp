@@ -30,6 +30,7 @@ bool VirtualCPU::Step() {
     auto srcAdrMode = static_cast<AddressMode>(srcRegAndFlags & 0x0f);
 
     auto dstReg = (dstRegAndFlags>>4) & 15;
+    auto srcReg = (srcRegAndFlags>>4) & 15;
 
 
     auto opClass = nextOperand;
@@ -39,7 +40,7 @@ bool VirtualCPU::Step() {
             return false;
             break;
         case MOV :
-            ExecuteMoveInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode);
+            ExecuteMoveInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
             break;
         case PUSH :
             break;
@@ -47,25 +48,9 @@ bool VirtualCPU::Step() {
     return true;
 }
 
-void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode) {
+void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
 
-    RegisterValue v;
-    if (srcAddrMode == AddressMode::Immediate) {
-        switch(szOperand) {
-            case OperandSize::Byte :
-                v.data.byte = FetchFromInstrPtr<uint8_t>();
-                break;
-            case OperandSize::Word :
-                v.data.word = FetchFromInstrPtr<uint16_t>();
-                break;
-            case OperandSize::DWord :
-                v.data.dword = FetchFromInstrPtr<uint32_t>();
-                break;
-            case OperandSize::Long :
-                v.data.longword = FetchFromInstrPtr<uint64_t>();
-                break;
-        }
-    }
+    auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
 
     if (dstAddrMode == AddressMode::Register) {
         RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
@@ -75,4 +60,35 @@ void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode
     }
 }
 
+RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister) {
+    // Handle immediate mode
+    RegisterValue v = {};
 
+    if (srcAddrMode == AddressMode::Immediate) {
+        return ReadSrcImmediateMode(szOperand);
+    } else if (srcAddrMode == AddressMode::Register) {
+        RegisterValue &reg = idxSrcRegister>7?registers.addressRegisters[idxSrcRegister-8]:registers.dataRegisters[idxSrcRegister];
+        v.data = reg.data;
+    }
+
+    return v;
+}
+
+RegisterValue VirtualCPU::ReadSrcImmediateMode(OperandSize szOperand) {
+    RegisterValue v = {};
+    switch(szOperand) {
+        case OperandSize::Byte :
+            v.data.byte = FetchFromInstrPtr<uint8_t>();
+        break;
+        case OperandSize::Word :
+            v.data.word = FetchFromInstrPtr<uint16_t>();
+        break;
+        case OperandSize::DWord :
+            v.data.dword = FetchFromInstrPtr<uint32_t>();
+        break;
+        case OperandSize::Long :
+            v.data.longword = FetchFromInstrPtr<uint64_t>();
+        break;
+    }
+    return v;
+}
