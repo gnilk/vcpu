@@ -25,6 +25,10 @@ list(APPEND testsrc tests/test_vcpu.cpp)
 add_library(vcpu_test SHARED ${testsrc} ${vcpusrc})
 target_include_directories(vcpu_test PUBLIC src)
 
+if (APPLE)
+    target_include_directories(vcpu_test PUBLIC /usr/local/include)
+endif()
+
 
 #
 # Emulator
