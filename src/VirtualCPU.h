@@ -124,24 +124,35 @@ namespace gnilk {
         BRK  = 0x00,
 
         MOV  = 0x20,
-        PUSH = 0x30,
-        ADD  = 0x40,
-        POP  = 0x50,
-        SUB  = 0x60,
-        MUL  = 0x80,
-        DIV  = 0xA0,
-        CMP  = 0xC0,
+        ADD  = 0x30,
+        SUB  = 0x40,
+        MUL  = 0x50,
+        DIV  = 0x60,
+        PUSH = 0x70,
+        POP  = 0x80,
+        CMP  = 0x90,
 
-        CALL = 0xD0,
+        CLC  = 0xA0,
+        SEC  = 0xA1,
+
+        AND = 0xB0,
+        OR  = 0xB1,
+        XOR = 0xB2,
+
+        CALL = 0xC0,        // push next instr. on stack and jump
+        JMP  = 0xC1,        // Jump
+        SYS  = 0xC2,        // Issue a sys call
+
+
 
         // CMP/ADD/SUB/MUL/DIV/MOV - will update zero
-        BZC  = 0xE0,    // Branch Zero Clear
-        BZS  = 0xE1,    // Branch Zero Set
+        BZC  = 0xD0,    // Branch Zero Clear
+        BZS  = 0xD1,    // Branch Zero Set
         // ADD/SUB/MUL/DIV - will update carry
-        BCC  = 0xE0,    // Branch Carry Clear
-        BCS  = 0xE1,    // Branch Carry Set
+        BCC  = 0xD2,    // Branch Carry Clear
+        BCS  = 0xD3,    // Branch Carry Set
 
-        RET  = 0xF0,
+        RET  = 0xF0,    // pop addr. from stack and jump absolute..
         NOP  = 0xF1,
         EOC  = 0xff,        // End of code
 
