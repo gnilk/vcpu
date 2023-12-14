@@ -18,7 +18,7 @@ namespace gnilk {
             Parser() = default;
             virtual ~Parser() = default;
 
-            ast::Program::Ref ProduceCode(const std::string &srcCode);
+            ast::Program::Ref ProduceAST(const std::string &srcCode);
         protected:
             ast::Program::Ref Begin(const std::string &srcCode);
 
@@ -38,6 +38,7 @@ namespace gnilk {
             const Token &Expect(TokenType token, const std::string &errmsg);
 
             ast::Statement::Ref ParseStatement();
+            ast::Statement::Ref ParseInstruction();
 
         private:
             Lexer lexer;
