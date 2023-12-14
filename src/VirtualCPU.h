@@ -188,8 +188,12 @@ namespace gnilk {
 
             return result;
         }
-        uint8_t FetchByteFromInstrPtr() {
-            return FetchFromInstrPtr<uint8_t>();
+        // This one is used alot and should be faster...
+        __inline uint8_t FetchByteFromInstrPtr() {
+            auto address = registers.instrPointer.data.longword;
+            auto byte = ram[address++];
+            registers.instrPointer.data.longword = address;
+            return byte;
         }
         uint16_t FetchWordFromInstrPtr() {
             return FetchFromInstrPtr<uint16_t>();
