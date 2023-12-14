@@ -8,11 +8,15 @@
 
 using namespace gnilk;
 
-void VirtualCPU::Step() {
+bool VirtualCPU::Step() {
     auto nextOperand = FetchByteFromInstrPtr();
+    if (nextOperand == 0xff) {
+        return false;
+    }
+
     if (nextOperand >= 0xe0) {
         // handle differently
-        return;
+        return false;
     }
     //
     // Setup addressing
@@ -31,6 +35,7 @@ void VirtualCPU::Step() {
     switch(opClass) {
         case BRK :
             // halt here
+            return false;
             break;
         case MOV :
             ExecuteMoveInstr(szAddressing,dstAdrMode, dstRegister, srcAdrMode);
@@ -38,6 +43,7 @@ void VirtualCPU::Step() {
         case PUSH :
             break;
     }
+    return true;
 }
 
 void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode) {

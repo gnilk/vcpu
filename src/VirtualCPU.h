@@ -57,6 +57,14 @@ namespace gnilk {
     };
 
     //
+    // Not sure this is needed..
+    // I could essentially split this in several bytes instead and make the instr.length longer...
+    // It is probably _FAST_ to read bytes sequentially than bitfiddling with them as the successive bytes will be
+    // in L1 cache anyway...
+    //
+
+
+    //
     // operand decoding like:
     //
     // [operand]
@@ -128,6 +136,7 @@ namespace gnilk {
 
         RET  = 0xF0,
         NOP  = 0xF1,
+        EOC  = 0xff,        // End of code
 
     } OperandClass;
 
@@ -143,9 +152,9 @@ namespace gnilk {
             memset(&registers, 0, sizeof(registers));
         }
         void Reset() {
-
+            registers.instrPointer.data.longword = 0;
         }
-        void Step();
+        bool Step();
 
         const Registers &GetRegisters() {
             return registers;
@@ -154,7 +163,6 @@ namespace gnilk {
     protected:
         void ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode);
     protected:
-        // TODO: Can't really do this - need to control byte ordering HARD...
         template<typename T>
         T FetchFromInstrPtr() {
             auto address = registers.instrPointer.data.longword;
@@ -162,14 +170,23 @@ namespace gnilk {
                 fmt::println(stderr, "Invalid address {}", address);
                 exit(1);
             }
-            T *ptrType = reinterpret_cast<T *>(&ram[address]);
-            auto next = *ptrType;
-
-            // Next address
-            address += sizeof(T);
+            T result = {};
+            uint32_t nBits = 0;
+            auto numToFetch = sizeof(T);
+            while(numToFetch > 0) {
+                auto byte = ram[address];
+                address++;
+                // this results in 'hex' dumps easier to read - MSB first (most significant byte first) - Intel?
+                result = (result << nBits) | T(byte);
+                nBits = 8;
+                // this results in LSB - least significant byte first (Motorola?)
+                // result |= T(byte) << nBits);
+                // nBits += 8;
+                numToFetch -= 1;
+            }
             registers.instrPointer.data.longword = address;
 
-            return next;
+            return result;
         }
         uint8_t FetchByteFromInstrPtr() {
             return FetchFromInstrPtr<uint8_t>();
