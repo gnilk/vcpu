@@ -57,43 +57,50 @@ namespace gnilk {
     };
 
     //
-    // Not sure this is needed..
-    // I could essentially split this in several bytes instead and make the instr.length longer...
-    // It is probably _FAST_ to read bytes sequentially than bitfiddling with them as the successive bytes will be
-    // in L1 cache anyway...
+    // It is actually faster by some 10% to have more complicated instr. set...
+    // However, I want the instruction set to be flexible and easier to handle - to I will
     //
 
 
     //
     // operand decoding like:
     //
-    // [operand]
+    // Basic operand layout is 32 bits
     //
-    //----------------
-    // 2 bits to indicate size [8,16,32,64] => 00,01,10,11  => Encoded in lower Operand???
+    //  byte | What
+    //  ----------------------------
+    //    0  | Op Code
+    //    1  | Addressing size; bit 0,1 (0,1,2,3) -> 6 bits spare!
+    //    2  | Dst Register and Flags: RRRR | FFFF => upper 4 bits 16 bit register index (0..7 => D0..D7, 8..15 => A0..A7)
+    //       |  Flags: AddressMode flags (Immediate, Absolute, Register) - we have 2 bits spare!
+    //    3  | Src Register and Flags: RRRR | FFFF => upper 4 bits 16 bit register index (0..7 => D0..D7, 8..15 => A0..A7)
+    //       |  Flags: AddressMode flags (Immediate, Absolute, Register) - we have 2 bits spare!
+    // ---------------------------------------------------------------------------
+    // Note: Destination Address Mode 'Immediate' is invalid
     //
+    // Depending on address mode (src/dst) the following differs
     //
-    // 2 bits to indicate src      =>
-    // 2 bits to indicate dst      =>
-    // 4 bits to indicate register => d0..d7, a0..a7
+    // SrcAddressMode: Immediate
+    //  byte | What
+    //  ----------------------------------
+    //  0..n | Depedning on Address size 8..64 bits value follows
     //
     // Example:
-    //  move.b d0, 0x44  => 0x20, 0000|11|01, 0x44
-    //      0x20 => 0010 | xx | 00
-    //          0010 => Move class instr
-    //          xx   => currently unused
-    //          00   => size of operand -> 00 => byte sized
+    //  move.b d0, 0x44  => 0x20, 0x00, 0x03, 0x01, 0x44
+    //      0x20 => move operand
+    //      0x00 => Operand size: byte
+    //      0x03 => Dst [Reg][Mode] => Reg = 0, Mode = Register
+    //      0x01 => Src [Reg][Mode] => Reg = -, Mode = Immediate
+    //      <8 bit> value
     //
-    //      0000|11|01
-    //          0000 => Destination register
-    //            11 => Desintation is register (DstAddrMode)
-    //            01 => Source is immediate (SrcAddrMode)
-    //  move.d d5, 0x44  => 0x22, 0101|11|01, <32bit>
-    //  move.l d3, 0x44  => 0x23, 0011|11|01, <64bit>
+    //   move.d d5, 0x44  => 0x20, 0x02, 0x53, 0x01,0x00, 0x00, 0x00, 0x44
     //
-    // [operand | sz addressing][dst | src/dst flags] [opt: flag | src]
+    //      0x20 => move operand
+    //      0x02 => Operand Size: dword (32 bits)
+    //      0x53 => Dst [Reg][Mode] => Reg = 5, Mode = Register
+    //      0x01 => Src [Reg][Mode] => Reg = -, Mode = Immediate
+    //      <32 bits> value
     //
-    //  move.l d1,(a3)   => 0x23, 0001|11|11, 0000|0011
     //
     //
     //
@@ -190,10 +197,13 @@ namespace gnilk {
         }
         // This one is used alot and should be faster...
         __inline uint8_t FetchByteFromInstrPtr() {
+            return FetchFromInstrPtr<uint8_t>();
+/*
             auto address = registers.instrPointer.data.longword;
             auto byte = ram[address++];
             registers.instrPointer.data.longword = address;
             return byte;
+*/
         }
         uint16_t FetchWordFromInstrPtr() {
             return FetchFromInstrPtr<uint16_t>();
