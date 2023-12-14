@@ -21,24 +21,25 @@ bool VirtualCPU::Step() {
     //
     // Setup addressing
     //
-    auto addressing = FetchByteFromInstrPtr();
-    auto dstRegister = (addressing & 0xf0) >> 4;
-    auto srcdstflags = (addressing & 0x0f);
-
-    auto dstAdrMode = static_cast<AddressMode>(srcdstflags >> 2);
-    auto srcAdrMode = static_cast<AddressMode>(srcdstflags & 0x03);
+    auto szAddressing = FetchByteFromInstrPtr();
+    auto dstRegAndFlags = FetchByteFromInstrPtr();
+    auto srcRegAndFlags = FetchByteFromInstrPtr();
 
 
+    auto dstAdrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
+    auto srcAdrMode = static_cast<AddressMode>(srcRegAndFlags & 0x0f);
 
-    auto opClass = nextOperand & 0xf0;
-    auto szAddressing = static_cast<OperandSize>(nextOperand & 0x03);
+    auto dstReg = (dstRegAndFlags>>4) & 15;
+
+
+    auto opClass = nextOperand;
     switch(opClass) {
         case BRK :
             // halt here
             return false;
             break;
         case MOV :
-            ExecuteMoveInstr(szAddressing,dstAdrMode, dstRegister, srcAdrMode);
+            ExecuteMoveInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode);
             break;
         case PUSH :
             break;
