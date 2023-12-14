@@ -20,15 +20,17 @@ namespace gnilk {
 
         String,
         Identifier,
+        // Registers
+        DataReg,
+        AddressReg,
+        // special registers
+        sp,ip,
 
-        // Keywords
-        Var,
-        Const,
-        Func,
-        If,
-        Else,
-        While,
-        Break,
+        // instructions
+        Instruction,
+
+        // Operand Size specifier
+        OpSize,
 
         // Grouping and Operators
         BinaryOperator,

@@ -48,38 +48,40 @@ using namespace gnilk;
 
 const Context &gnilk::GetLexerContext() {
     static std::unordered_map<std::string, TokenType> keywords = {
-        {"var", TokenType::Var},
-        {"const", TokenType::Const},
-        {"fun", TokenType::Func},
+        // Instructions
+        {"move", TokenType::Instruction},
+        {"add", TokenType::Instruction},
+        {"sub", TokenType::Instruction},
+        {"call", TokenType::Instruction},
         {"null", TokenType::Null},
-        {"if", TokenType::If},
-        {"else", TokenType::Else},
-        {"while", TokenType::While},
-        {"break", TokenType::Break},
-    };
-/*
-    static std::unordered_map<std::string, TokenType> keywords = {
-        {"for", TokenType::Keyword},
-        {"while", TokenType::Keyword},
-        {"do", TokenType::Keyword},
-        {"fun", TokenType::Keyword},
-        {"return", TokenType::Keyword},
-        {"switch", TokenType::Keyword},
-        {"case", TokenType::Keyword},
-        {"this", TokenType::Keyword},
-        {"class", TokenType::Keyword},
-        {"interface", TokenType::Keyword},
-        {"public", TokenType::Keyword},
-        {"private", TokenType::Keyword},
-        {"protected", TokenType::Keyword},
-        {"override", TokenType::Keyword},
-        {"var", TokenType::Var},
-        {"const", TokenType::Const},
-        {"null", TokenType::Null},
-    };
+        // Data Registers
+        {"d0", TokenType::DataReg},
+        {"d1", TokenType::DataReg},
+        {"d2", TokenType::DataReg},
+        {"d3", TokenType::DataReg},
+        {"d4", TokenType::DataReg},
+        {"d5", TokenType::DataReg},
+        {"d6", TokenType::DataReg},
+        {"d7", TokenType::DataReg},
+        // Address Registers
+        {"a0", TokenType::AddressReg},
+        {"a1", TokenType::AddressReg},
+        {"a2", TokenType::AddressReg},
+        {"a3", TokenType::AddressReg},
+        {"a4", TokenType::AddressReg},
+        {"a5", TokenType::AddressReg},
+        {"a6", TokenType::AddressReg},
+        {"a7", TokenType::AddressReg},
 
-*/
+};
+
     static std::unordered_map<std::string, TokenType> operators = {
+        // Size operators
+        {".b", TokenType::OpSize},
+        {".w", TokenType::OpSize},
+        {".d", TokenType::OpSize},
+        {".l", TokenType::OpSize},
+
         // compare operators
         {"==", TokenType::CompareOperator},
         {"!=", TokenType::CompareOperator},
@@ -102,8 +104,6 @@ const Context &gnilk::GetLexerContext() {
         {"!", TokenType::Exclamation},
         {"\"", TokenType::Quote},
         {"//", TokenType::LineComment},
-        {"/*", TokenType::BlockCommentStart},
-        {"*/", TokenType::BlockCommentEnd},
 
         // binary operators
         {"+", TokenType::BinaryOperator},
@@ -378,6 +378,13 @@ bool Lexer::ParseNumber(std::vector<Token> &tokens, Context &context, const std:
         return std::isdigit(chr);
     };
 
+    //
+    // We could enhance this with more features normally found in assemblers
+    // $<hex> - for address
+    // #$<hex> - alt. syntax for hex numbers
+    // #<dec>  - alt. syntax for dec numbers
+    //
+
     auto numberType = TokenType::Number;
     if (*it == '0') {
         num += *it;
@@ -415,13 +422,6 @@ bool Lexer::ParseNumber(std::vector<Token> &tokens, Context &context, const std:
                 if (std::isdigit(*it)) {
                     fprintf(stderr,"WARNING: Numerical tokens shouldn't start with zero!");
                 }
-                // NOTE: Don't do this checking, cause: while(a>0)  where '0)' is a valid number...
-/*
-                else {
-                    fprintf(stderr,"WARNING: Unknown number prefix '%c' - skipping (assuming decimal number)\n",*it);
-                    ++it;
-                }
-*/
                 break;
         }
     }
