@@ -112,6 +112,14 @@ namespace gnilk {
         // Relative might not be needed
     } AddressMode;
 
+    // high two bits of 'mode'
+    typedef enum : uint8_t {
+        None = 0,
+        RegRelative = 1,
+        RegRelativeShift = 2,
+        AbsRelative = 3,
+    } RelativeAddressing;
+
     typedef enum : uint8_t {
         Byte,   // 8 bit
         Word,   // 16 bit
