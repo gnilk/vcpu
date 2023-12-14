@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "VirtualCPU.h"
 #include <chrono>
-
+#include <vector>
 using namespace gnilk;
 
 using std::chrono::high_resolution_clock;
@@ -10,9 +10,8 @@ using std::chrono::duration_cast;
 using std::chrono::duration;
 using std::chrono::milliseconds;
 
-static uint8_t program[] = {
-};
-void testperf() {
+
+double testperf() {
     uint8_t program[]= {
         0x21,0b00001101,0x44,0x33,
         0x20,0b00001101,0x44,
@@ -77,10 +76,20 @@ void testperf() {
     duration<double, std::milli> ms_double = t2 - t1;
     fmt::println("  Duration={} msec", ms_double.count());
 
+    return ms_double.count();
 }
 
 int main()
 {
-    testperf();
+    std::vector<double> perfValues;
+    for(int i=0;i<100;i++) {
+        auto v = testperf();
+        perfValues.push_back(v);
+    }
+    auto avg = 0.0f;
+    for(auto v : perfValues) {
+        avg += v / 100.0f;
+    }
+    fmt::println("average: {}", avg);
     return 0;
 }
