@@ -39,11 +39,72 @@ namespace gnilk {
         }
     };
 
-    // will need more..
-    struct CPUFlags {
-        bool carry;     // over/underflow - flow or carry
-        bool zero;      // zero
+    struct CPUStatusBits {
+        uint8_t overflow : 1;
+        uint8_t underflow : 1;
+        uint8_t zero : 1;
+        uint8_t unk1 : 1;
+        uint8_t unk2 : 1;
+        uint8_t unk3 : 1;
+        uint8_t unk4 : 1;
+        uint8_t unk5 : 1;
     };
+
+    enum class CPUStatusFlags : uint8_t {
+        None = 0,
+        Overflow = 1,
+        Underflow = 2,
+        Zero = 4,
+    };
+
+    enum class CPUStatusFlagBitPos : uint8_t {
+        Overflow = 0,
+        Underflow = 1,
+        Zero = 2,
+    };
+
+    union CPUStatusReg {
+        CPUStatusBits flags;
+        CPUStatusFlags eflags;
+    };
+
+    inline constexpr CPUStatusFlags operator | (CPUStatusFlags lhs, CPUStatusFlags rhs) {
+        using T = std::underlying_type_t <CPUStatusFlags>;
+        return static_cast<CPUStatusFlags>(static_cast<T>(lhs) | static_cast<T>(rhs));
+    }
+
+    inline constexpr CPUStatusFlags operator & (CPUStatusFlags lhs, CPUStatusFlags rhs) {
+        using T = std::underlying_type_t <CPUStatusFlags>;
+        return static_cast<CPUStatusFlags>(static_cast<T>(lhs) & static_cast<T>(rhs));
+    }
+
+    inline constexpr CPUStatusFlags operator ^ (CPUStatusFlags lhs, int rhs) {
+        using T = std::underlying_type_t <CPUStatusFlags>;
+        return static_cast<CPUStatusFlags>(static_cast<T>(lhs) ^ rhs);
+    }
+
+
+    inline CPUStatusFlags operator |= (CPUStatusFlags &lhs, CPUStatusFlags rhs) {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    inline constexpr CPUStatusFlags operator &= (CPUStatusFlags lhs, CPUStatusFlags rhs) {
+        lhs = lhs & rhs;
+        return lhs;
+    }
+
+
+    inline constexpr CPUStatusFlags operator << (bool bitvalue, CPUStatusFlagBitPos shiftvalue) {
+        int res = (bitvalue?1:0) << static_cast<int>(shiftvalue);
+        return static_cast<CPUStatusFlags>(res);
+    }
+
+    // Define some masks
+    static constexpr CPUStatusFlags CPUStatusAritMask = CPUStatusFlags::Overflow | CPUStatusFlags::Underflow | CPUStatusFlags::Zero;
+    static constexpr CPUStatusFlags CPUStatusAritInvMask = (CPUStatusFlags::Overflow | CPUStatusFlags::Underflow | CPUStatusFlags::Zero) ^ 0xff;
+
+
 
     struct Registers {
         // 8 General purpose registers
@@ -190,9 +251,16 @@ namespace gnilk {
             return registers;
         }
 
+        const CPUStatusReg &GetStatusReg() const {
+            return statusReg;
+        }
+
     protected:
         void ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
         void ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
+        void ExecuteSubInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
+        void ExecuteMulInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
+        void ExecuteDivInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
 
         RegisterValue ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister);
         RegisterValue ReadSrcImmediateMode(OperandSize szOperand);
@@ -247,7 +315,7 @@ namespace gnilk {
         uint8_t *ram = nullptr;
         size_t szRam = 0;
         Registers registers = {};
-        CPUFlags flags = {};
+        CPUStatusReg statusReg = {};
     };
 }
 

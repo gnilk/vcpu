@@ -3,7 +3,9 @@
 //
 
 #include <stdlib.h>
+#include <functional>
 #include "fmt/format.h"
+#include <limits>
 #include "VirtualCPU.h"
 
 using namespace gnilk;
@@ -62,29 +64,117 @@ void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode
     }
 }
 
+//
+// This tries to implement add/sub handling with CPU status updates at the same time
+// The idea was to minize code-duplication due to register layout - but I couldn't really figure out
+// a good way...
+//
+
+
+#define VCPU_MAX_BYTE     std::numeric_limits<uint8_t>::max()
+#define VCPU_MAX_WORD     std::numeric_limits<uint16_t>::max()
+#define VCPU_MAX_DWORD    std::numeric_limits<uint32_t>::max()
+#define VCPU_MAX_LWORD   std::numeric_limits<uint64_t>::max()
+
+#define chk_add_overflow(__max__,__a__,__b__) (__b__ > (__max__ - __a__))
+#define chk_sub_underflow(__a__, __b__) (__b__ > __a__)
+#define chk_sub_zero(__a__, __b__) (__b__== __a__)
+
+using OperandDelegate = std::function<CPUStatusFlags(RegisterValue &dst, const RegisterValue &src)>;
+static std::unordered_map<OperandSize, OperandDelegate> adders = {
+    {OperandSize::Byte, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_BYTE, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        dst.data.byte += src.data.byte;
+        return flags;
+    }},
+    {OperandSize::Word, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_WORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        dst.data.word += src.data.word;
+        return flags;
+    }},
+    {OperandSize::DWord, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_DWORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        dst.data.dword += src.data.dword;
+        return flags;
+    }},
+    {OperandSize::Long, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_LWORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        dst.data.longword += src.data.longword;
+        return flags;
+    }}
+};
+static std::unordered_map<OperandSize, OperandDelegate> subbers = {
+    {OperandSize::Byte, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags;
+        flags = chk_sub_underflow(dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Underflow;
+        flags |= chk_sub_zero(dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Zero;
+        dst.data.byte -= src.data.byte;
+        return flags;
+    }},
+    {OperandSize::Word, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags;
+        flags = chk_sub_underflow(dst.data.word, src.data.word) << CPUStatusFlagBitPos::Underflow;
+        flags |= chk_sub_zero(dst.data.word, src.data.word) << CPUStatusFlagBitPos::Zero;
+        dst.data.word -= src.data.word;
+        return flags;
+    }},
+    {OperandSize::DWord, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags;
+        flags = chk_sub_underflow(dst.data.dword, src.data.dword) << CPUStatusFlagBitPos::Underflow;
+        flags |= chk_sub_zero(dst.data.dword, src.data.dword) << CPUStatusFlagBitPos::Zero;
+        dst.data.dword -= src.data.dword;
+        return flags;
+    }},
+    {OperandSize::Long, [](RegisterValue &dst, const RegisterValue &src) {
+        CPUStatusFlags flags;
+        flags = chk_sub_underflow(dst.data.longword, src.data.longword) << CPUStatusFlagBitPos::Underflow;
+        flags |= chk_sub_zero(dst.data.longword, src.data.longword) << CPUStatusFlagBitPos::Zero;
+        dst.data.longword -= src.data.longword;
+        return flags;
+    }}
+};
+
+static CPUStatusFlags Add(OperandSize opSz, RegisterValue &dst, const RegisterValue &src) {
+    if (!adders.contains(opSz)) {
+        return CPUStatusFlags::None;
+    }
+    return adders[opSz](dst, src);
+}
+
+static CPUStatusFlags Sub(OperandSize opSz, RegisterValue &dst, const RegisterValue &src) {
+    if (!adders.contains(opSz)) {
+        return CPUStatusFlags::None;
+    }
+    return subbers[opSz](dst, src);
+}
+
+
 void VirtualCPU::ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
     auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
 
     if (dstAddrMode == AddressMode::Register) {
-        RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
-        // TODO: CPU flags (overflow, zero, etc..)
-        switch (szOperand) {
-            case OperandSize::Byte :
-                reg.data.byte += v.data.byte;
-                break;
-            case OperandSize::Word :
-                reg.data.word += v.data.word;
-                break;
-            case OperandSize::DWord :
-                reg.data.dword += v.data.dword;
-                break;
-            case OperandSize::Long :
-                reg.data.longword += v.data.longword;
-                break;
-        }
+        RegisterValue &dstReg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
+        CPUStatusFlags newFlags = Add(szOperand, dstReg, v);
+        statusReg.eflags |= newFlags;
     }
+}
+
+void VirtualCPU::ExecuteSubInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
+    auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
+
+    if (dstAddrMode == AddressMode::Register) {
+        RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
+        // Update arithmetic flags based on this operation
+        statusReg.eflags |= Sub(szOperand, reg, v);
+    }
+}
+void VirtualCPU::ExecuteMulInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
 
 }
+void VirtualCPU::ExecuteDivInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
+
+}
+
 
 
 RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister) {
