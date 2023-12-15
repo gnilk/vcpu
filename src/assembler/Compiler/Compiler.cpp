@@ -126,6 +126,7 @@ bool Compiler::EmitNumericLiteral(OperandSize opSize, ast::NumericLiteral::Ref n
 
 static std::unordered_map<std::string, OperandClass> symbolToOpCode = {
     {"move", OperandClass::MOV},
+    {"add", OperandClass::ADD},
 };
 
 bool Compiler::EmitOpCodeForSymbol(const std::string &symbol) {

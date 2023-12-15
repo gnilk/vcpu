@@ -2,6 +2,8 @@
 // Created by gnilk on 14.12.23.
 //
 
+#include <map>
+#include <unordered_set>
 #include "Parser.h"
 /*
  * TO-OD:
@@ -41,10 +43,13 @@ ast::Statement::Ref Parser::ParseStatement() {
     return nullptr;
 }
 
+static std::unordered_set<std::string> supportedOperands = {
+    "move", "add",
+};
 
 ast::Statement::Ref Parser::ParseInstruction() {
     auto operand = At().value;
-    if (operand != "move") {
+    if (!supportedOperands.contains(operand)) {
         fmt::println(stderr, "unsupported instructions {}", At().value);
         return nullptr;
     }

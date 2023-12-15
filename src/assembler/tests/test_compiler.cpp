@@ -12,9 +12,13 @@ extern "C" {
     DLL_EXPORT int test_compiler(ITesting *t);
     DLL_EXPORT int test_compiler_move_immediate(ITesting *t);
     DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t);
+    DLL_EXPORT int test_compiler_add_immediate(ITesting *t);
+    DLL_EXPORT int test_compiler_add_reg2reg(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
+    t->CaseDepends("add_immediate", "move_immediate");
+    t->CaseDepends("add_reg2reg", "move_reg2reg");
     return kTR_Pass;
 }
 DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
@@ -80,5 +84,32 @@ DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t) {
         TR_ASSERT(t, binary == binaries[i]);
     }
 
+    return kTR_Pass;
+}
+DLL_EXPORT int test_compiler_add_immediate(ITesting *t) {
+    std::vector<uint8_t> binaries[]= {
+        {0x30,0x00,0x03,0x01, 0x44},        // add.b d0, 0x44
+        {0x30,0x01,0x03,0x01, 0x44,0x33},   // add.w d0, 0x4433
+    };
+
+    std::vector<std::string> code={
+        {"add.b d0, 0x44"},
+        {"add.w d0, 0x4433"},
+    };
+
+    Parser parser;
+    Compiler compiler;
+
+    for(int i=0;i<code.size();i++) {
+        auto ast = parser.ProduceAST(code[i]);
+        TR_ASSERT(t, ast != nullptr);
+        TR_ASSERT(t, compiler.GenerateCode(ast));
+        auto binary = compiler.Data();
+        TR_ASSERT(t, binary == binaries[i]);
+    }
+
+    return kTR_Pass;
+}
+DLL_EXPORT int test_compiler_add_reg2reg(ITesting *t) {
     return kTR_Pass;
 }
