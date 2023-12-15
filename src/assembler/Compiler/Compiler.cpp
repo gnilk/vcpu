@@ -47,6 +47,8 @@ bool Compiler::ProcessMoveInstr(ast::MoveInstrStatment::Ref moveInstr) {
     return true;
 }
 
+// Note: these are 'raw' values - in order to have them in the REGMODE byte of an instr. they must be shifted
+//       see 'EmitRegisterLiteral'
 static std::unordered_map<std::string, uint8_t> regToIdx = {
     {"d0",0},
     {"d1",1},
