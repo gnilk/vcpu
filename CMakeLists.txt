@@ -26,7 +26,9 @@ list(APPEND vcputestsrc tests/test_vcpu.cpp)
 list(APPEND asmsrc src/assembler/ast/ast.cpp src/assembler/ast/ast.h)
 list(APPEND asmsrc src/assembler/ast/astbase.h)
 list(APPEND asmsrc src/assembler/ast/instructions.h)
+list(APPEND asmsrc src/assembler/ast/literals.h)
 
+list(APPEND asmsrc src/assembler/Compiler/Compiler.cpp src/assembler/Compiler/Compiler.h)
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)
 list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h)
 
@@ -39,6 +41,7 @@ list(APPEND asmsrc src/assembler/UnicodeHelper.cpp src/assembler/UnicodeHelper.h
 #
 list(APPEND asmtestsrc src/assembler/tests/test_lexer.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_parser.cpp)
+list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 
 
 # test library for vcpu
