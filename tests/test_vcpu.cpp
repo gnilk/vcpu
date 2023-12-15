@@ -14,6 +14,9 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_move_reg2reg(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t);
+    DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
+
 }
 
 DLL_EXPORT int test_vcpu(ITesting *t) {
@@ -25,6 +28,16 @@ DLL_EXPORT int test_vcpu(ITesting *t) {
 DLL_EXPORT int test_vcpu_create(ITesting *t) {
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t) {
+    CPUStatusFlags flags = CPUStatusFlags::None;
+    flags |= CPUStatusFlags::Overflow;
+    TR_ASSERT(t, flags != CPUStatusFlags::None);
+    TR_ASSERT(t, flags == CPUStatusFlags::Overflow);
+
+    return kTR_Pass;
+}
+
 
 DLL_EXPORT int test_vcpu_instr_move_immediate(ITesting *t) {
     uint8_t program[]= {
@@ -152,6 +165,63 @@ DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t) {
     TR_ASSERT(t, regs.dataRegisters[2].data.byte == 0x12);
 
     return kTR_Pass;
+}
+
+static void DumpStatus(const VirtualCPU &cpu) {
+    auto &status = cpu.GetStatusReg();
+    fmt::println("CPU Stat: [{}{}{}-----]",
+        status.flags.overflow?"O":"-",
+        status.flags.underflow?"U":"-",
+        status.flags.zero?"Z":"-");
+}
+static void DumpRegs(const VirtualCPU &cpu) {
+    auto &regs = cpu.GetRegisters();
+    for(int i=0;i<8;i++) {
+        fmt::print("d{}=0x{:02x}  ",i,regs.dataRegisters[i].data.byte);
+        if ((i & 3) == 3) {
+            fmt::println("");
+        }
+    }
+}
+
+DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t) {
+    // Note: d0 is preloaded with 0x70 - so we should overflow after third add
+    uint8_t program[]= {
+        0x30,0x00,0x13,0x03,    // add.b d1, d0     // d1 = 0 + 0x70
+        0x30,0x00,0x13,0x03,    // add.b d1, d0     // d1 = 0x70 + 0x70
+        0x30,0x00,0x13,0x03,    // add.b d1, d0     // d1 = 0xe0 + 0x70
+        0x30,0x00,0x13,0x03,    // add.b d1, d0     // d1 = ?? + 0x70
+    };
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+    auto &regs = vcpu.GetRegisters();
+
+    // preload reg d0 with 0x70
+    regs.dataRegisters[0].data.word = 0x70;
+
+    printf("Start\n");
+    DumpStatus(vcpu); DumpRegs(vcpu);
+    // Verify intermediate mode reading works for 8,16,32,64 bit sizes
+
+    printf("Step 1\n");
+    vcpu.Step();
+    DumpStatus(vcpu); DumpRegs(vcpu);
+    TR_ASSERT(t, regs.dataRegisters[1].data.word == 0x70);
+
+    printf("Step 2\n");
+    vcpu.Step();
+    DumpStatus(vcpu); DumpRegs(vcpu);
+    TR_ASSERT(t, regs.dataRegisters[1].data.word == 0xe0);
+
+    printf("Step 3\n");
+    vcpu.Step();
+    DumpStatus(vcpu); DumpRegs(vcpu);
+    TR_ASSERT(t, regs.dataRegisters[1].data.word == 0x50);
+
+    printf("Step 4\n");
+    vcpu.Step();
+    DumpStatus(vcpu); DumpRegs(vcpu);
+    TR_ASSERT(t, regs.dataRegisters[1].data.word == 0xc0);
 
     return kTR_Pass;
 }
