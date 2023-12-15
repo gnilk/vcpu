@@ -40,6 +40,11 @@ namespace gnilk {
             ast::Statement::Ref ParseStatement();
             ast::Statement::Ref ParseInstruction();
 
+            ast::Expression::Ref ParseExpression();
+            ast::Expression::Ref ParsePrimaryExpression();
+
+
+
         private:
             Lexer lexer;
             Token last = {};

@@ -69,20 +69,20 @@ ast::Statement::Ref Parser::ParseInstruction() {
     // Swap out below for:
     // dst = ParseExpression();
 
-    auto dst = Eat();
-    if ((dst.type != TokenType::DataReg) && (dst.type != TokenType::AddressReg)) {
-        fmt::println(stderr, "Destination must be DataRegister or AddressRegister, {} is neither", dst.value);
+    auto dst = ParseExpression();
+    if (dst->Kind() != ast::NodeType::kRegisterLiteral) {
+        fmt::println(stderr, "Destination must be DataRegister or AddressRegister");
         return nullptr;
     }
-    instrStatment->SetDst(dst.value);
+    instrStatment->SetDst(dst);
 
     // literal must be separated by ','
     Expect(TokenType::Comma, "Operand requires two arguments!");
 
 
     // Fixme: replace with: src = ParseExpression();
-    auto src = Eat();
-    instrStatment->SetSrc(src.value);
+    auto src = ParseExpression();
+    instrStatment->SetSrc(src);
 
     // Expressions are a little different, like:
     //   move d0, a0             <- move reg to reg
@@ -101,6 +101,27 @@ ast::Statement::Ref Parser::ParseInstruction() {
 
     return instrStatment;
 }
+
+ast::Expression::Ref Parser::ParseExpression() {
+    return ParsePrimaryExpression();
+}
+
+ast::Expression::Ref Parser::ParsePrimaryExpression() {
+    auto tokenType = At().type;
+    switch(tokenType) {
+        case TokenType::DataReg :
+            return ast::RegisterLiteral::Create(Eat().value);
+        case TokenType::AddressReg :
+            return ast::RegisterLiteral::Create(Eat().value);
+        case TokenType::Number :
+            return ast::NumericLiteral::Create(Eat().value);
+        case TokenType::NumberHex :
+            return ast::NumericLiteral::CreateFromHex(Eat().value);
+    }
+    fmt::println(stderr, "Unexpected token found: {}",At().value.c_str());
+    return nullptr;
+}
+
 
 
 ///////////
