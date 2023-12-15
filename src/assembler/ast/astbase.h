@@ -39,6 +39,7 @@ namespace gnilk {
             kNumericLiteral,
             kStringLiteral,
             kNullLiteral,
+            kRegisterLiteral,
             kIdentifier,
             kLogicalExpression,
             kUnaryExpression,
