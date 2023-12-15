@@ -169,10 +169,12 @@ DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t) {
 
 static void DumpStatus(const VirtualCPU &cpu) {
     auto &status = cpu.GetStatusReg();
-    fmt::println("CPU Stat: [{}{}{}-----]",
+    fmt::println("CPU Stat: [{}{}{}{}{}---]",
+        status.flags.carry?"C":"-",
         status.flags.overflow?"O":"-",
-        status.flags.underflow?"U":"-",
-        status.flags.zero?"Z":"-");
+        status.flags.zero?"Z":"-",
+        status.flags.negative?"N":"-",
+        status.flags.extend?"E":"-");
 }
 static void DumpRegs(const VirtualCPU &cpu) {
     auto &regs = cpu.GetRegisters();
@@ -195,6 +197,7 @@ DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t) {
     VirtualCPU vcpu;
     vcpu.Begin(program, 1024);
     auto &regs = vcpu.GetRegisters();
+    auto &statusReg = vcpu.GetStatusReg();
 
     // preload reg d0 with 0x70
     regs.dataRegisters[0].data.word = 0x70;
@@ -217,6 +220,10 @@ DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t) {
     vcpu.Step();
     DumpStatus(vcpu); DumpRegs(vcpu);
     TR_ASSERT(t, regs.dataRegisters[1].data.word == 0x50);
+    TR_ASSERT(t, statusReg.flags.carry == true);
+    TR_ASSERT(t, statusReg.flags.extend == true);
+    TR_ASSERT(t, statusReg.flags.negative == false);
+    TR_ASSERT(t, statusReg.flags.zero == false);
 
     printf("Step 4\n");
     vcpu.Step();
