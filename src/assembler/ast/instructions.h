@@ -33,7 +33,7 @@ namespace gnilk {
 
         class MoveInstrStatment : public Statement {
         public:
-            using Ref = std::shared_ptr<InstructionStatement>;
+            using Ref = std::shared_ptr<MoveInstrStatment>;
         public:
             MoveInstrStatment() = default;
             explicit MoveInstrStatment(const std::string &instr) : Statement(NodeType::kMoveInstrStatement), symbol(instr) {
@@ -42,29 +42,59 @@ namespace gnilk {
             void SetOpSize(OperandSize newOpSize) {
                 opSize = newOpSize;
             }
-            void SetDst(const std::string &newDst) {
+            void SetAddrMode(AddressMode newAddrMode) {
+                addrMode = newAddrMode;
+            }
+            void SetDst(const Expression::Ref newDst) {
                 dst = newDst;
             }
-            void SetSrc(const std::string &newSrc) {
+            void SetSrc(const Expression::Ref newSrc) {
                 src = newSrc;
             }
+
+
+            const std::string &Symbol() {
+                return symbol;
+            }
+            OperandSize OpSize() {
+                return opSize;
+            }
+            AddressMode AddrMode() {
+                return addrMode;
+            }
+
+            Expression::Ref Src() {
+                return src;
+            }
+            Expression::Ref Dst() {
+                return dst;
+            }
+
             void Dump() override {
                 WriteLine("Instruction");
                 Indent();
                 WriteLine("Symbol: {}", symbol);
                 WriteLine("OpSize: {}", (int)opSize);
-                WriteLine("Dest..: {}", dst);
-                WriteLine("Source: {}", src);
+
+                WriteLine("Dest:");
+                Indent();
+                dst->Dump();
+                Unindent();
+
+                WriteLine("Source:");
+                Indent();
+                src->Dump();
+                Unindent();
 
                 Unindent();
             }
 
         protected:
             std::string symbol = {};
-            AddressMode adrMode = {};
+            AddressMode addrMode = {};
             OperandSize opSize = OperandSize::Long;
-            std::string dst = {};
-            std::string src = {};
+            ast::Expression::Ref dst;
+            ast::Expression::Ref src;
 
         };
     }
