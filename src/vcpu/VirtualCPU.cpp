@@ -42,6 +42,8 @@ bool VirtualCPU::Step() {
         case MOV :
             ExecuteMoveInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
             break;
+        case ADD :
+            ExecuteAddInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
         case PUSH :
             break;
     }
@@ -59,6 +61,31 @@ void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode
         // FIXME: Update CPU flags here...
     }
 }
+
+void VirtualCPU::ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
+    auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
+
+    if (dstAddrMode == AddressMode::Register) {
+        RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
+        // TODO: CPU flags (overflow, zero, etc..)
+        switch (szOperand) {
+            case OperandSize::Byte :
+                reg.data.byte += v.data.byte;
+                break;
+            case OperandSize::Word :
+                reg.data.word += v.data.word;
+                break;
+            case OperandSize::DWord :
+                reg.data.dword += v.data.dword;
+                break;
+            case OperandSize::Long :
+                reg.data.longword += v.data.longword;
+                break;
+        }
+    }
+
+}
+
 
 RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister) {
     // Handle immediate mode

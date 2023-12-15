@@ -192,6 +192,7 @@ namespace gnilk {
 
     protected:
         void ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
+        void ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
 
         RegisterValue ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister);
         RegisterValue ReadSrcImmediateMode(OperandSize szOperand);
