@@ -77,59 +77,82 @@ void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode
 #define VCPU_MAX_LWORD   std::numeric_limits<uint64_t>::max()
 
 #define chk_add_overflow(__max__,__a__,__b__) (__b__ > (__max__ - __a__))
-#define chk_sub_underflow(__a__, __b__) (__b__ > __a__)
+#define chk_sub_negative(__a__, __b__) (__b__ > __a__)
 #define chk_sub_zero(__a__, __b__) (__b__== __a__)
-
+/*
+ * If I want to mimic M68k - check out the M68000PRM.pdf page 89 for details...
+ * I think Carry, Extend, Zero and Negative are correct - overflow is not at all done..
+ */
 using OperandDelegate = std::function<CPUStatusFlags(RegisterValue &dst, const RegisterValue &src)>;
 static std::unordered_map<OperandSize, OperandDelegate> adders = {
     {OperandSize::Byte, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_BYTE, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        // Will this addition generate a carry?
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_BYTE, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Carry;
+        // Perform add
         dst.data.byte += src.data.byte;
+
+        // Note: The overflow I don't really understand...
+
+        flags |= (dst.data.byte == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.byte & 0x80)?CPUStatusFlags::Negative:CPUStatusFlags::None;
+
         return flags;
     }},
     {OperandSize::Word, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_WORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_WORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Carry;
         dst.data.word += src.data.word;
+
+        flags |= (dst.data.word == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.word & 0x8000)?CPUStatusFlags::Negative:CPUStatusFlags::None;
+
         return flags;
     }},
     {OperandSize::DWord, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_DWORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_DWORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Carry;
         dst.data.dword += src.data.dword;
+        flags |= (dst.data.dword == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.dword & 0x80000000)?CPUStatusFlags::Negative:CPUStatusFlags::None;
+
         return flags;
     }},
     {OperandSize::Long, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_LWORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Overflow;
+        CPUStatusFlags flags = chk_add_overflow(VCPU_MAX_LWORD, dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Carry;
         dst.data.longword += src.data.longword;
+        flags |= (dst.data.dword == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.dword & 0x8000000000000000)?CPUStatusFlags::Negative:CPUStatusFlags::None;
         return flags;
     }}
 };
 static std::unordered_map<OperandSize, OperandDelegate> subbers = {
     {OperandSize::Byte, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags;
-        flags = chk_sub_underflow(dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Underflow;
-        flags |= chk_sub_zero(dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Zero;
+        CPUStatusFlags flags = chk_sub_negative(dst.data.byte, src.data.byte) << CPUStatusFlagBitPos::Carry;
         dst.data.byte -= src.data.byte;
+        flags |= (dst.data.byte == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.byte & 0x80)?CPUStatusFlags::Negative:CPUStatusFlags::None;
         return flags;
     }},
     {OperandSize::Word, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags;
-        flags = chk_sub_underflow(dst.data.word, src.data.word) << CPUStatusFlagBitPos::Underflow;
-        flags |= chk_sub_zero(dst.data.word, src.data.word) << CPUStatusFlagBitPos::Zero;
+        CPUStatusFlags flags = chk_sub_negative(dst.data.word, src.data.word) << CPUStatusFlagBitPos::Carry;
         dst.data.word -= src.data.word;
+        flags |= (dst.data.word == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.word & 0x8000)?CPUStatusFlags::Negative:CPUStatusFlags::None;
         return flags;
     }},
     {OperandSize::DWord, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags;
-        flags = chk_sub_underflow(dst.data.dword, src.data.dword) << CPUStatusFlagBitPos::Underflow;
-        flags |= chk_sub_zero(dst.data.dword, src.data.dword) << CPUStatusFlagBitPos::Zero;
+        CPUStatusFlags flags = chk_sub_negative(dst.data.dword, src.data.dword) << CPUStatusFlagBitPos::Carry;
         dst.data.dword -= src.data.dword;
+        flags |= (dst.data.dword == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.dword & 0x80000000)?CPUStatusFlags::Negative:CPUStatusFlags::None;
+
         return flags;
     }},
     {OperandSize::Long, [](RegisterValue &dst, const RegisterValue &src) {
-        CPUStatusFlags flags;
-        flags = chk_sub_underflow(dst.data.longword, src.data.longword) << CPUStatusFlagBitPos::Underflow;
-        flags |= chk_sub_zero(dst.data.longword, src.data.longword) << CPUStatusFlagBitPos::Zero;
+        CPUStatusFlags flags = chk_sub_negative(dst.data.longword, src.data.longword) << CPUStatusFlagBitPos::Carry;
+        // flags = chk_sub_negative(dst.data.longword, src.data.longword) << CPUStatusFlagBitPos::Negative;
+        // flags |= chk_sub_zero(dst.data.longword, src.data.longword) << CPUStatusFlagBitPos::Zero;
         dst.data.longword -= src.data.longword;
+        flags |= (dst.data.longword == 0)?CPUStatusFlags::Zero:CPUStatusFlags::None;
+        flags |= (dst.data.longword & 0x8000000000000000)?CPUStatusFlags::Negative:CPUStatusFlags::None;
         return flags;
     }}
 };
@@ -155,7 +178,13 @@ void VirtualCPU::ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode,
     if (dstAddrMode == AddressMode::Register) {
         RegisterValue &dstReg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
         CPUStatusFlags newFlags = Add(szOperand, dstReg, v);
-        statusReg.eflags |= newFlags;
+        // Did we generate a carry?  Extend bit should set to same
+        if ((newFlags & CPUStatusFlags::Carry) == CPUStatusFlags::Carry) {
+            newFlags |= CPUStatusFlags::Extend;
+        }
+
+        // replace old arithmetic flags
+        statusReg.eflags = (statusReg.eflags & CPUStatusAritInvMask) | newFlags;
     }
 }
 
@@ -165,7 +194,14 @@ void VirtualCPU::ExecuteSubInstr(OperandSize szOperand, AddressMode dstAddrMode,
     if (dstAddrMode == AddressMode::Register) {
         RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
         // Update arithmetic flags based on this operation
-        statusReg.eflags |= Sub(szOperand, reg, v);
+        CPUStatusFlags newFlags = Sub(szOperand, reg, v);
+        // Did we generate a carry?  Extend bit should set to same
+        if ((newFlags & CPUStatusFlags::Carry) == CPUStatusFlags::Carry) {
+            newFlags |= CPUStatusFlags::Extend;
+        }
+
+        // replace old arithmetic flags
+        statusReg.eflags = (statusReg.eflags & CPUStatusAritInvMask) | newFlags;
     }
 }
 void VirtualCPU::ExecuteMulInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {

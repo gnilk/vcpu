@@ -39,28 +39,39 @@ namespace gnilk {
         }
     };
 
+    // FIXME: Copy M68k status bits...
     struct CPUStatusBits {
+        uint8_t carry : 1;
         uint8_t overflow : 1;
-        uint8_t underflow : 1;
         uint8_t zero : 1;
-        uint8_t unk1 : 1;
-        uint8_t unk2 : 1;
-        uint8_t unk3 : 1;
-        uint8_t unk4 : 1;
-        uint8_t unk5 : 1;
+        uint8_t negative : 1;
+        uint8_t extend : 1;
+        uint8_t int1 : 1;
+        uint8_t int2 : 1;
+        uint8_t int3 : 1;
     };
 
     enum class CPUStatusFlags : uint8_t {
         None = 0,
-        Overflow = 1,
-        Underflow = 2,
+        Carry = 1,
+        Overflow = 2,
         Zero = 4,
+        Negative = 8,
+        Extend = 16,
+        Int1 = 32,
+        Int2 = 64,
+        Int3 = 128
     };
 
     enum class CPUStatusFlagBitPos : uint8_t {
-        Overflow = 0,
-        Underflow = 1,
+        Carry = 0,
+        Overflow = 1,
         Zero = 2,
+        Negative = 3,
+        Extend = 4,
+        Int1 = 5,
+        Int2 = 6,
+        Int3 = 7,
     };
 
     union CPUStatusReg {
@@ -84,7 +95,7 @@ namespace gnilk {
     }
 
 
-    inline CPUStatusFlags operator |= (CPUStatusFlags &lhs, CPUStatusFlags rhs) {
+    inline constexpr CPUStatusFlags operator |= (CPUStatusFlags &lhs, CPUStatusFlags rhs) {
         lhs = lhs | rhs;
         return lhs;
     }
@@ -100,10 +111,9 @@ namespace gnilk {
         return static_cast<CPUStatusFlags>(res);
     }
 
-    // Define some masks
-    static constexpr CPUStatusFlags CPUStatusAritMask = CPUStatusFlags::Overflow | CPUStatusFlags::Underflow | CPUStatusFlags::Zero;
-    static constexpr CPUStatusFlags CPUStatusAritInvMask = (CPUStatusFlags::Overflow | CPUStatusFlags::Underflow | CPUStatusFlags::Zero) ^ 0xff;
-
+    // Define some masks - not sure I actually use them...
+    static constexpr CPUStatusFlags CPUStatusAritMask = CPUStatusFlags::Overflow | CPUStatusFlags::Carry | CPUStatusFlags::Zero | CPUStatusFlags::Negative | CPUStatusFlags::Extend;
+    static constexpr CPUStatusFlags CPUStatusAritInvMask = (CPUStatusFlags::Overflow | CPUStatusFlags::Carry | CPUStatusFlags::Zero  | CPUStatusFlags::Negative | CPUStatusFlags::Extend) ^ 0xff;
 
 
     struct Registers {
