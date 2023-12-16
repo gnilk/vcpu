@@ -8,34 +8,12 @@
 #include <limits>
 #include "VirtualCPU.h"
 
-using namespace gnilk;
-//
-// This feature description and table should be made visible across all CPU tools..
-// Put it in a a separate place so it can be reused...
-//
-enum class OperandDescriptionFlags : uint8_t {
-    OperandSize = 1,
-    TwoOperands = 2,
-};
-inline constexpr OperandDescriptionFlags operator | (OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
-    using T = std::underlying_type_t<OperandDescriptionFlags>;
-    return static_cast<OperandDescriptionFlags>(static_cast<T>(lhs) | static_cast<T>(rhs));
-}
-inline constexpr bool operator & (OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
-    using T = std::underlying_type_t<OperandDescriptionFlags>;
-    return (static_cast<T>(lhs) & static_cast<T>(rhs));
-}
-struct OperandDescription {
-    OperandDescriptionFlags features;
-};
+#include "InstructionDecoder.h"
+#include "InstructionSet.h"
 
-static std::unordered_map<OperandClass, OperandDescription> operDetails = {
-  {OperandClass::MOV,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::TwoOperands}},
-  {OperandClass::ADD,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::TwoOperands}},
-  {OperandClass::SUB,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::TwoOperands}},
-  {OperandClass::PUSH,{.features = OperandDescriptionFlags::OperandSize}},
-  {OperandClass::POP,{.features = OperandDescriptionFlags::OperandSize}},
-};
+using namespace gnilk;
+using namespace gnilk::vcpu;
+
 
 bool VirtualCPU::Step() {
     auto nextOperand = FetchByteFromInstrPtr();
@@ -44,40 +22,14 @@ bool VirtualCPU::Step() {
     }
     auto opClass = static_cast<OperandClass>(nextOperand);
 
-    if (!operDetails.contains(opClass)) {
-        // invalid/unsupported operand
+    auto instrDecoder = InstructionDecoder::Create(opClass);
+    if (instrDecoder == nullptr) {
         return false;
     }
-    auto opDescription = operDetails[opClass];
-    //
-    // Setup addressing
-    //
-    uint8_t szAddressing = 0;   // FIXME: default!!!
 
-    if (opDescription.features & OperandDescriptionFlags::OperandSize) {
-        szAddressing = FetchByteFromInstrPtr();
-    }
+    // Tell decoder to decode the basics of this instruction
+    instrDecoder->Decode(*this);
 
-    //
-    // Setup src/dst handling
-    //
-    uint8_t dstRegAndFlags = 0;
-    uint8_t srcRegAndFlags = 0;
-
-    if (opDescription.features & OperandDescriptionFlags::TwoOperands) {
-        dstRegAndFlags = FetchByteFromInstrPtr();
-        srcRegAndFlags = FetchByteFromInstrPtr();
-    } else {
-        dstRegAndFlags = FetchByteFromInstrPtr();
-    }
-
-    // This bit-fiddeling we can do anyway...
-
-    auto dstAdrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
-    auto srcAdrMode = static_cast<AddressMode>(srcRegAndFlags & 0x0f);
-
-    auto dstReg = (dstRegAndFlags>>4) & 15;
-    auto srcReg = (srcRegAndFlags>>4) & 15;
 
     // Note: Consider creating an 'InstructionDecoding' object to hold all meta data and pass around
     //       We want to pass on the Description as well - and arguments are already quite hefty here...
@@ -93,15 +45,18 @@ bool VirtualCPU::Step() {
             return false;
             break;
         case MOV :
-            ExecuteMoveInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
+            ExecuteMoveInstr(instrDecoder);
             break;
         case ADD :
-            ExecuteAddInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
+            //ExecuteAddInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
+            ExecuteAddInstr(instrDecoder);
         case PUSH :
-            ExecutePushInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
+            //ExecutePushInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
+            ExecutePushInstr(instrDecoder);
             break;
         case POP :
-            ExecutePopInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
+            // ExecutePopInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
+            ExecutePopInstr(instrDecoder);
         break;
     }
     return true;
@@ -110,18 +65,18 @@ bool VirtualCPU::Step() {
 //
 // Move of these will be small - consider supporting lambda in description code instead...
 //
-void VirtualCPU::ExecutePushInstr(OperandSize szOperand, AddressMode pushAddrMode, int idxPushRegister) {
-    auto v = ReadFromSrc(szOperand, pushAddrMode, idxPushRegister);
+void VirtualCPU::ExecutePushInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstReg);
     stack.push(v);
 }
 
-void VirtualCPU::ExecutePopInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister) {
+void VirtualCPU::ExecutePopInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = stack.top();
     stack.pop();
 
     // Note: we should have 'WriteToDst' in the same sense we have a 'ReadFromSrc'
-    if (dstAddrMode == AddressMode::Register) {
-        RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
+    if (instrDecoder->dstAddrMode == AddressMode::Register) {
+        RegisterValue &reg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
         reg.data = v.data;
 
         // FIXME: Update CPU flags here
@@ -129,11 +84,11 @@ void VirtualCPU::ExecutePopInstr(OperandSize szOperand, AddressMode dstAddrMode,
 
 }
 
-void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
-    auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
+void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
 
-    if (dstAddrMode == AddressMode::Register) {
-        RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
+    if (instrDecoder->dstAddrMode == AddressMode::Register) {
+        RegisterValue &reg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
         reg.data = v.data;
 
         // FIXME: Update CPU flags here...
@@ -248,12 +203,12 @@ static CPUStatusFlags Sub(OperandSize opSz, RegisterValue &dst, const RegisterVa
 }
 
 
-void VirtualCPU::ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
-    auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
+void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
 
-    if (dstAddrMode == AddressMode::Register) {
-        RegisterValue &dstReg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
-        CPUStatusFlags newFlags = Add(szOperand, dstReg, v);
+    if (instrDecoder->dstAddrMode == AddressMode::Register) {
+        RegisterValue &dstReg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
+        CPUStatusFlags newFlags = Add(instrDecoder->szOperand, dstReg, v);
         // Did we generate a carry?  Extend bit should set to same
         if ((newFlags & CPUStatusFlags::Carry) == CPUStatusFlags::Carry) {
             newFlags |= CPUStatusFlags::Extend;
@@ -264,13 +219,13 @@ void VirtualCPU::ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode,
     }
 }
 
-void VirtualCPU::ExecuteSubInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
-    auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
+void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
 
-    if (dstAddrMode == AddressMode::Register) {
-        RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
+    if (instrDecoder->dstAddrMode == AddressMode::Register) {
+        RegisterValue &reg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
         // Update arithmetic flags based on this operation
-        CPUStatusFlags newFlags = Sub(szOperand, reg, v);
+        CPUStatusFlags newFlags = Sub(instrDecoder->szOperand, reg, v);
         // Did we generate a carry?  Extend bit should set to same
         if ((newFlags & CPUStatusFlags::Carry) == CPUStatusFlags::Carry) {
             newFlags |= CPUStatusFlags::Extend;
@@ -280,10 +235,10 @@ void VirtualCPU::ExecuteSubInstr(OperandSize szOperand, AddressMode dstAddrMode,
         statusReg.eflags = (statusReg.eflags & CPUStatusAritInvMask) | newFlags;
     }
 }
-void VirtualCPU::ExecuteMulInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
+void VirtualCPU::ExecuteMulInstr(InstructionDecoder::Ref instrDecoder) {
 
 }
-void VirtualCPU::ExecuteDivInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
+void VirtualCPU::ExecuteDivInstr(InstructionDecoder::Ref instrDecoder) {
 
 }
 
