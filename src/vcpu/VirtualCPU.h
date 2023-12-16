@@ -59,10 +59,12 @@ namespace gnilk {
             void ExecuteSubInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteMulInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteDivInstr(InstructionDecoder::Ref instrDecoder);
+            void ExecuteCallInstr(InstructionDecoder::Ref instrDecoder);
+            void ExecuteRetInstr(InstructionDecoder::Ref instrDecoder);
 
-            // TODO: Move this to instr. decoder
-            RegisterValue ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister);
-            RegisterValue ReadSrcImmediateMode(OperandSize szOperand);
+            // Perhaps move to base class
+            RegisterValue ReadFrom(OperandSize szOperand, AddressMode addrMode, int idxRegister);
+            RegisterValue ReadImmediateMode(OperandSize szOperand);
 
             void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);
 

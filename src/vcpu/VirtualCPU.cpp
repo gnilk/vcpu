@@ -37,19 +37,34 @@ bool VirtualCPU::Step() {
 
     switch(opClass) {
         case BRK :
-            // halt here
+            fmt::println(stderr, "BRK - CPU Halted!");
+            // raise halt exception
+
             return false;
+        case NOP :
+            break;
+        case CALL :
+            ExecuteCallInstr(instrDecoder);
+            break;
+        case RET :
+            ExecuteRetInstr(instrDecoder);
+            break;
         case MOV :
             ExecuteMoveInstr(instrDecoder);
             break;
         case ADD :
             ExecuteAddInstr(instrDecoder);
+            break;
         case PUSH :
             ExecutePushInstr(instrDecoder);
             break;
         case POP :
             ExecutePopInstr(instrDecoder);
-        break;
+            break;
+        default:
+            // raise invaild-instr. exception here!
+            fmt::println(stderr, "Invalid operand: {}", nextOperand);
+            return false;
     }
     return true;
 }
@@ -58,7 +73,7 @@ bool VirtualCPU::Step() {
 // Move of these will be small - consider supporting lambda in description code instead...
 //
 void VirtualCPU::ExecutePushInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstRegIndex);
+    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstRegIndex);
     stack.push(v);
 }
 
@@ -69,7 +84,7 @@ void VirtualCPU::ExecutePopInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
+    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
     WriteToDst(instrDecoder, v);
 }
 
@@ -180,7 +195,7 @@ static CPUStatusFlags Sub(OperandSize opSz, RegisterValue &dst, const RegisterVa
 
 
 void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
+    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
@@ -196,7 +211,7 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
+    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &reg = GetRegisterValue(instrDecoder->dstRegIndex);
@@ -219,6 +234,43 @@ void VirtualCPU::ExecuteDivInstr(InstructionDecoder::Ref instrDecoder) {
 
 }
 
+void VirtualCPU::ExecuteCallInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstRegIndex);
+    auto retAddr = registers.instrPointer;
+    retAddr.data.longword += 1;
+    // push on stack...
+    stack.push(retAddr);
+
+    switch(instrDecoder->szOperand) {
+        case Byte :
+            registers.instrPointer.data.longword += v.data.byte;
+            break;
+        case Word :
+            registers.instrPointer.data.longword += v.data.word;
+            break;
+        case DWord :
+            registers.instrPointer.data.longword += v.data.dword;
+            break;
+        case Long :
+            registers.instrPointer.data.longword = v.data.longword;     // jumping long-word is absolute!
+            break;
+    }
+}
+
+void VirtualCPU::ExecuteRetInstr(InstructionDecoder::Ref instrDecoder) {
+    if (stack.empty()) {
+        // CPU exception!
+        fmt::println(stderr, "RET - no return address - stack empty!!");
+        return;
+    }
+    auto newInstrAddr = stack.top();
+    stack.pop();
+    registers.instrPointer.data = newInstrAddr.data;
+}
+
+//
+// Could be moved to base class
+//
 void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v) {
     // Support more address mode
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
@@ -228,20 +280,19 @@ void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const Register
     }
 }
 
-RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister) {
-    // Handle immediate mode
+RegisterValue VirtualCPU::ReadFrom(OperandSize szOperand, AddressMode addrMode, int idxRegister) {
     RegisterValue v = {};
 
-    if (srcAddrMode == AddressMode::Immediate) {
-        return ReadSrcImmediateMode(szOperand);
-    } else if (srcAddrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(idxSrcRegister);
+    if (addrMode == AddressMode::Immediate) {
+        return ReadImmediateMode(szOperand);
+    } else if (addrMode == AddressMode::Register) {
+        auto &reg = GetRegisterValue(idxRegister);
         v.data = reg.data;
     }
     return v;
 }
 
-RegisterValue VirtualCPU::ReadSrcImmediateMode(OperandSize szOperand) {
+RegisterValue VirtualCPU::ReadImmediateMode(OperandSize szOperand) {
     RegisterValue v = {};
     switch(szOperand) {
         case OperandSize::Byte :
@@ -259,3 +310,4 @@ RegisterValue VirtualCPU::ReadSrcImmediateMode(OperandSize szOperand) {
     }
     return v;
 }
+
