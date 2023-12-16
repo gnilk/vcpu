@@ -30,13 +30,9 @@ bool VirtualCPU::Step() {
     // Tell decoder to decode the basics of this instruction
     instrDecoder->Decode(*this);
 
-
-    // Note: Consider creating an 'InstructionDecoding' object to hold all meta data and pass around
-    //       We want to pass on the Description as well - and arguments are already quite hefty here...
-
-    //
+    // This would be cool:
     // Also, we should put enough information in the first 2-3 bytes to understand the fully decoded size
-    // This way we can basically have multiple threads decoding instructions -> super scalar emulation (would be cool).
+    // This way we can basically have multiple threads decoding instructions -> super scalar emulation
     //
 
     switch(opClass) {
@@ -76,7 +72,7 @@ void VirtualCPU::ExecutePopInstr(InstructionDecoder::Ref instrDecoder) {
 
     // Note: we should have 'WriteToDst' in the same sense we have a 'ReadFromSrc'
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        RegisterValue &reg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
+        auto &reg = GetRegisterValue(instrDecoder->dstReg);
         reg.data = v.data;
 
         // FIXME: Update CPU flags here
@@ -88,7 +84,7 @@ void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        RegisterValue &reg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
+        auto &reg = GetRegisterValue(instrDecoder->dstReg);
         reg.data = v.data;
 
         // FIXME: Update CPU flags here...
@@ -207,7 +203,7 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        RegisterValue &dstReg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
+        auto &dstReg = GetRegisterValue(instrDecoder->dstReg);
         CPUStatusFlags newFlags = Add(instrDecoder->szOperand, dstReg, v);
         // Did we generate a carry?  Extend bit should set to same
         if ((newFlags & CPUStatusFlags::Carry) == CPUStatusFlags::Carry) {
@@ -223,7 +219,8 @@ void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        RegisterValue &reg = instrDecoder->dstReg>7?registers.addressRegisters[instrDecoder->dstReg-8]:registers.dataRegisters[instrDecoder->dstReg];
+        auto &reg = GetRegisterValue(instrDecoder->dstReg);
+
         // Update arithmetic flags based on this operation
         CPUStatusFlags newFlags = Sub(instrDecoder->szOperand, reg, v);
         // Did we generate a carry?  Extend bit should set to same
@@ -249,7 +246,7 @@ RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddr
     if (srcAddrMode == AddressMode::Immediate) {
         return ReadSrcImmediateMode(szOperand);
     } else if (srcAddrMode == AddressMode::Register) {
-        RegisterValue &reg = idxSrcRegister>7?registers.addressRegisters[idxSrcRegister-8]:registers.dataRegisters[idxSrcRegister];
+        auto &reg = GetRegisterValue(idxSrcRegister);
         v.data = reg.data;
     }
     return v;
