@@ -19,6 +19,8 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_push(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_pop(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_call(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_nop(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
 
 }
@@ -268,8 +270,54 @@ DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
     TR_ASSERT(t, regs.dataRegisters[2].data.byte == 0x43);
 
     return kTR_Pass;
-
 }
+
+DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
+    // 0xf1 = NOP
+    uint8_t program[]={
+        0xc0,0x00,0x01,0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        0xf1,                       // 4
+        0xff,                       // 5 WHALT!
+        0xf1,                       // 6 <- call should go here
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
+    };
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+    auto &instrPtr = vcpu.GetInstrPtr();
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 7);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 8);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 5);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 6);
+    // We should be halted now!
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
+    uint8_t program[]={
+        0xf1,0xf1,0xf1,0xf1,        // 4 nop
+    };
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+
+    auto &instrPtr = vcpu.GetInstrPtr();
+    TR_ASSERT(t, instrPtr.data.longword == 0);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 1);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 2);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 3);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 4);
+
+    return kTR_Pass;
+}
+
 
 
 static void DumpStatus(const VirtualCPU &cpu) {
