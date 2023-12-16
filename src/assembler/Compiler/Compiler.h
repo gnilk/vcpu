@@ -23,11 +23,11 @@ namespace gnilk {
             bool ProcessMoveInstr(ast::MoveInstrStatment::Ref stmt);
 
             bool EmitOpCodeForSymbol(const std::string &symbol);
-            bool EmitInstrDst(OperandSize opSize, ast::Expression::Ref dst);
-            bool EmitInstrSrc(OperandSize opSize, ast::Expression::Ref src);
+            bool EmitInstrDst(vcpu::OperandSize opSize, ast::Expression::Ref dst);
+            bool EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src);
 
             bool EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral);
-            bool EmitNumericLiteral(OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
+            bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
 
             bool EmitByte(uint8_t byte);
             bool EmitWord(uint16_t word);

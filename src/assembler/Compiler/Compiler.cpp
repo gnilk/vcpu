@@ -68,7 +68,7 @@ static std::unordered_map<std::string, uint8_t> regToIdx = {
     {"a7",15},
 };
 
-bool Compiler::EmitInstrDst(OperandSize opSize, ast::Expression::Ref dst) {
+bool Compiler::EmitInstrDst(vcpu::OperandSize opSize, ast::Expression::Ref dst) {
     if (dst->Kind() != ast::NodeType::kRegisterLiteral) {
         fmt::println("Only registers supported as destination!");
         return false;
@@ -76,7 +76,7 @@ bool Compiler::EmitInstrDst(OperandSize opSize, ast::Expression::Ref dst) {
     return EmitRegisterLiteral(std::dynamic_pointer_cast<ast::RegisterLiteral>(dst));
 }
 
-bool Compiler::EmitInstrSrc(OperandSize opSize, ast::Expression::Ref src) {
+bool Compiler::EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src) {
     switch(src->Kind()) {
         case ast::NodeType::kNumericLiteral :
             return EmitNumericLiteral(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(src));
@@ -94,27 +94,27 @@ bool Compiler::EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral) {
     auto idxReg = regToIdx[regLiteral->Symbol()];
     // Register|Mode = byte = RRRR | MMMM
     auto regMode = (idxReg << 4) & 0xf0;
-    regMode |= AddressMode::Register;
+    regMode |= vcpu::AddressMode::Register;
 
     EmitByte(regMode);
     return true;
 }
 
-bool Compiler::EmitNumericLiteral(OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
+bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
     uint8_t regMode = 0; // no register
-    regMode |= AddressMode::Immediate;
+    regMode |= vcpu::AddressMode::Immediate;
 
     // Register|Mode = byte = RRRR | MMMM
     EmitByte(regMode);
 
     switch(opSize) {
-        case OperandSize::Byte :
+        case vcpu::OperandSize::Byte :
             return EmitByte(numLiteral->Value());
-        case OperandSize::Word :
+        case vcpu::OperandSize::Word :
             return EmitWord(numLiteral->Value());
-        case OperandSize::DWord :
+        case vcpu::OperandSize::DWord :
             return EmitDWord(numLiteral->Value());
-        case OperandSize::Long :
+        case vcpu::OperandSize::Long :
             return EmitLWord(numLiteral->Value());
         default :
             fmt::println(stderr, "Only byte size supported!");
