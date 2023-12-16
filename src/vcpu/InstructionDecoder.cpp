@@ -40,11 +40,13 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     dstRegAndFlags = 0;
     srcRegAndFlags = 0;
 
-    if (description.features & OperandDescriptionFlags::TwoOperands) {
+    if (description.features & OperandDescriptionFlags::OneOperand) {
+        dstRegAndFlags = cpu.FetchByteFromInstrPtr();
+    } else if (description.features & OperandDescriptionFlags::TwoOperands) {
         dstRegAndFlags = cpu.FetchByteFromInstrPtr();
         srcRegAndFlags = cpu.FetchByteFromInstrPtr();
     } else {
-        dstRegAndFlags = cpu.FetchByteFromInstrPtr();
+        // No operands
     }
 
     // This bit-fiddeling we can do anyway...
