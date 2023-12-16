@@ -100,6 +100,9 @@ bool VirtualCPU::Step() {
     return true;
 }
 
+//
+// Move of these will be small - consider supporting lambda in description code instead...
+//
 void VirtualCPU::ExecutePushInstr(OperandSize szOperand, AddressMode pushAddrMode, int idxPushRegister) {
     auto v = ReadFromSrc(szOperand, pushAddrMode, idxPushRegister);
     stack.push(v);
