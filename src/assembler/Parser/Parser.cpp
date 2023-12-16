@@ -43,9 +43,12 @@ ast::Statement::Ref Parser::ParseStatement() {
     return nullptr;
 }
 
+// FIXME: Perhaps reuse the feature flags from the CPU emulation
+// These are all two operands instructions move dst,src
 static std::unordered_set<std::string> supportedOperands = {
     "move", "add",
 };
+
 
 ast::Statement::Ref Parser::ParseInstruction() {
     auto operand = At().value;
