@@ -2,6 +2,7 @@
 // Created by gnilk on 14.12.23.
 //
 #include <stdint.h>
+#include <vector>
 #include <testinterface.h>
 
 #include "VirtualCPU.h"
@@ -212,7 +213,61 @@ DLL_EXPORT int test_vcpu_instr_push(ITesting *t) {
 }
 
 DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
+    // Must be reversed order form push...
+    uint8_t program[]={
+        0x80,0x02,0x03,                            // pop.d d0
+        0x80,0x01,0x03,                            // pop.w d0
+        0x80,0x00,0x03,                            // pop.b d0
+        0x80,0x02,0x03,                            // pop.d d0
+        0x80,0x01,0x13,                            // pop.w d1
+        0x80,0x00,0x23,                            // pop.b d2
+    };
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+    auto &regs = vcpu.GetRegisters();
+    auto &stack = vcpu.GetStack();
+
+    // Setup stack...
+    std::vector<RegisterValue> stackValues = {
+        RegisterValue(uint8_t(0x43)),
+        RegisterValue(uint16_t(0x4200)),
+        RegisterValue(uint32_t(0x41000000)),
+
+        RegisterValue(uint8_t(0x89)),
+        RegisterValue(uint16_t(0x4711)),
+        RegisterValue(uint32_t(0xdeadbeef)),
+    };
+    for(auto &v : stackValues) {
+        stack.push(v);
+    }
+
+    // Pop and verify
+    TR_ASSERT(t, !stack.empty());
+    vcpu.Step();
+    TR_ASSERT(t, regs.dataRegisters[0].data.dword == 0xdeadbeef);
+
+    TR_ASSERT(t, !stack.empty());
+    vcpu.Step();
+    TR_ASSERT(t, regs.dataRegisters[0].data.word == 0x4711);
+
+    TR_ASSERT(t, !stack.empty());
+    vcpu.Step();
+    TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0x89);
+
+    TR_ASSERT(t, !stack.empty());
+    vcpu.Step();
+    TR_ASSERT(t, regs.dataRegisters[0].data.dword == 0x41000000);
+
+    TR_ASSERT(t, !stack.empty());
+    vcpu.Step();
+    TR_ASSERT(t, regs.dataRegisters[1].data.word == 0x4200);
+
+    TR_ASSERT(t, !stack.empty());
+    vcpu.Step();
+    TR_ASSERT(t, regs.dataRegisters[2].data.byte == 0x43);
+
     return kTR_Pass;
+
 }
 
 
