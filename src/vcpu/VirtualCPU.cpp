@@ -39,19 +39,15 @@ bool VirtualCPU::Step() {
         case BRK :
             // halt here
             return false;
-            break;
         case MOV :
             ExecuteMoveInstr(instrDecoder);
             break;
         case ADD :
-            //ExecuteAddInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
             ExecuteAddInstr(instrDecoder);
         case PUSH :
-            //ExecutePushInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
             ExecutePushInstr(instrDecoder);
             break;
         case POP :
-            // ExecutePopInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
             ExecutePopInstr(instrDecoder);
         break;
     }
@@ -62,33 +58,19 @@ bool VirtualCPU::Step() {
 // Move of these will be small - consider supporting lambda in description code instead...
 //
 void VirtualCPU::ExecutePushInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstReg);
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstRegIndex);
     stack.push(v);
 }
 
 void VirtualCPU::ExecutePopInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = stack.top();
     stack.pop();
-
-    // Note: we should have 'WriteToDst' in the same sense we have a 'ReadFromSrc'
-    if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(instrDecoder->dstReg);
-        reg.data = v.data;
-
-        // FIXME: Update CPU flags here
-    }
-
+    WriteToDst(instrDecoder, v);
 }
 
 void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
-
-    if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(instrDecoder->dstReg);
-        reg.data = v.data;
-
-        // FIXME: Update CPU flags here...
-    }
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
+    WriteToDst(instrDecoder, v);
 }
 
 //
@@ -96,8 +78,6 @@ void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
 // The idea was to minize code-duplication due to register layout - but I couldn't really figure out
 // a good way...
 //
-
-
 #define VCPU_MAX_BYTE     std::numeric_limits<uint8_t>::max()
 #define VCPU_MAX_WORD     std::numeric_limits<uint16_t>::max()
 #define VCPU_MAX_DWORD    std::numeric_limits<uint32_t>::max()
@@ -200,10 +180,10 @@ static CPUStatusFlags Sub(OperandSize opSz, RegisterValue &dst, const RegisterVa
 
 
 void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &dstReg = GetRegisterValue(instrDecoder->dstReg);
+        auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
         CPUStatusFlags newFlags = Add(instrDecoder->szOperand, dstReg, v);
         // Did we generate a carry?  Extend bit should set to same
         if ((newFlags & CPUStatusFlags::Carry) == CPUStatusFlags::Carry) {
@@ -216,10 +196,10 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcReg);
+    auto v = ReadFromSrc(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(instrDecoder->dstReg);
+        auto &reg = GetRegisterValue(instrDecoder->dstRegIndex);
 
         // Update arithmetic flags based on this operation
         CPUStatusFlags newFlags = Sub(instrDecoder->szOperand, reg, v);
@@ -237,6 +217,15 @@ void VirtualCPU::ExecuteMulInstr(InstructionDecoder::Ref instrDecoder) {
 }
 void VirtualCPU::ExecuteDivInstr(InstructionDecoder::Ref instrDecoder) {
 
+}
+
+void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v) {
+    // Support more address mode
+    if (instrDecoder->dstAddrMode == AddressMode::Register) {
+        auto &reg = GetRegisterValue(instrDecoder->dstRegIndex);
+        reg.data = v.data;
+        // FIXME: Update CPU flags here
+    }
 }
 
 RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister) {

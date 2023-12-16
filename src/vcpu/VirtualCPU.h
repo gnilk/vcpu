@@ -64,6 +64,8 @@ namespace gnilk {
             RegisterValue ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister);
             RegisterValue ReadSrcImmediateMode(OperandSize szOperand);
 
+            void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);
+
 
         };
     }
