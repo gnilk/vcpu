@@ -150,6 +150,13 @@ namespace gnilk {
                 return statusReg;
             }
 
+            __inline const RegisterValue &GetRegisterValue(int idxRegister) const {
+                return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
+            }
+            __inline RegisterValue &GetRegisterValue(int idxRegister) {
+                return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
+            }
+
         protected:
             template<typename T>
             T FetchFromInstrPtr() {
