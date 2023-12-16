@@ -5,6 +5,7 @@
 #include <vector>
 
 using namespace gnilk;
+using namespace gnilk::vcpu;
 
 using std::chrono::high_resolution_clock;
 using std::chrono::duration_cast;
