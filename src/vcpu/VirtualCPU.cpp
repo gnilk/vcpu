@@ -9,24 +9,69 @@
 #include "VirtualCPU.h"
 
 using namespace gnilk;
+//
+// This feature description and table should be made visible across all CPU tools..
+// Put it in a a separate place so it can be reused...
+//
+enum class OperandDescriptionFlags : uint8_t {
+    OperandSize = 1,
+    TwoOperands = 2,
+};
+inline constexpr OperandDescriptionFlags operator | (OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
+    using T = std::underlying_type_t<OperandDescriptionFlags>;
+    return static_cast<OperandDescriptionFlags>(static_cast<T>(lhs) | static_cast<T>(rhs));
+}
+inline constexpr bool operator & (OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
+    using T = std::underlying_type_t<OperandDescriptionFlags>;
+    return (static_cast<T>(lhs) & static_cast<T>(rhs));
+}
+struct OperandDescription {
+    OperandDescriptionFlags features;
+};
+
+static std::unordered_map<OperandClass, OperandDescription> operDetails = {
+  {OperandClass::MOV,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::TwoOperands}},
+  {OperandClass::ADD,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::TwoOperands}},
+  {OperandClass::SUB,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::TwoOperands}},
+  {OperandClass::PUSH,{.features = OperandDescriptionFlags::OperandSize}},
+  {OperandClass::POP,{.features = OperandDescriptionFlags::OperandSize}},
+};
 
 bool VirtualCPU::Step() {
     auto nextOperand = FetchByteFromInstrPtr();
     if (nextOperand == 0xff) {
         return false;
     }
+    auto opClass = static_cast<OperandClass>(nextOperand);
 
-    if (nextOperand >= 0xe0) {
-        // handle differently
+    if (!operDetails.contains(opClass)) {
+        // invalid/unsupported operand
         return false;
     }
+    auto opDescription = operDetails[opClass];
     //
     // Setup addressing
     //
-    auto szAddressing = FetchByteFromInstrPtr();
-    auto dstRegAndFlags = FetchByteFromInstrPtr();
-    auto srcRegAndFlags = FetchByteFromInstrPtr();
+    uint8_t szAddressing = 0;   // FIXME: default!!!
 
+    if (opDescription.features & OperandDescriptionFlags::OperandSize) {
+        szAddressing = FetchByteFromInstrPtr();
+    }
+
+    //
+    // Setup src/dst handling
+    //
+    uint8_t dstRegAndFlags = 0;
+    uint8_t srcRegAndFlags = 0;
+
+    if (opDescription.features & OperandDescriptionFlags::TwoOperands) {
+        dstRegAndFlags = FetchByteFromInstrPtr();
+        srcRegAndFlags = FetchByteFromInstrPtr();
+    } else {
+        dstRegAndFlags = FetchByteFromInstrPtr();
+    }
+
+    // This bit-fiddeling we can do anyway...
 
     auto dstAdrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
     auto srcAdrMode = static_cast<AddressMode>(srcRegAndFlags & 0x0f);
@@ -35,7 +80,6 @@ bool VirtualCPU::Step() {
     auto srcReg = (srcRegAndFlags>>4) & 15;
 
 
-    auto opClass = nextOperand;
     switch(opClass) {
         case BRK :
             // halt here
@@ -47,13 +91,35 @@ bool VirtualCPU::Step() {
         case ADD :
             ExecuteAddInstr(static_cast<OperandSize>(szAddressing),dstAdrMode, dstReg, srcAdrMode, srcReg);
         case PUSH :
+            ExecutePushInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
             break;
+        case POP :
+            ExecutePopInstr(static_cast<OperandSize>(szAddressing), dstAdrMode, dstReg);
+        break;
     }
     return true;
 }
 
-void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
+void VirtualCPU::ExecutePushInstr(OperandSize szOperand, AddressMode pushAddrMode, int idxPushRegister) {
+    auto v = ReadFromSrc(szOperand, pushAddrMode, idxPushRegister);
+    stack.push(v);
+}
 
+void VirtualCPU::ExecutePopInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister) {
+    auto v = stack.top();
+    stack.pop();
+
+    // Note: we should have 'WriteToDst' in the same sense we have a 'ReadFromSrc'
+    if (dstAddrMode == AddressMode::Register) {
+        RegisterValue &reg = idxDstRegister>7?registers.addressRegisters[idxDstRegister-8]:registers.dataRegisters[idxDstRegister];
+        reg.data = v.data;
+
+        // FIXME: Update CPU flags here
+    }
+
+}
+
+void VirtualCPU::ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister) {
     auto v = ReadFromSrc(szOperand, srcAddrMode, idxSrcRegister);
 
     if (dstAddrMode == AddressMode::Register) {
@@ -211,8 +277,6 @@ void VirtualCPU::ExecuteDivInstr(OperandSize szOperand, AddressMode dstAddrMode,
 
 }
 
-
-
 RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddrMode, int idxSrcRegister) {
     // Handle immediate mode
     RegisterValue v = {};
@@ -223,7 +287,6 @@ RegisterValue VirtualCPU::ReadFromSrc(OperandSize szOperand, AddressMode srcAddr
         RegisterValue &reg = idxSrcRegister>7?registers.addressRegisters[idxSrcRegister-8]:registers.dataRegisters[idxSrcRegister];
         v.data = reg.data;
     }
-
     return v;
 }
 

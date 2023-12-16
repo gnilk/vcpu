@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stack>
 #include "fmt/format.h"
 
 namespace gnilk {
@@ -260,12 +261,20 @@ namespace gnilk {
         Registers &GetRegisters() {
             return registers;
         }
+        const std::stack<RegisterValue> &GetStack() {
+            return stack;
+        }
 
         const CPUStatusReg &GetStatusReg() const {
             return statusReg;
         }
 
     protected:
+        // one operand instr.
+        void ExecutePushInstr(OperandSize szOperand, AddressMode pushAddrMode, int idxPushRegister);
+        void ExecutePopInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister);
+
+        // two operand instr.
         void ExecuteMoveInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
         void ExecuteAddInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
         void ExecuteSubInstr(OperandSize szOperand, AddressMode dstAddrMode, int idxDstRegister, AddressMode srcAddrMode, int idxSrcRegister);
@@ -326,6 +335,7 @@ namespace gnilk {
         size_t szRam = 0;
         Registers registers = {};
         CPUStatusReg statusReg = {};
+        std::stack<RegisterValue> stack;
     };
 }
 
