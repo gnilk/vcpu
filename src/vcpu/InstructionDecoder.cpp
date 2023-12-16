@@ -51,8 +51,8 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
     srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x0f);
 
-    dstReg = (dstRegAndFlags>>4) & 15;
-    srcReg = (srcRegAndFlags>>4) & 15;
+    dstRegIndex = (dstRegAndFlags>>4) & 15;
+    srcRegIndex = (srcRegAndFlags>>4) & 15;
 
     return true;
 }

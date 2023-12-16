@@ -33,11 +33,11 @@ namespace gnilk {
             uint8_t srcRegAndFlags; // Only if 'description.features & TwoOperands' == true
 
             AddressMode dstAddrMode; // Always decoded from 'dstRegAndFlags'
-            uint8_t dstReg; // decoded like: (dstRegAndFlags>>4) & 15;
+            uint8_t dstRegIndex; // decoded like: (dstRegAndFlags>>4) & 15;
 
             // Only if 'description.features & TwoOperands' == true
             AddressMode srcAddrMode; // decoded from srcRegAndFlags
-            uint8_t srcReg; // decoded like: (srcRegAndFlags>>4) & 15;
+            uint8_t srcRegIndex; // decoded like: (srcRegAndFlags>>4) & 15;
 
         };
     }
