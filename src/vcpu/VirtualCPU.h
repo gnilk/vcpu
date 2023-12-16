@@ -38,6 +38,11 @@ namespace gnilk {
         RegisterValue() {
             data.longword = 0;
         }
+
+        explicit RegisterValue(uint8_t v) { data.byte = v; }
+        explicit RegisterValue(uint16_t v) { data.word = v; }
+        explicit RegisterValue(uint32_t v) { data.dword = v; }
+        explicit RegisterValue(uint64_t v) { data.longword = v; }
     };
 
     // FIXME: Copy M68k status bits...
@@ -261,9 +266,14 @@ namespace gnilk {
         Registers &GetRegisters() {
             return registers;
         }
-        const std::stack<RegisterValue> &GetStack() {
+        const std::stack<RegisterValue> &GetStack() const {
             return stack;
         }
+
+        std::stack<RegisterValue> &GetStack() {
+            return stack;
+        }
+
 
         const CPUStatusReg &GetStatusReg() const {
             return statusReg;
