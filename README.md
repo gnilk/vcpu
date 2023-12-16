@@ -11,7 +11,8 @@ emulated CPU...  Good riddance!
 # TO-DO
 ```pre
 ! basic infrastructure (cpu, assembler, etc..)
-- stack handling in CPU (needed for call routines)
+! stack handling in CPU (needed for call routines)
+! call/ret instructions
 - labels and variables in assembler
     - consider scoping!
     - how to fix local variables (like asmone; .var)?    
