@@ -8,6 +8,7 @@
 #include "VirtualCPU.h"
 
 using namespace gnilk;
+using namespace gnilk::vcpu;
 
 extern "C" {
     DLL_EXPORT int test_vcpu(ITesting *t);
