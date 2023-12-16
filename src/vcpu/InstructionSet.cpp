@@ -9,6 +9,8 @@ using namespace gnilk::vcpu;
 
 
 static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
+    {OperandClass::NOP,{.features = {} }},
+    {OperandClass::RET,{.features = {} }},
 {OperandClass::MOV,{.features = OperandDescriptionFlags::OperandSize |
                                                 OperandDescriptionFlags::TwoOperands |
                                                 OperandDescriptionFlags::Immediate |
@@ -36,9 +38,11 @@ static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
                                               OperandDescriptionFlags::Addressing}},
 
     // Push can be from many sources
-  {OperandClass::PUSH,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::Register | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Addressing}},
+  {OperandClass::PUSH,{.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Addressing}},
     // Pop can only be to register...
-  {OperandClass::POP,{.features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::Register}},
+  {OperandClass::POP,{.features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register}},
+
+    {OperandClass::CALL, {.features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Addressing}},
 };
 
 const std::unordered_map<OperandClass, OperandDescription> &gnilk::vcpu::GetInstructionSet() {
