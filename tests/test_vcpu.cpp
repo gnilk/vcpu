@@ -15,6 +15,8 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_push(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_pop(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
 
 }
@@ -22,6 +24,7 @@ extern "C" {
 DLL_EXPORT int test_vcpu(ITesting *t) {
     t->CaseDepends("instr_add_immediate", "instr_move_immediate");
     t->CaseDepends("instr_add_reg2reg", "instr_move_reg2reg");
+    t->CaseDepends("instr_pop","instr_push");
     return kTR_Pass;
 }
 
@@ -167,6 +170,52 @@ DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_vcpu_instr_push(ITesting *t) {
+    uint8_t program[]={
+        0x70,0x00,0x01,0x43,                       // push.b 0x43
+        0x70,0x01,0x01,0x42,0x00,                  // push.w 0x4200
+        0x70,0x02,0x01,0x41,0x00,0x00,0x00,        // push.d 0x41000000
+        0x70,0x00,0x03,                            // push.b d0
+        0x70,0x01,0x13,                            // push.w d1
+        0x70,0x02,0x23,                            // push.d d2
+    };
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+    auto &regs = vcpu.GetRegisters();
+    regs.dataRegisters[0].data.byte = 0x89;
+    regs.dataRegisters[1].data.word = 0x4711;
+    regs.dataRegisters[2].data.dword = 0xdeadbeef;
+    auto &stack = vcpu.GetStack();
+
+    // Push immediate
+    vcpu.Step();
+    TR_ASSERT(t, !stack.empty());
+    TR_ASSERT(t, stack.top().data.byte == 0x43);
+    vcpu.Step();
+    TR_ASSERT(t, !stack.empty());
+    TR_ASSERT(t, stack.top().data.word == 0x4200);
+    vcpu.Step();
+    TR_ASSERT(t, !stack.empty());
+    TR_ASSERT(t, stack.top().data.dword == 0x41000000);
+    // Push registers
+    vcpu.Step();
+    TR_ASSERT(t, !stack.empty());
+    TR_ASSERT(t, stack.top().data.byte == 0x89);
+    vcpu.Step();
+    TR_ASSERT(t, !stack.empty());
+    TR_ASSERT(t, stack.top().data.word == 0x4711);
+    vcpu.Step();
+    TR_ASSERT(t, !stack.empty());
+    TR_ASSERT(t, stack.top().data.dword == 0xdeadbeef);
+
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
+    return kTR_Pass;
+}
+
+
 static void DumpStatus(const VirtualCPU &cpu) {
     auto &status = cpu.GetStatusReg();
     fmt::println("CPU Stat: [{}{}{}{}{}---]",
@@ -185,6 +234,8 @@ static void DumpRegs(const VirtualCPU &cpu) {
         }
     }
 }
+
+
 
 DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t) {
     // Note: d0 is preloaded with 0x70 - so we should overflow after third add
