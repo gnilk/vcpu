@@ -141,17 +141,19 @@ namespace gnilk {
         // Put it in a a separate place so it can be reused...
         //
         enum class OperandDescriptionFlags : uint8_t {
-            OperandSize = 1,
             // Has operand size distinction
-            TwoOperands = 2,
-            // One or Two operands
-            Immediate = 4,
+            OperandSize = 1,
+            // Two operand bits, allows for 0..3 operands
+            OneOperand = 2,
+            TwoOperands = 4,
             // Support immediate values; move d0, #<value>
-            Register = 8,
+            Immediate = 8,
             // Support register
-            Addressing = 16,
+            Register = 16,
             // Support addressing move d0, (a0)
-            Branching = 32
+            Addressing = 32,        // Is this not just 'register'??
+
+            Branching = 64
         };
 
         inline constexpr OperandDescriptionFlags operator |(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
