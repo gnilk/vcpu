@@ -141,6 +141,14 @@ namespace gnilk {
                 return stack;
             }
 
+            const RegisterValue &GetInstrPtr() const {
+                return registers.instrPointer;
+            }
+
+            RegisterValue &GetInstrPtr() {
+                return registers.instrPointer;
+            }
+
             std::stack<RegisterValue> &GetStack() {
                 return stack;
             }
