@@ -79,6 +79,13 @@ bool VirtualCPU::Step() {
     auto dstReg = (dstRegAndFlags>>4) & 15;
     auto srcReg = (srcRegAndFlags>>4) & 15;
 
+    // Note: Consider creating an 'InstructionDecoding' object to hold all meta data and pass around
+    //       We want to pass on the Description as well - and arguments are already quite hefty here...
+
+    //
+    // Also, we should put enough information in the first 2-3 bytes to understand the fully decoded size
+    // This way we can basically have multiple threads decoding instructions -> super scalar emulation (would be cool).
+    //
 
     switch(opClass) {
         case BRK :
