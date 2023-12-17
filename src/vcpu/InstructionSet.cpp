@@ -11,6 +11,7 @@ using namespace gnilk::vcpu;
 
 static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
     {OperandClass::NOP,{.features = {} }},
+    {OperandClass::BRK,{.features = {} }},
     {OperandClass::RET,{.features = {} }},
 {OperandClass::MOV,{.features = OperandDescriptionFlags::OperandSize |
                                                 OperandDescriptionFlags::TwoOperands |
@@ -70,6 +71,7 @@ static std::unordered_map<std::string, OperandClass> strToOpClassMap = {
     {"push", OperandClass::PUSH},
     {"pop", OperandClass::POP},
     {"ret", OperandClass::RET},
+    {"brk", OperandClass::BRK},
 };
 std::optional<OperandClass> gnilk::vcpu::GetOperandFromStr(const std::string &str) {
     if (!strToOpClassMap.contains(str)) {
