@@ -137,6 +137,26 @@ DLL_EXPORT int test_compiler_nop(ITesting *t) {
 }
 
 DLL_EXPORT int test_compiler_push(ITesting *t) {
+    std::vector<uint8_t> expectedBinaries[]= {
+        {0x70,0x00,0x01,0x80},                       // push.b 0x43
+        {0x70,0x01,0x01,0x80,0x70},                  // push.w 0x4200
+        {0x70,0x02,0x01,0x80,0x70,0x60,0x50},        // push.d 0x41000000
+    };
+
+    std::vector<std::string> codes={
+        {"push.b  0x80"},
+        {"push.w  0x8070"},
+        {"push.d  0x80706050"},
+    };
+    Parser parser;
+    Compiler compiler;
+    for(size_t i=0;i<codes.size();i++) {
+        auto ast = parser.ProduceAST(codes[i]);
+        TR_ASSERT(t, ast != nullptr);
+        TR_ASSERT(t, compiler.GenerateCode(ast));
+        auto binary = compiler.Data();
+        TR_ASSERT(t, binary == expectedBinaries[i]);
+    }
     return kTR_Pass;
 }
 DLL_EXPORT int test_compiler_pop(ITesting *t) {
