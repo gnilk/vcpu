@@ -52,7 +52,12 @@ const Context &gnilk::GetLexerContext() {
         {"move", TokenType::Instruction},
         {"add", TokenType::Instruction},
         {"sub", TokenType::Instruction},
+        {"mul", TokenType::Instruction},
+        {"div", TokenType::Instruction},
         {"call", TokenType::Instruction},
+        {"ret",TokenType::Instruction},
+        {"nop",TokenType::Instruction},
+        {"brk",TokenType::Instruction},
         {"null", TokenType::Null},
         // Data Registers
         {"d0", TokenType::DataReg},
