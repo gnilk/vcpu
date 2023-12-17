@@ -38,9 +38,10 @@ namespace gnilk {
             const Token &Expect(TokenType token, const std::string &errmsg);
 
             ast::Statement::Ref ParseStatement();
+            ast::Statement::Ref ParseIdentifierOrInstr();
             ast::Statement::Ref ParseInstruction();
-            ast::Statement::Ref ParseOneOpInstruction();
-            ast::Statement::Ref ParseTwoOpInstruction(const std::string &operand);
+            ast::Statement::Ref ParseOneOpInstruction(const std::string &symbol);
+            ast::Statement::Ref ParseTwoOpInstruction(const std::string &symbol);
 
             ast::Expression::Ref ParseExpression();
             ast::Expression::Ref ParsePrimaryExpression();

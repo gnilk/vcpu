@@ -38,12 +38,22 @@ ast::Program::Ref Parser::Begin(const std::string &srcCode) {
 
 ast::Statement::Ref Parser::ParseStatement() {
     switch(At().type) {
+        case TokenType::Identifier :
+            return ParseIdentifierOrInstr();
         case TokenType::Instruction :
             return ParseInstruction();
     }
     return nullptr;
 }
 
+ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
+    // Check if this is a proper instruction
+    if (vcpu::GetOperandFromStr(At().value).has_value()) {
+        return ParseInstruction();
+    }
+    // This is just an identifier - deal with it...
+    return nullptr;
+}
 
 ast::Statement::Ref Parser::ParseInstruction() {
     auto operand = At().value;
@@ -64,7 +74,7 @@ ast::Statement::Ref Parser::ParseInstruction() {
     if (opDesc.features & vcpu::OperandDescriptionFlags::TwoOperands) {
         return ParseTwoOpInstruction(operand);
     } else if (opDesc.features & vcpu::OperandDescriptionFlags::OneOperand) {
-        return ParseOneOpInstruction();
+        return ParseOneOpInstruction(operand);
     }
 
 
@@ -74,12 +84,36 @@ ast::Statement::Ref Parser::ParseInstruction() {
     return std::make_shared<ast::NoOpInstrStatment>(operand);
 }
 
-ast::Statement::Ref Parser::ParseOneOpInstruction() {
-    return nullptr;
+ast::Statement::Ref Parser::ParseOneOpInstruction(const std::string &symbol) {
+    auto instrStatment = std::make_shared<ast::OneOpInstrStatment>(symbol);
+
+    Eat();
+    if (At().type == TokenType::OpSize) {
+        auto opSize = Eat();
+        static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
+            {".b", gnilk::vcpu::OperandSize::Byte},
+            {".w", gnilk::vcpu::OperandSize::Word},
+            {".d", gnilk::vcpu::OperandSize::DWord},
+            {".l", gnilk::vcpu::OperandSize::Long},
+        };
+        if (!strToOpSize.contains(opSize.value)) {
+            fmt::println(stderr, "Unsupported operand size {}", opSize.value);
+            return nullptr;
+        }
+        instrStatment->SetOpSize(strToOpSize[opSize.value]);
+    }
+    // Swap out below for:
+    // dst = ParseExpression();
+
+    auto operand = ParseExpression();
+    instrStatment->SetOperand(operand);
+
+    return instrStatment;
+
 }
 
-ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &operand) {
-    auto instrStatment = std::make_shared<ast::TwoOpInstrStatment>(operand);
+ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &symbol) {
+    auto instrStatment = std::make_shared<ast::TwoOpInstrStatment>(symbol);
 
     Eat();
     if (At().type == TokenType::OpSize) {
