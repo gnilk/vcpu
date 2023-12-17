@@ -277,7 +277,7 @@ DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
     uint8_t program[]={
         0xc0,0x00,0x01,0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
         0xf1,                       // 4
-        0xff,                       // 5 WHALT!
+        0x00,                       // 5 WHALT!
         0xf1,                       // 6 <- call should go here
         0xf1,                       // 7
         0xf0,                       // 8 <- return, should be ip+1 => 5
