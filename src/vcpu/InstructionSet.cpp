@@ -67,6 +67,8 @@ static std::unordered_map<std::string, OperandClass> strToOpClassMap = {
     {"brk", OperandClass::BRK},
     {"nop", OperandClass::NOP},
     {"call", OperandClass::CALL},
+    {"push", OperandClass::PUSH},
+    {"pop", OperandClass::POP},
     {"ret", OperandClass::RET},
 };
 std::optional<OperandClass> gnilk::vcpu::GetOperandFromStr(const std::string &str) {
