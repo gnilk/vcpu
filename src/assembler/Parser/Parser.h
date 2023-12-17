@@ -39,6 +39,8 @@ namespace gnilk {
 
             ast::Statement::Ref ParseStatement();
             ast::Statement::Ref ParseInstruction();
+            ast::Statement::Ref ParseOneOpInstruction();
+            ast::Statement::Ref ParseTwoOpInstruction(const std::string &operand);
 
             ast::Expression::Ref ParseExpression();
             ast::Expression::Ref ParsePrimaryExpression();

@@ -5,6 +5,7 @@
 #include <map>
 #include <unordered_set>
 #include "Parser.h"
+#include "InstructionSet.h"
 /*
  * TO-OD:
  * - Move over Expression and Literals from 'astparser' project
@@ -43,30 +44,51 @@ ast::Statement::Ref Parser::ParseStatement() {
     return nullptr;
 }
 
-// FIXME: Perhaps reuse the feature flags from the CPU emulation
-// These are all two operands instructions move dst,src
-static std::unordered_set<std::string> supportedOperands = {
-    "move", "add",
-};
-
 
 ast::Statement::Ref Parser::ParseInstruction() {
     auto operand = At().value;
-    if (!supportedOperands.contains(operand)) {
-        fmt::println(stderr, "unsupported instructions {}", At().value);
+    auto opClass = gnilk::vcpu::GetOperandFromStr(operand);
+
+    if (!opClass.has_value()) {
+        fmt::println(stderr, "unsupported instruction {}", At().value);
         return nullptr;
     }
 
-    auto instrStatment = std::make_shared<ast::MoveInstrStatment>(operand);
+    auto optionalDesc = vcpu::GetOpDescFromClass(*opClass);
+
+    if (!optionalDesc.has_value()) {
+        fmt::println(stderr, "unsupported instruction {}", At().value);
+        return nullptr;
+    }
+    auto opDesc = *optionalDesc;
+    if (opDesc.features & vcpu::OperandDescriptionFlags::TwoOperands) {
+        return ParseTwoOpInstruction(operand);
+    } else if (opDesc.features & vcpu::OperandDescriptionFlags::OneOperand) {
+        return ParseOneOpInstruction();
+    }
+
+
+    Eat();      // Consume operand token!
+
+    // We have a single instr. statement..
+    return std::make_shared<ast::NoOpInstrStatment>(operand);
+}
+
+ast::Statement::Ref Parser::ParseOneOpInstruction() {
+    return nullptr;
+}
+
+ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &operand) {
+    auto instrStatment = std::make_shared<ast::TwoOpInstrStatment>(operand);
 
     Eat();
     if (At().type == TokenType::OpSize) {
         auto opSize = Eat();
-        static std::unordered_map<std::string, OperandSize> strToOpSize = {
-            {".b", OperandSize::Byte},
-            {".w", OperandSize::Word},
-            {".d", OperandSize::DWord},
-            {".l", OperandSize::Long},
+        static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
+            {".b", gnilk::vcpu::OperandSize::Byte},
+            {".w", gnilk::vcpu::OperandSize::Word},
+            {".d", gnilk::vcpu::OperandSize::DWord},
+            {".l", gnilk::vcpu::OperandSize::Long},
         };
         if (!strToOpSize.contains(opSize.value)) {
             fmt::println(stderr, "Unsupported operand size {}", opSize.value);
@@ -109,6 +131,7 @@ ast::Statement::Ref Parser::ParseInstruction() {
 
     return instrStatment;
 }
+
 
 ast::Expression::Ref Parser::ParseExpression() {
     return ParsePrimaryExpression();
