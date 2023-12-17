@@ -47,17 +47,12 @@ list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 
 
 # test library for vcpu
-add_library(emutest SHARED ${vcputestsrc}  ${vcpusrc})
-target_include_directories(emutest PUBLIC src/vcpu)
-
-add_library(asmtest SHARED ${asmtestsrc}  ${asmsrc})
-target_include_directories(asmtest PUBLIC src/assembler)
-target_include_directories(asmtest PUBLIC src/vcpu)
-
+add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc})
+target_include_directories(test PUBLIC src/vcpu)
+target_include_directories(test PUBLIC src/assembler)
 
 if (APPLE)
-    target_include_directories(emutest PUBLIC /usr/local/include)
-    target_include_directories(asmtest PUBLIC /usr/local/include)
+    target_include_directories(test PUBLIC /usr/local/include)
 endif()
 
 
@@ -71,14 +66,13 @@ list(APPEND asmsrc apps/assembler/assembler.cpp)
 add_executable(emulator ${emusrc} ${vcpusrc})
 target_include_directories(emulator PUBLIC src/vcpu)
 
-add_executable(asm ${asmsrc})
+add_executable(asm ${asmsrc} ${vcpusrc})
 target_include_directories(asm PUBLIC src/assembler)
 target_include_directories(asm PUBLIC src/vcpu)
 
 #
 # link targets
 #
-target_link_libraries(emutest log_fmt)
-target_link_libraries(asmtest log_fmt)
+target_link_libraries(test log_fmt)
 target_link_libraries(emulator log_fmt)
 target_link_libraries(asm log_fmt)
