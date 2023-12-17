@@ -14,6 +14,9 @@ extern "C" {
     DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t);
     DLL_EXPORT int test_compiler_add_immediate(ITesting *t);
     DLL_EXPORT int test_compiler_add_reg2reg(ITesting *t);
+    DLL_EXPORT int test_compiler_nop(ITesting *t);
+    DLL_EXPORT int test_compiler_push(ITesting *t);
+    DLL_EXPORT int test_compiler_pop(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -111,5 +114,31 @@ DLL_EXPORT int test_compiler_add_immediate(ITesting *t) {
     return kTR_Pass;
 }
 DLL_EXPORT int test_compiler_add_reg2reg(ITesting *t) {
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_compiler_nop(ITesting *t) {
+    std::vector<uint8_t> expectedBinary = {
+        0xf1
+    };
+    std::vector<std::string> code={
+        {"nop"},
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(code[0]);
+    TR_ASSERT(t, ast != nullptr);
+    TR_ASSERT(t, compiler.GenerateCode(ast));
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_compiler_push(ITesting *t) {
+    return kTR_Pass;
+}
+DLL_EXPORT int test_compiler_pop(ITesting *t) {
     return kTR_Pass;
 }
