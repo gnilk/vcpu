@@ -18,6 +18,7 @@ bool Compiler::GenerateCode(ast::Program::Ref program) {
             return false;
         }
     }
+    // FIXME: Go through all statements which are dependent on labels/identifiers and update them
     return true;
 }
 
@@ -31,6 +32,7 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
             return ProcessTwoOpInstrStmt(std::dynamic_pointer_cast<ast::TwoOpInstrStatment>(stmt));
         case ast::NodeType::kIdentifier :
             // FIXME: Need to process this here..
+            // Label should just record the current IP position and create a label-record
             return true;
     }
     return false;
@@ -117,6 +119,10 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
                 return EmitRegisterLiteral(std::dynamic_pointer_cast<ast::RegisterLiteral>(operandExp));
             }
             fmt::println(stderr, "Instruction Operand does not support register");
+            break;
+        case ast::NodeType::kIdentifier :
+            // FIXME: emit byte+placeholder (uint64_t), record IP in struct (incl. which identifier we depend upon)
+            // After statement parsing is complete we will change all place-holders
             break;
     }
     return false;
