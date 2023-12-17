@@ -29,6 +29,9 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
             return ProcessOneOpInstrStmt(std::dynamic_pointer_cast<ast::OneOpInstrStatment>(stmt));
         case ast::NodeType::kTwoOpInstrStatement :
             return ProcessTwoOpInstrStmt(std::dynamic_pointer_cast<ast::TwoOpInstrStatment>(stmt));
+        case ast::NodeType::kIdentifier :
+            // FIXME: Need to process this here..
+            return true;
     }
     return false;
 }
