@@ -6,7 +6,7 @@
 #define INSTRUCTIONS_H
 
 #include "astbase.h"
-#include "../../vcpu/VirtualCPU.h"
+#include "InstructionSet.h"
 
 namespace gnilk {
     namespace ast {
@@ -31,18 +31,18 @@ namespace gnilk {
             std::string symbol = {};
         };
 
-        class MoveInstrStatment : public Statement {
+        class TwoOpInstrStatment : public Statement {
         public:
-            using Ref = std::shared_ptr<MoveInstrStatment>;
+            using Ref = std::shared_ptr<TwoOpInstrStatment>;
         public:
-            MoveInstrStatment() = default;
-            explicit MoveInstrStatment(const std::string &instr) : Statement(NodeType::kMoveInstrStatement), symbol(instr) {
+            TwoOpInstrStatment() = default;
+            explicit TwoOpInstrStatment(const std::string &instr) : Statement(NodeType::kTwoOpInstrStatement), symbol(instr) {
 
             }
-            void SetOpSize(OperandSize newOpSize) {
+            void SetOpSize(gnilk::vcpu::OperandSize newOpSize) {
                 opSize = newOpSize;
             }
-            void SetAddrMode(AddressMode newAddrMode) {
+            void SetAddrMode(gnilk::vcpu::AddressMode newAddrMode) {
                 addrMode = newAddrMode;
             }
             void SetDst(const Expression::Ref newDst) {
@@ -56,10 +56,10 @@ namespace gnilk {
             const std::string &Symbol() {
                 return symbol;
             }
-            OperandSize OpSize() {
+            gnilk::vcpu::OperandSize OpSize() {
                 return opSize;
             }
-            AddressMode AddrMode() {
+            gnilk::vcpu::AddressMode AddrMode() {
                 return addrMode;
             }
 
@@ -91,12 +91,39 @@ namespace gnilk {
 
         protected:
             std::string symbol = {};
-            AddressMode addrMode = {};
-            OperandSize opSize = OperandSize::Long;
+            gnilk::vcpu::AddressMode addrMode = {};
+            gnilk::vcpu::OperandSize opSize = gnilk::vcpu::OperandSize::Long;
             ast::Expression::Ref dst;
             ast::Expression::Ref src;
 
         };
+
+        class NoOpInstrStatment : public Statement {
+        public:
+            using Ref = std::shared_ptr<NoOpInstrStatment>;
+        public:
+            NoOpInstrStatment() = default;
+            explicit NoOpInstrStatment(const std::string &instr) : Statement(NodeType::kNoOpInstrStatement), symbol(instr) {
+
+            }
+
+            const std::string &Symbol() {
+                return symbol;
+            }
+
+            void Dump() override {
+                WriteLine("Instruction");
+                Indent();
+                WriteLine("Symbol: {}", symbol);
+                Unindent();
+            }
+
+        protected:
+            std::string symbol = {};
+        };
+
+
+
     }
 }
 

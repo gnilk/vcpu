@@ -24,8 +24,10 @@ namespace gnilk {
             kFunctionDeclaration,
 
             kInstructionStatement,
-            kMoveInstrStatement,        // not sure - this should be a two-parameter instruction
-            kJumpInstrStatement,
+            kTwoOpInstrStatement,        // instructions with two operands
+            kOneOpInstrStatement,        // instructions with single operand
+            kNoOpInstrStatement,         // instructions without operands (nop, brk, etc..)
+            kJumpInstrStatement,         // not sure if needed
 
 
             kIfStatement,         // Expression or Statement (I think this should be a statement)
