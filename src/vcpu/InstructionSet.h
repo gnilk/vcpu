@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <type_traits>
 #include <unordered_map>
+#include <string>
+#include <optional>
 
 namespace gnilk {
     namespace vcpu {
@@ -170,9 +172,9 @@ namespace gnilk {
             OperandDescriptionFlags features;
         };
 
-
-
         const std::unordered_map<OperandClass, OperandDescription> &GetInstructionSet();
+        std::optional<OperandDescription> GetOpDescFromClass(OperandClass opClass);
+        std::optional<OperandClass> GetOperandFromStr(const std::string &str);
 
     }
 }
