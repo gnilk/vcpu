@@ -3,7 +3,7 @@
 //
 
 #include "Compiler.h"
-#include "VirtualCPU.h"
+#include "InstructionSet.h"
 
 #include <memory>
 #include <unordered_map>
@@ -23,24 +23,30 @@ bool Compiler::GenerateCode(ast::Program::Ref program) {
 
 bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
     switch(stmt->Kind()) {
-        case ast::NodeType::kMoveInstrStatement :
-            return ProcessMoveInstr(std::dynamic_pointer_cast<ast::MoveInstrStatment>(stmt));
+        case ast::NodeType::kNoOpInstrStatement :
+            return ProcessNoOpInstrStmt(std::dynamic_pointer_cast<ast::NoOpInstrStatment>(stmt));
+        case ast::NodeType::kTwoOpInstrStatement :
+            return ProcessTwoOpInstrStmt(std::dynamic_pointer_cast<ast::TwoOpInstrStatment>(stmt));
     }
     return false;
 }
 
-bool Compiler::ProcessMoveInstr(ast::MoveInstrStatment::Ref moveInstr) {
-    if (!EmitOpCodeForSymbol(moveInstr->Symbol())) {
+bool Compiler::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
+    return EmitOpCodeForSymbol(stmt->Symbol());
+}
+
+bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
+    if (!EmitOpCodeForSymbol(twoOpInstr->Symbol())) {
         return false;
     }
-    auto opSize = moveInstr->OpSize();
+    auto opSize = twoOpInstr->OpSize();
     if (!EmitByte(opSize)) {
         return false;
     }
-    if (!EmitInstrDst(opSize, moveInstr->Dst())) {
+    if (!EmitInstrDst(opSize, twoOpInstr->Dst())) {
         return false;
     }
-    if (!EmitInstrSrc(opSize, moveInstr->Src())) {
+    if (!EmitInstrSrc(opSize, twoOpInstr->Src())) {
         return false;
     }
 
@@ -122,19 +128,13 @@ bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral:
     return false;
 }
 
-
-
-static std::unordered_map<std::string, OperandClass> symbolToOpCode = {
-    {"move", OperandClass::MOV},
-    {"add", OperandClass::ADD},
-};
-
 bool Compiler::EmitOpCodeForSymbol(const std::string &symbol) {
-    if (!symbolToOpCode.contains(symbol)) {
+    auto opcode = gnilk::vcpu::GetOperandFromStr(symbol);
+    if (!opcode.has_value()) {
         fmt::println(stderr, "Unknown/Unsupported symbol: {}", symbol);
         return false;
     }
-    return EmitByte(symbolToOpCode[symbol]);
+    return EmitByte(*opcode);
 }
 
 bool Compiler::EmitByte(uint8_t byte) {
