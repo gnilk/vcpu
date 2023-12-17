@@ -52,7 +52,10 @@ ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
         return ParseInstruction();
     }
     // This is just an identifier - deal with it...
-    return nullptr;
+    auto ident = At().value;
+    Eat();
+    Expect(TokenType::Colon, "Labels must end with semi-colon");
+    return std::make_shared<ast::Identifier>(ident);
 }
 
 ast::Statement::Ref Parser::ParseInstruction() {
@@ -60,7 +63,7 @@ ast::Statement::Ref Parser::ParseInstruction() {
     auto opClass = gnilk::vcpu::GetOperandFromStr(operand);
 
     if (!opClass.has_value()) {
-        fmt::println(stderr, "unsupported instruction {}", At().value);
+        fmt::println(stderr, "Unsupported instruction '{}'", At().value);
         return nullptr;
     }
 
