@@ -389,6 +389,10 @@ bool Lexer::ParseNumber(std::vector<Token> &tokens, Context &context, const std:
     // #$<hex> - alt. syntax for hex numbers
     // #<dec>  - alt. syntax for dec numbers
     //
+    // '#' is a common denominator for numerical values
+    if (*it == '#') {
+        ++it;
+    }
 
     auto numberType = TokenType::Number;
     if (*it == '0') {
