@@ -21,9 +21,11 @@ namespace gnilk {
         protected:
             bool ProcessStmt(ast::Statement::Ref stmt);
             bool ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt);
+            bool ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt);
             bool ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref stmt);
 
             bool EmitOpCodeForSymbol(const std::string &symbol);
+            bool EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
             bool EmitInstrDst(vcpu::OperandSize opSize, ast::Expression::Ref dst);
             bool EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src);
 

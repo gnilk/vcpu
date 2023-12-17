@@ -25,6 +25,8 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
     switch(stmt->Kind()) {
         case ast::NodeType::kNoOpInstrStatement :
             return ProcessNoOpInstrStmt(std::dynamic_pointer_cast<ast::NoOpInstrStatment>(stmt));
+        case ast::NodeType::kOneOpInstrStatement :
+            return ProcessOneOpInstrStmt(std::dynamic_pointer_cast<ast::OneOpInstrStatment>(stmt));
         case ast::NodeType::kTwoOpInstrStatement :
             return ProcessTwoOpInstrStmt(std::dynamic_pointer_cast<ast::TwoOpInstrStatment>(stmt));
     }
@@ -35,6 +37,26 @@ bool Compiler::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
     return EmitOpCodeForSymbol(stmt->Symbol());
 }
 
+bool Compiler::ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt) {
+    if (!EmitOpCodeForSymbol(stmt->Symbol())) {
+        return false;
+    }
+    auto opSize = stmt->OpSize();
+    if (!EmitByte(opSize)) {
+        return false;
+    }
+    // FIXME: Cache this in the parser stage(?)
+    auto opClass = *vcpu::GetOperandFromStr(stmt->Symbol());
+    auto opDesc = *vcpu::GetOpDescFromClass(opClass);
+
+    if (!EmitInstrOperand(opDesc, opSize, stmt->Operand())) {
+        return false;
+    }
+
+    return true;
+
+}
+
 bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
     if (!EmitOpCodeForSymbol(twoOpInstr->Symbol())) {
         return false;
@@ -43,10 +65,14 @@ bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
     if (!EmitByte(opSize)) {
         return false;
     }
-    if (!EmitInstrDst(opSize, twoOpInstr->Dst())) {
+    // FIXME: Cache this in the parser stage(?)
+    auto opClass = *vcpu::GetOperandFromStr(twoOpInstr->Symbol());
+    auto opDesc = *vcpu::GetOpDescFromClass(opClass);
+
+    if (!EmitInstrOperand(opDesc, opSize, twoOpInstr->Dst())) {
         return false;
     }
-    if (!EmitInstrSrc(opSize, twoOpInstr->Src())) {
+    if (!EmitInstrOperand(opDesc, opSize, twoOpInstr->Src())) {
         return false;
     }
 
@@ -73,6 +99,25 @@ static std::unordered_map<std::string, uint8_t> regToIdx = {
     {"a6",14},
     {"a7",15},
 };
+
+
+bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
+    switch(operandExp->Kind()) {
+        case ast::NodeType::kNumericLiteral :
+            if (desc.features & vcpu::OperandDescriptionFlags::Immediate) {
+                return EmitNumericLiteral(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(operandExp));
+            }
+            fmt::println(stderr, "Instruction Operand does not support immediate");
+            break;
+        case ast::NodeType::kRegisterLiteral :
+            if (desc.features & vcpu::OperandDescriptionFlags::Register) {
+                return EmitRegisterLiteral(std::dynamic_pointer_cast<ast::RegisterLiteral>(operandExp));
+            }
+            fmt::println(stderr, "Instruction Operand does not support register");
+            break;
+    }
+    return false;
+}
 
 bool Compiler::EmitInstrDst(vcpu::OperandSize opSize, ast::Expression::Ref dst) {
     if (dst->Kind() != ast::NodeType::kRegisterLiteral) {
