@@ -98,6 +98,60 @@ namespace gnilk {
 
         };
 
+        class OneOpInstrStatment : public Statement {
+        public:
+            using Ref = std::shared_ptr<OneOpInstrStatment>;
+        public:
+            OneOpInstrStatment() = default;
+            explicit OneOpInstrStatment(const std::string &instr) : Statement(NodeType::kOneOpInstrStatement), symbol(instr) {
+
+            }
+            void SetOpSize(gnilk::vcpu::OperandSize newOpSize) {
+                opSize = newOpSize;
+            }
+            void SetAddrMode(gnilk::vcpu::AddressMode newAddrMode) {
+                addrMode = newAddrMode;
+            }
+            void SetOperand(const Expression::Ref newOp) {
+                operand = newOp;
+            }
+
+            const std::string &Symbol() {
+                return symbol;
+            }
+            gnilk::vcpu::OperandSize OpSize() {
+                return opSize;
+            }
+            gnilk::vcpu::AddressMode AddrMode() {
+                return addrMode;
+            }
+
+            Expression::Ref Operand() {
+                return operand;
+            }
+
+            void Dump() override {
+                WriteLine("Instruction");
+                Indent();
+                WriteLine("Symbol: {}", symbol);
+                WriteLine("OpSize: {}", (int)opSize);
+
+                WriteLine("Operand:");
+                Indent();
+                operand->Dump();
+                Unindent();
+                Unindent();
+            }
+
+        protected:
+            std::string symbol = {};
+            gnilk::vcpu::AddressMode addrMode = {};
+            gnilk::vcpu::OperandSize opSize = gnilk::vcpu::OperandSize::Long;
+            ast::Expression::Ref operand;
+
+        };
+
+
         class NoOpInstrStatment : public Statement {
         public:
             using Ref = std::shared_ptr<NoOpInstrStatment>;
