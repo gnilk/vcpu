@@ -17,6 +17,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_nop(ITesting *t);
     DLL_EXPORT int test_compiler_push(ITesting *t);
     DLL_EXPORT int test_compiler_pop(ITesting *t);
+    DLL_EXPORT int test_compiler_callrelative(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -141,12 +142,19 @@ DLL_EXPORT int test_compiler_push(ITesting *t) {
         {0x70,0x00,0x01,0x80},                       // push.b 0x43
         {0x70,0x01,0x01,0x80,0x70},                  // push.w 0x4200
         {0x70,0x02,0x01,0x80,0x70,0x60,0x50},        // push.d 0x41000000
+        {0x70,0x00,0x03},                            // push.b d0
+        {0x70,0x01,0x13},                            // push.w d1
+        {0x70,0x02,0x23},                            // push.d d2
+
     };
 
     std::vector<std::string> codes={
         {"push.b  0x80"},
         {"push.w  0x8070"},
         {"push.d  0x80706050"},
+        {"push.b    d0"},
+        {"push.w    d1"},
+        {"push.d    d2"},
     };
     Parser parser;
     Compiler compiler;
@@ -155,10 +163,77 @@ DLL_EXPORT int test_compiler_push(ITesting *t) {
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.GenerateCode(ast));
         auto binary = compiler.Data();
+        if (binary != expectedBinaries[i]) {
+            printf("Failed %zu (%s)\n", i, codes[i].c_str());
+        }
         TR_ASSERT(t, binary == expectedBinaries[i]);
     }
     return kTR_Pass;
 }
+
 DLL_EXPORT int test_compiler_pop(ITesting *t) {
+    std::vector<uint8_t> expectedBinaries[]= {
+        {0x80,0x02,0x03},                            // pop.d d0
+        {0x80,0x01,0x03},                            // pop.w d0
+        {0x80,0x00,0x03},                            // pop.b d0
+        {0x80,0x02,0x03},                            // pop.d d0
+        {0x80,0x01,0x13},                            // pop.w d1
+        {0x80,0x00,0x23},                            // pop.b d2
+    };
+
+    std::vector<std::string> codes={
+        {"pop.d     d0"},
+        {"pop.w     d0"},
+        {"pop.b     d0"},
+        {"pop.d     d0"},
+        {"pop.w     d1"},
+        {"pop.b     d2"},
+  };
+    Parser parser;
+    Compiler compiler;
+    for(size_t i=0;i<codes.size();i++) {
+        auto ast = parser.ProduceAST(codes[i]);
+        TR_ASSERT(t, ast != nullptr);
+        TR_ASSERT(t, compiler.GenerateCode(ast));
+        auto binary = compiler.Data();
+        if (binary != expectedBinaries[i]) {
+            printf("Failed %zu (%s)\n", i, codes[i].c_str());
+        }
+        TR_ASSERT(t, binary == expectedBinaries[i]);
+    }
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_compiler_callrelative(ITesting *t) {
+    std::vector<uint8_t> expectedBinary= {
+        0xc0,0x00,0x01,0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        0xf1,                       // 4
+        0x00,                       // 5 WHALT!
+        0xf1,                       // 6 <- call should go here
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
+    };
+    std::vector<std::string> codes={
+        {
+            "call.b    0x03\n "\
+            "nop      \n"\
+            "brk        \n"\
+            "label:\n"\
+            "nop \n"\
+            "nop \n"\
+            "ret"
+        }
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(codes[0]);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.GenerateCode(ast);
+    auto binary = compiler.Data();
+    printf("Got Data!\n");
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+}
+
