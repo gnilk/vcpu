@@ -21,6 +21,8 @@ extern "C" {
     DLL_EXPORT int test_compiler_calllabel(ITesting *t);
     DLL_EXPORT int test_compiler_lea_label(ITesting *t);
     DLL_EXPORT int test_compiler_move_indirect(ITesting *t);
+    DLL_EXPORT int test_compiler_array_bytedecl(ITesting *t);
+    DLL_EXPORT int test_compiler_array_worddecl(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -331,6 +333,46 @@ DLL_EXPORT int test_compiler_move_indirect(ITesting *t) {
     Parser parser;
     Compiler compiler;
     auto ast = parser.ProduceAST(codes[0]);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.GenerateCode(ast);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+
+}
+
+DLL_EXPORT int test_compiler_array_bytedecl(ITesting *t) {
+    std::vector<uint8_t> expectedBinary = {
+        0,1,2,3,
+    };
+    std::vector<std::string> code={
+        {"data: dc.b 0,1,2,3"}
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(code[0]);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.GenerateCode(ast);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+
+}
+
+DLL_EXPORT int test_compiler_array_worddecl(ITesting *t) {
+    std::vector<uint8_t> expectedBinary = {
+        0,0, 0,1, 0,2, 0,3,
+    };
+    std::vector<std::string> code={
+        {"data: dc.w 0,1,2,3"}
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(code[0]);
     TR_ASSERT(t, ast != nullptr);
     auto res = compiler.GenerateCode(ast);
     auto binary = compiler.Data();
