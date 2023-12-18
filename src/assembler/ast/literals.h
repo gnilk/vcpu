@@ -97,6 +97,48 @@ namespace gnilk {
             }
         };
 
+        class ArrayLiteral : public Expression {
+        public:
+            using Ref = std::shared_ptr<ArrayLiteral>;
+        public:
+            ArrayLiteral() : Expression(NodeType::kArrayLiteral) {}
+            ArrayLiteral(vcpu::OperandSize szElem) : Expression(NodeType::kArrayLiteral), opSize(szElem) {
+
+            }
+            virtual ~ArrayLiteral() {
+
+            }
+
+            static Ref Create(vcpu::OperandSize szElem) {
+                return std::make_shared<ArrayLiteral>(szElem);
+            }
+            // Currently we only support numeric literal expression but let's assume we want more (like StringLiterals, and others)
+            void PushToArray(Expression::Ref exp) {
+                array.push_back(exp);
+            }
+
+            gnilk::vcpu::OperandSize OpSize() {
+                return opSize;
+            }
+
+            void Dump() override {
+                WriteLine("ArrayLiteral");
+                Indent();
+                WriteLine("ElemSize: {}", (int)opSize);
+                WriteLine("Elements:");
+                Indent();
+                for(auto &n : array) {
+                    n->Dump();
+                }
+                Unindent();
+                Unindent();
+            }
+
+        protected:
+            vcpu::OperandSize opSize = vcpu::OperandSize::Byte;
+            std::vector<Expression::Ref> array;
+        };
+
         class RegisterLiteral : public Expression {
         public:
             using Ref = std::shared_ptr<RegisterLiteral>;
