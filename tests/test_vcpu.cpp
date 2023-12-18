@@ -10,6 +10,10 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+static void DumpStatus(const VirtualCPU &cpu);
+static void DumpRegs(const VirtualCPU &cpu);
+
+
 extern "C" {
     DLL_EXPORT int test_vcpu(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_immediate(ITesting *t);
@@ -22,6 +26,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_call(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_nop(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_lea(ITesting *t);
+    DLL_EXPORT int test_vcpu_move_indirect(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
     DLL_EXPORT int test_vcpu_disasm(ITesting *t);
 }
@@ -335,6 +340,31 @@ DLL_EXPORT int test_vcpu_instr_lea(ITesting *t) {
 
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_vcpu_move_indirect(ITesting *t) {
+    uint8_t program[] = {
+        0x28,0x03,0x83,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
+        0x20,0x00,0x03,0x80,                                                // this is wrong!
+        0x00,                       // 5 WHALT!
+        0xf1,                       // 6 <- call should go here (offset of label)
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
+    };
+
+    VirtualCPU vcpu;
+    auto &regs = vcpu.GetRegisters();
+
+    vcpu.Begin(program, 1024);
+    TR_ASSERT(t, vcpu.Step());
+    TR_ASSERT(t, regs.addressRegisters[0].data.longword == 0x11);
+
+    vcpu.Step();
+    TR_ASSERT(t, regs.addressRegisters[0].data.longword == 0x11);
+    TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0xf1);
+
+    return kTR_Pass;
+}
+
 
 
 
