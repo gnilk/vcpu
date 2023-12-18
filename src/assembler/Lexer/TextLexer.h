@@ -18,6 +18,7 @@ namespace gnilk {
         NumberOctal,
         NumberBinary,
 
+        Declaration,    // Data Declaration 'dc.<op size>'
         String,
         Identifier,
         // Registers
@@ -25,9 +26,6 @@ namespace gnilk {
         AddressReg,
         // special registers
         sp,ip,
-
-        // instructions
-        Instruction,
 
         // Operand Size specifier
         OpSize,
