@@ -96,6 +96,7 @@ namespace gnilk {
             BRK = 0x00,
 
             MOV = 0x20,
+            LEA = 0x28,
             ADD = 0x30,
             SUB = 0x40,
             MUL = 0x50,

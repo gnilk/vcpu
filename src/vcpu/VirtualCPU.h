@@ -65,6 +65,7 @@ namespace gnilk {
             void ExecuteDivInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteCallInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteRetInstr(InstructionDecoder::Ref instrDecoder);
+            void ExecuteLeaInstr(InstructionDecoder::Ref instrDecoder);
 
             void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);
         private:

@@ -16,6 +16,11 @@ static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
     {OperandClass::NOP,{.name="nop", .features = {} }},
     {OperandClass::BRK,{.name="brk", .features = {} }},
     {OperandClass::RET,{.name="ret", .features = {} }},
+{OperandClass::LEA,{.name="lea", .features = OperandDescriptionFlags::OperandSize |
+                                            OperandDescriptionFlags::TwoOperands |
+                                            OperandDescriptionFlags::Immediate |
+                                            OperandDescriptionFlags::Register |
+                                            OperandDescriptionFlags::Addressing}},
 {OperandClass::MOV,{.name="move", .features = OperandDescriptionFlags::OperandSize |
                                                 OperandDescriptionFlags::TwoOperands |
                                                 OperandDescriptionFlags::Immediate |

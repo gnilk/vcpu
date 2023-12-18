@@ -45,6 +45,9 @@ bool VirtualCPU::Step() {
         case CALL :
             ExecuteCallInstr(instrDecoder);
             break;
+        case LEA :
+            ExecuteLeaInstr(instrDecoder);
+            break;
         case RET :
             ExecuteRetInstr(instrDecoder);
             break;
@@ -82,6 +85,12 @@ void VirtualCPU::ExecutePopInstr(InstructionDecoder::Ref instrDecoder) {
     stack.pop();
     WriteToDst(instrDecoder, v);
 }
+
+void VirtualCPU::ExecuteLeaInstr(InstructionDecoder::Ref instrDecoder) {
+    auto &v = instrDecoder->GetValue();
+    WriteToDst(instrDecoder, v);
+}
+
 
 void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
