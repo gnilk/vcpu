@@ -18,9 +18,10 @@ emulated CPU...  Good riddance!
     - how to fix local variables (like asmone; .var)?    
 + add jump routines (call, goto, etc..) and return
     this is mostly an assembler problem...
-- basic addressing and referencing; 
-    - move d0, (a0), and friends
-    - lea a0, <label>, and friends
++ basic addressing and referencing; 
+    + move d0, (a0), and friends
+    + lea a0, <label>, and friends
+! variable/array declarations (variable is just an array with one element)
 - compare instructions
 - branching
 + disassembling (i.e. reconstructing an instruction from op-codes)     
