@@ -63,8 +63,8 @@ list(APPEND emusrc apps/emulator/emulator.cpp)
 list(APPEND asmsrc apps/assembler/assembler.cpp)
 
 
-add_executable(emulator ${emusrc} ${vcpusrc})
-target_include_directories(emulator PUBLIC src/vcpu)
+add_executable(emu ${emusrc} ${vcpusrc})
+target_include_directories(emu PUBLIC src/vcpu)
 
 add_executable(asm ${asmsrc} ${vcpusrc})
 target_include_directories(asm PUBLIC src/assembler)
@@ -74,5 +74,18 @@ target_include_directories(asm PUBLIC src/vcpu)
 # link targets
 #
 target_link_libraries(test log_fmt)
-target_link_libraries(emulator log_fmt)
+target_link_libraries(emu log_fmt)
 target_link_libraries(asm log_fmt)
+
+
+#
+# assets for testing
+#
+if (${CMAKE_VERSION} VERSION_LESS "3.26.0")
+    add_custom_target(Assets ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets)
+else()
+    add_custom_target(Assets ${CMAKE_COMMAND} -E copy_directory_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/Assets ${CMAKE_CURRENT_BINARY_DIR}/Assets)
+endif()
+add_dependencies(asm Assets)
