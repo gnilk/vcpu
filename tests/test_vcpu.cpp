@@ -21,6 +21,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_pop(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_call(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_nop(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_lea(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
     DLL_EXPORT int test_vcpu_disasm(ITesting *t);
 }
@@ -318,6 +319,23 @@ DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_vcpu_instr_lea(ITesting *t) {
+    // Note: We are using 'absolute' to denote an address - not sure if this is a good thing...
+    uint8_t program[]={
+        0x28, 0x03, 0x83, 0x02, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11        // lea a0, 0x8877665544332211
+    };
+    VirtualCPU vcpu;
+    auto &regs = vcpu.GetRegisters();
+
+    vcpu.Begin(program, 1024);
+    auto res = vcpu.Step();
+    TR_ASSERT(t, res);
+
+    TR_ASSERT(t, regs.addressRegisters[0].data.longword == 0x8877665544332211);
+
+    return kTR_Pass;
+}
+
 
 
 static void DumpStatus(const VirtualCPU &cpu) {
@@ -417,4 +435,5 @@ DLL_EXPORT int test_vcpu_disasm(ITesting *t) {
 
     return kTR_Pass;
 }
+
 
