@@ -187,6 +187,12 @@ ast::Expression::Ref Parser::ParsePrimaryExpression() {
             return ast::NumericLiteral::CreateFromHex(Eat().value);
         case TokenType::Identifier :
             return ast::Identifier::Create(Eat().value);
+        case TokenType::OpenParen :
+            // This is a deference-expression...
+            Eat();
+            auto value = ParseExpression();
+            Expect(TokenType::CloseParen, "Expression should end with ')'");
+            return ast::DeReferenceExpression::Create(value);
     }
     fmt::println(stderr, "Unexpected token found: {}",At().value.c_str());
     return nullptr;
