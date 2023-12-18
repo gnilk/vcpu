@@ -13,16 +13,17 @@ emulated CPU...  Good riddance!
 ! basic infrastructure (cpu, assembler, etc..)
 ! stack handling in CPU (needed for call routines)
 ! call/ret instructions
-- labels and variables in assembler
++ labels and variables in assembler
     - consider scoping!
     - how to fix local variables (like asmone; .var)?    
-- add jump routines (call, goto, etc..) and return
++ add jump routines (call, goto, etc..) and return
     this is mostly an assembler problem...
 - basic addressing and referencing; 
     - move d0, (a0), and friends
     - lea a0, <label>, and friends
 - compare instructions
-- branching     
+- branching
++ disassembling (i.e. reconstructing an instruction from op-codes)     
 - bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - syscall handling
