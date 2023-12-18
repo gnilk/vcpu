@@ -20,9 +20,12 @@ namespace gnilk {
             }
         protected:
             bool ProcessStmt(ast::Statement::Ref stmt);
+            bool ProcessIdentifier(ast::Identifier::Ref identifier);
             bool ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt);
             bool ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt);
             bool ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref stmt);
+
+            bool ReplaceIdentPlaceholdersWithAddresses();
 
             bool EmitOpCodeForSymbol(const std::string &symbol);
             bool EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
@@ -31,6 +34,8 @@ namespace gnilk {
 
             bool EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral);
             bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
+            bool EmitLabelAddress(ast::Identifier::Ref identifier);
+
 
             bool EmitByte(uint8_t byte);
             bool EmitWord(uint16_t word);
@@ -39,6 +44,13 @@ namespace gnilk {
         private:
             // FIXME: replace this...
             std::vector<uint8_t> outStream;
+
+            struct IdentifierAddressPlaceholder {
+                std::string ident;
+                uint64_t address;
+            };
+            std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
+            std::unordered_map<std::string, uint64_t> identifierAddresses;
         };
     }
 }

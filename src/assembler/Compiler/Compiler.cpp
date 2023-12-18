@@ -11,6 +11,8 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
+
+
 bool Compiler::GenerateCode(ast::Program::Ref program) {
     outStream.clear();
     for(auto &statement : program->Body()) {
@@ -18,7 +20,45 @@ bool Compiler::GenerateCode(ast::Program::Ref program) {
             return false;
         }
     }
-    // FIXME: Go through all statements which are dependent on labels/identifiers and update them
+    // Do we have placeholds??
+    if ((!addressPlaceholders.empty()) && (outStream.size() < sizeof(uint64_t))) {
+        fmt::println(stderr,"Invalid compiled size, can't possible hold address to anything");
+        return false;
+    }
+
+    return ReplaceIdentPlaceholdersWithAddresses();
+}
+
+//
+// This replaces identifier placesholders for instructions with their real address
+// When an instruction has a reference to an identifier the compiler inserts an absolute placeholder address and
+// records the identifier and location of the placeholder, in the 'addressPlaceholders' array...
+//
+// Same sense, when the compiler encounters an identifier, the address is stored for that identifier ('identifierAddresses')
+//
+// After the file has been compiled - all place-holder addresses are replaced with the proper address of the identifier
+//
+bool Compiler::ReplaceIdentPlaceholdersWithAddresses() {
+    for(auto &placeHolder : addressPlaceholders) {
+        if (!identifierAddresses.contains(placeHolder.ident)) {
+            fmt::println(stderr, "Unknown identifier: {}", placeHolder.ident);
+            return false;
+        }
+        const uint64_t addr = identifierAddresses[placeHolder.ident];
+        uint64_t ofs = placeHolder.address;
+        if (ofs > (outStream.size() - 8)) {
+            fmt::println("Binary size invalid - offset would overflow end binary code!");
+            return false;
+        }
+        outStream[ofs++] = (addr>>56 & 0xff);
+        outStream[ofs++] = (addr>>48 & 0xff);
+        outStream[ofs++] = (addr>>40 & 0xff);
+        outStream[ofs++] = (addr>>32 & 0xff);
+        outStream[ofs++] = (addr>>24 & 0xff);
+        outStream[ofs++] = (addr>>16 & 0xff);
+        outStream[ofs++] = (addr>>8 & 0xff);
+        outStream[ofs++] = (addr & 0xff);
+    }
     return true;
 }
 
@@ -31,11 +71,19 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
         case ast::NodeType::kTwoOpInstrStatement :
             return ProcessTwoOpInstrStmt(std::dynamic_pointer_cast<ast::TwoOpInstrStatment>(stmt));
         case ast::NodeType::kIdentifier :
-            // FIXME: Need to process this here..
-            // Label should just record the current IP position and create a label-record
-            return true;
+            return ProcessIdentifier(std::dynamic_pointer_cast<ast::Identifier>(stmt));
     }
     return false;
+}
+
+bool Compiler::ProcessIdentifier(ast::Identifier::Ref identifier) {
+    uint64_t ipNow = static_cast<uint64_t>(outStream.size());
+    if (identifierAddresses.contains(identifier->Symbol())) {
+        fmt::println(stderr,"Identifier {} already in use - can't use duplicate identifiers!", identifier->Symbol());
+        return false;
+    }
+    identifierAddresses[identifier->Symbol()] = ipNow;
+    return true;
 }
 
 bool Compiler::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
@@ -47,6 +95,7 @@ bool Compiler::ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt) {
         return false;
     }
     auto opSize = stmt->OpSize();
+
     if (!EmitByte(opSize)) {
         return false;
     }
@@ -123,6 +172,9 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
         case ast::NodeType::kIdentifier :
             // FIXME: emit byte+placeholder (uint64_t), record IP in struct (incl. which identifier we depend upon)
             // After statement parsing is complete we will change all place-holders
+            if (desc.features & vcpu::OperandDescriptionFlags::Addressing) {
+                return EmitLabelAddress(std::dynamic_pointer_cast<ast::Identifier>(operandExp));
+            }
             break;
     }
     return false;
@@ -180,6 +232,23 @@ bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral:
             fmt::println(stderr, "Only byte size supported!");
     }
     return false;
+}
+
+
+bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
+    uint8_t regMode = 0; // no register
+    regMode |= vcpu::AddressMode::Absolute;
+
+    // Register|Mode = byte = RRRR | MMMM
+    EmitByte(regMode);
+
+    IdentifierAddressPlaceholder addressPlaceholder;
+    addressPlaceholder.address = static_cast<uint64_t>(outStream.size());
+    addressPlaceholder.ident = identifier->Symbol();
+    addressPlaceholders.push_back(addressPlaceholder);
+
+    EmitLWord(0);   // placeholder
+    return true;
 }
 
 bool Compiler::EmitOpCodeForSymbol(const std::string &symbol) {
