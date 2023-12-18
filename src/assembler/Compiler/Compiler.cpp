@@ -170,15 +170,42 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
             fmt::println(stderr, "Instruction Operand does not support register");
             break;
         case ast::NodeType::kIdentifier :
-            // FIXME: emit byte+placeholder (uint64_t), record IP in struct (incl. which identifier we depend upon)
             // After statement parsing is complete we will change all place-holders
             if (desc.features & vcpu::OperandDescriptionFlags::Addressing) {
                 return EmitLabelAddress(std::dynamic_pointer_cast<ast::Identifier>(operandExp));
             }
             break;
+        case ast::NodeType::kDeRefExpression :
+            if (desc.features & vcpu::OperandDescriptionFlags::Addressing) {
+                return EmitDereference(std::dynamic_pointer_cast<ast::DeReferenceExpression>(operandExp));
+            }
+            break;
     }
     return false;
 }
+
+bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
+
+    auto deref = expression->GetDeRefExp();
+    if (deref->Kind() != ast::NodeType::kRegisterLiteral) {
+        fmt::println("Only register deref possible at the moment!");
+        return false;
+    }
+    auto regLiteral = std::dynamic_pointer_cast<ast::RegisterLiteral>(deref);
+    if (!regToIdx.contains(regLiteral->Symbol())) {
+        fmt::println(stderr, "Illegal register: {}", regLiteral->Symbol());
+        return false;
+    }
+
+    auto idxReg = regToIdx[regLiteral->Symbol()];
+    // Register|Mode = byte = RRRR | MMMM
+    auto regMode = (idxReg << 4) & 0xf0;
+    regMode |= vcpu::AddressMode::Indirect;
+
+    EmitByte(regMode);
+    return true;
+}
+
 
 bool Compiler::EmitInstrDst(vcpu::OperandSize opSize, ast::Expression::Ref dst) {
     if (dst->Kind() != ast::NodeType::kRegisterLiteral) {
@@ -203,6 +230,11 @@ bool Compiler::EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral) {
         fmt::println(stderr, "Illegal register: {}", regLiteral->Symbol());
         return false;
     }
+
+    //
+    // FIXME: Address mode is not obvious..
+    //
+
     auto idxReg = regToIdx[regLiteral->Symbol()];
     // Register|Mode = byte = RRRR | MMMM
     auto regMode = (idxReg << 4) & 0xf0;
