@@ -1,92 +1,115 @@
 #include <iostream>
 #include <stdint.h>
-#include "VirtualCPU.h"
 #include <chrono>
 #include <vector>
+#include <string>
+#include <filesystem>
+
+#include "fmt/format.h"
+
+#include "VirtualCPU.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-using std::chrono::high_resolution_clock;
-using std::chrono::duration_cast;
-using std::chrono::duration;
-using std::chrono::milliseconds;
+bool ProcessFile(std::filesystem::path &pathToBinary);
 
-static uint8_t program[] = {
-};
-double testperf() {
-    uint8_t program[]= {
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x00,0x03,0x01, 0x44,
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x02,0x03,0x01, 0x44,0x33,0x22,0x11,
-        0x20,0x03,0x03,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
-        0x20,0x01,0x13,0x01, 0x44,0x33,
-        0x20,0x00,0x23,0x01, 0x44,
-        0x20,0x01,0x33,0x01, 0x44,0x33,
-        0x20,0x02,0x43,0x01, 0x44,0x33,0x22,0x11,
-        0x20,0x03,0x43,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x00,0x03,0x01, 0x44,
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x02,0x03,0x01, 0x44,0x33,0x22,0x11,
-        0x20,0x03,0x03,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
-        0x20,0x01,0x13,0x01, 0x44,0x33,
-        0x20,0x00,0x23,0x01, 0x44,
-        0x20,0x01,0x33,0x01, 0x44,0x33,
-        0x20,0x02,0x43,0x01, 0x44,0x33,0x22,0x11,
-        0x20,0x03,0x43,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x00,0x03,0x01, 0x44,
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x02,0x03,0x01, 0x44,0x33,0x22,0x11,
-        0x20,0x03,0x03,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
-        0x20,0x01,0x13,0x01, 0x44,0x33,
-        0x20,0x00,0x23,0x01, 0x44,
-        0x20,0x01,0x33,0x01, 0x44,0x33,
-        0x20,0x02,0x43,0x01, 0x44,0x33,0x22,0x11,
-        0x20,0x03,0x43,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x00,0x03,0x01, 0x44,
-        0x20,0x01,0x03,0x01, 0x44,0x33,
-        0x20,0x02,0x03,0x01, 0x44,0x33,0x22,0x11,
-        0x20,0x03,0x03,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
-        0x20,0x01,0x13,0x01, 0x44,0x33,
-        // End of code - special instr. to break emulation
-        0xff,
-    };
-    VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
-    auto &regs = vcpu.GetRegisters();
-    // Verify intermediate mode reading works for 8,16,32,64 bit sizes
-    auto t1 = high_resolution_clock::now();
+int main(int argc, char **argv)  {
+    std::vector<std::string> filesToRun;
+    for(int i=1;i<argc;i++) {
+        if (argv[i][0] == '-') {
 
-    for(int i=0;i<100000;i++) {
-        vcpu.Reset();
-        while(vcpu.Step()) {
-            // do nothing
+        } else {
+            filesToRun.push_back(argv[i]);
         }
     }
 
-    auto t2 = high_resolution_clock::now();
-    auto ms_int = duration_cast<milliseconds>(t2 - t1);
-    duration<double, std::milli> ms_double = t2 - t1;
-    fmt::println("  Duration={} msec", ms_double.count());
-    return ms_double.count();
-
+    if (filesToRun.empty()) {
+        fmt::println("no files - bailing");
+        return 1;
+    }
+    for(auto &fToRun : filesToRun) {
+        std::filesystem::path pathToFile(fToRun);
+        if (!exists(pathToFile)) {
+            fmt::println(stderr, "No such file or directory, {}", fToRun);
+            continue;;
+        }
+        if (is_directory(pathToFile)) {
+            fmt::println(stderr, "Directories not supported");
+            continue;;
+        }
+        if (!is_regular_file(pathToFile)) {
+            fmt::println(stderr, "Not a regular file {} - skipping", fToRun);
+            continue;;
+        }
+        if (!ProcessFile(pathToFile)) {
+            fmt::println("{} - failed", fToRun);
+        } else {
+            fmt::println("{} - OK", fToRun);
+        }
+    }
 }
 
-int main()
-{
-    std::vector<double> perfValues;
-    for(int i=0;i<100;i++) {
-        auto v = testperf();
-        perfValues.push_back(v);
+bool ExecuteData(const uint8_t *rawData, size_t szData);
+
+bool ProcessFile(std::filesystem::path &pathToBinary) {
+    size_t szFile = file_size(pathToBinary);
+    uint8_t *data = (uint8_t *)malloc(szFile + 10);
+    if (data == nullptr) {
+        return false;
     }
-    auto avg = 0.0f;
-    for(auto v : perfValues) {
-        avg += v / 100.0f;
+    memset(data, 0, szFile + 10);
+    // Read file
+    FILE *f = fopen(pathToBinary.c_str(), "r+");
+    if (f == nullptr) {
+        free(data);
+        return false;
     }
-    fmt::println("average: {}", avg);
-    return 0;
+    auto nRead = fread(data, 1, szFile, f);
+    fclose(f);
+
+    auto res = ExecuteData(data, szFile);
+    free(data);
+    return res;
 }
+
+
+static void DumpStatus(const VirtualCPU &cpu) {
+    auto &status = cpu.GetStatusReg();
+    fmt::println("CPU Stat: [{}{}{}{}{}---]",
+        status.flags.carry?"C":"-",
+        status.flags.overflow?"O":"-",
+        status.flags.zero?"Z":"-",
+        status.flags.negative?"N":"-",
+        status.flags.extend?"E":"-");
+}
+static void DumpRegs(const VirtualCPU &cpu) {
+    auto &regs = cpu.GetRegisters();
+    for(int i=0;i<8;i++) {
+        fmt::print("d{}=0x{:02x}  ",i,regs.dataRegisters[i].data.byte);
+        if ((i & 7) == 7) {
+            fmt::println("");
+        }
+    }
+}
+
+static uint8_t cpu_ram_memory[1024*512];    // 512kb of RAM for my CPU...
+bool ExecuteData(const uint8_t *rawData, size_t szData) {
+    memcpy(cpu_ram_memory, rawData, szData);
+    VirtualCPU vcpu;
+    vcpu.Begin(cpu_ram_memory, 1024);
+    fmt::println("------->> Begin Execution <<--------------");
+    while(vcpu.Step()) {
+        DumpStatus(vcpu);
+        DumpRegs(vcpu);
+
+        // do something...
+        auto lastInstr = vcpu.GetLastDecodedInstr();
+        auto str = lastInstr->ToString();
+        fmt::println("{}", str);
+        fmt::println("");
+    }
+    fmt::println("------->> Execution Complete <<--------------");
+    return true;
+}
+
