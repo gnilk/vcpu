@@ -19,6 +19,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_pop(ITesting *t);
     DLL_EXPORT int test_compiler_callrelative(ITesting *t);
     DLL_EXPORT int test_compiler_calllabel(ITesting *t);
+    DLL_EXPORT int test_compiler_lea_label(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -268,4 +269,38 @@ DLL_EXPORT int test_compiler_calllabel(ITesting *t) {
     TR_ASSERT(t, binary == expectedBinary);
 
     return kTR_Pass;
+}
+
+DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
+    std::vector<uint8_t> expectedBinary= {
+        0x28,0x03,0x83,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0e,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
+        0xf1,                       // 4
+        0x00,                       // 5 WHALT!
+        0xf1,                       // 6 <- call should go here (offset of label)
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
+    };
+
+    std::vector<std::string> codes={
+        {
+            "lea    a0,label\n "\
+            "nop      \n"\
+            "brk        \n"\
+            "label: \n"\
+            "nop \n"\
+            "nop \n"\
+            "ret"
+        }
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(codes[0]);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.GenerateCode(ast);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+
 }
