@@ -22,7 +22,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_call(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_nop(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
-
+    DLL_EXPORT int test_vcpu_disasm(ITesting *t);
 }
 
 DLL_EXPORT int test_vcpu(ITesting *t) {
@@ -387,3 +387,34 @@ DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t) {
 
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_vcpu_disasm(ITesting *t) {
+    uint8_t program[]= {
+        // move.w d0, 0x4433
+        0x20,0x01,0x03,0x01, 0x44,0x33,
+        // move.b d0, 0x44
+        0x20,0x00,0x03,0x01, 0x44,
+        // move.w d0, 0x4433
+        0x20,0x01,0x03,0x01, 0x44,0x33,
+        // move.d d0, 0x44332211
+        0x20,0x02,0x03,0x01, 0x44,0x33,0x22,0x11,
+        // move.l d0, 0x8877665544332211
+        0x20,0x03,0x03,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
+        0x20,0x01,0x13,0x03,    // move.w d1, d0
+        0x20,0x01,0x53,0x13,    // move.w d5, d1
+        0x20,0x00,0x23,0x53,    // move.b d2, d5
+        0x00,
+    };
+
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+    auto &regs = vcpu.GetRegisters();
+    while(vcpu.Step()) {
+        auto lastInstr = vcpu.GetLastDecodedInstr();
+        auto str = lastInstr->ToString();
+        fmt::println("{}", str);
+    }
+
+    return kTR_Pass;
+}
+
