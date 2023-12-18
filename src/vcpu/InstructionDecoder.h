@@ -17,11 +17,31 @@ namespace gnilk {
         public:
             using Ref = std::shared_ptr<InstructionDecoder>;
         public:
-            InstructionDecoder() = default;             // I know it is possible to hide this...
+            InstructionDecoder()  = default;
             virtual ~InstructionDecoder() = default;
             static InstructionDecoder::Ref Create(OperandClass opClass);
 
             bool Decode(CPUBase &cpu);
+            // Converts a decoded instruction back to it's mnemonic form
+            std::string ToString() const;
+
+            // const RegisterValue &GetDstValue() {
+            //     return dstValue;
+            // }
+            // const RegisterValue &GetSrcValue() {
+            //     return srcValue;
+            // }
+            const RegisterValue &GetValue() {
+                return value;
+            }
+
+        private:
+            // Helper for 'ToString'
+            std::string DisasmOperand(AddressMode addrMode, uint8_t regIndex) const;
+            // Perhaps move to base class
+            RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, int idxRegister);
+
+
 
         public:
             // Used during by decoder...
@@ -34,10 +54,16 @@ namespace gnilk {
 
             AddressMode dstAddrMode; // Always decoded from 'dstRegAndFlags'
             uint8_t dstRegIndex; // decoded like: (dstRegAndFlags>>4) & 15;
+//            RegisterValue dstValue; // this can be an immediate or something else, essentially result from operand
+
 
             // Only if 'description.features & TwoOperands' == true
             AddressMode srcAddrMode; // decoded from srcRegAndFlags
             uint8_t srcRegIndex; // decoded like: (srcRegAndFlags>>4) & 15;
+//            RegisterValue srcValue; // this can be an immediate or register, essentially result from operand
+
+            // There can only be ONE immediate value associated with an instruction
+            RegisterValue value; // this can be an immediate or something else, essentially result from operand
 
         };
     }

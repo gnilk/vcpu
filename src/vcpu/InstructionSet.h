@@ -169,6 +169,7 @@ namespace gnilk {
         }
 
         struct OperandDescription {
+            std::string name;
             OperandDescriptionFlags features;
         };
 

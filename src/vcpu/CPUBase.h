@@ -165,6 +165,27 @@ namespace gnilk {
                 return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
             }
 
+            // Move this to base class
+            RegisterValue ReadImmediateMode(OperandSize szOperand) {
+                RegisterValue v = {};
+                switch(szOperand) {
+                    case OperandSize::Byte :
+                        v.data.byte = FetchFromInstrPtr<uint8_t>();
+                    break;
+                    case OperandSize::Word :
+                        v.data.word = FetchFromInstrPtr<uint16_t>();
+                    break;
+                    case OperandSize::DWord :
+                        v.data.dword = FetchFromInstrPtr<uint32_t>();
+                    break;
+                    case OperandSize::Long :
+                        v.data.longword = FetchFromInstrPtr<uint64_t>();
+                    break;
+                }
+                return v;
+            }
+
+
         protected:
             template<typename T>
             T FetchFromInstrPtr() {
@@ -210,6 +231,7 @@ namespace gnilk {
             uint64_t FetchLongFromInstrPtr() {
                 return FetchFromInstrPtr<uint64_t>();
             }
+
         protected:
             uint8_t *ram = nullptr;
             size_t szRam = 0;

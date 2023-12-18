@@ -30,16 +30,15 @@ bool VirtualCPU::Step() {
     // Tell decoder to decode the basics of this instruction
     instrDecoder->Decode(*this);
 
+    //
     // This would be cool:
     // Also, we should put enough information in the first 2-3 bytes to understand the fully decoded size
     // This way we can basically have multiple threads decoding instructions -> super scalar emulation
     //
-
     switch(opClass) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
             // raise halt exception
-
             return false;
         case NOP :
             break;
@@ -66,6 +65,7 @@ bool VirtualCPU::Step() {
             fmt::println(stderr, "Invalid operand: {}", nextOperand);
             return false;
     }
+    lastDecodedInstruction = instrDecoder;
     return true;
 }
 
@@ -73,7 +73,7 @@ bool VirtualCPU::Step() {
 // Move of these will be small - consider supporting lambda in description code instead...
 //
 void VirtualCPU::ExecutePushInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstRegIndex);
+    auto &v = instrDecoder->GetValue();
     stack.push(v);
 }
 
@@ -84,7 +84,7 @@ void VirtualCPU::ExecutePopInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
+    auto &v = instrDecoder->GetValue();
     WriteToDst(instrDecoder, v);
 }
 
@@ -195,7 +195,8 @@ static CPUStatusFlags Sub(OperandSize opSz, RegisterValue &dst, const RegisterVa
 
 
 void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
+
+    auto &v = instrDecoder->GetValue();
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
@@ -211,7 +212,7 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->srcAddrMode, instrDecoder->srcRegIndex);
+    auto &v = instrDecoder->GetValue();
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &reg = GetRegisterValue(instrDecoder->dstRegIndex);
@@ -235,7 +236,7 @@ void VirtualCPU::ExecuteDivInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteCallInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = ReadFrom(instrDecoder->szOperand, instrDecoder->dstAddrMode, instrDecoder->dstRegIndex);
+    auto &v = instrDecoder->GetValue();
     auto retAddr = registers.instrPointer;
     retAddr.data.longword += 1;
     // push on stack...
@@ -278,36 +279,5 @@ void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const Register
         reg.data = v.data;
         // FIXME: Update CPU flags here
     }
-}
-
-RegisterValue VirtualCPU::ReadFrom(OperandSize szOperand, AddressMode addrMode, int idxRegister) {
-    RegisterValue v = {};
-
-    if (addrMode == AddressMode::Immediate) {
-        return ReadImmediateMode(szOperand);
-    } else if (addrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(idxRegister);
-        v.data = reg.data;
-    }
-    return v;
-}
-
-RegisterValue VirtualCPU::ReadImmediateMode(OperandSize szOperand) {
-    RegisterValue v = {};
-    switch(szOperand) {
-        case OperandSize::Byte :
-            v.data.byte = FetchFromInstrPtr<uint8_t>();
-        break;
-        case OperandSize::Word :
-            v.data.word = FetchFromInstrPtr<uint16_t>();
-        break;
-        case OperandSize::DWord :
-            v.data.dword = FetchFromInstrPtr<uint32_t>();
-        break;
-        case OperandSize::Long :
-            v.data.longword = FetchFromInstrPtr<uint64_t>();
-        break;
-    }
-    return v;
 }
 

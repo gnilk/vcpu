@@ -48,6 +48,10 @@ namespace gnilk {
             }
             bool Step();
 
+            const InstructionDecoder::Ref GetLastDecodedInstr() const {
+                return lastDecodedInstruction;
+            }
+
         protected:
             // one operand instr.
             void ExecutePushInstr(InstructionDecoder::Ref instrDecoder);
@@ -62,13 +66,9 @@ namespace gnilk {
             void ExecuteCallInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteRetInstr(InstructionDecoder::Ref instrDecoder);
 
-            // Perhaps move to base class
-            RegisterValue ReadFrom(OperandSize szOperand, AddressMode addrMode, int idxRegister);
-            RegisterValue ReadImmediateMode(OperandSize szOperand);
-
             void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);
-
-
+        private:
+            InstructionDecoder::Ref lastDecodedInstruction = nullptr;
         };
     }
 }
