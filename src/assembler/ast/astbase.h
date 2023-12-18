@@ -43,6 +43,8 @@ namespace gnilk {
             kNullLiteral,
             kRegisterLiteral,
             kIdentifier,
+            kDeRefExpression,
+
             kLogicalExpression,
             kUnaryExpression,
             kCompareExpression,
@@ -148,6 +150,35 @@ namespace gnilk {
             virtual ~Expression() = default;
         };
 
+        class DeReferenceExpression : public Expression {
+        public:
+            using Ref = std::shared_ptr<DeReferenceExpression>;
+        public:
+            DeReferenceExpression() = default;
+            explicit DeReferenceExpression(const ast::Expression::Ref exp) : Expression(NodeType::kDeRefExpression), derefexp(exp) {
+
+            }
+            virtual ~DeReferenceExpression() = default;
+
+            static Ref Create(const Expression::Ref &exp) {
+                return std::make_shared<DeReferenceExpression>(exp);
+            }
+
+            void Dump() override {
+                WriteLine("Dereference Expression");
+                Indent();
+                derefexp->Dump();
+                Unindent();
+            }
+
+            Expression::Ref GetDeRefExp() {
+                return derefexp;
+            }
+
+        protected:
+            Expression::Ref derefexp;
+        };
+
 
 
         // This is a literal???
@@ -176,6 +207,8 @@ namespace gnilk {
         protected:
             std::string symbol;
         };
+
+
 
 
         // This I am not sure about - part of an object
