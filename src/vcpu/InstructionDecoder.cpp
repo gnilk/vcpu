@@ -81,6 +81,9 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
         v.data = reg.data;
     } else if (addrMode == AddressMode::Absolute) {
         return cpuBase.ReadImmediateMode(OperandSize::Long);
+    } else if (addrMode == AddressMode::Indirect) {
+        auto &reg = cpuBase.GetRegisterValue(idxRegister);
+        v = cpuBase.ReadFromMemory(szOperand, reg.data.longword);
     }
     return v;
 }

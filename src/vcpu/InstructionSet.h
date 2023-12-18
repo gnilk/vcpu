@@ -62,14 +62,10 @@ namespace gnilk {
         //
         //
         typedef enum : uint8_t {
-            Invalid = 0,
-            Immediate = 1,
-            // move.b d0, 0x44        <- move a byte to register d0, or: 'd0 = 0x44'
-            Absolute = 2,
-            // move.b d0, [0x7ff001]  <- move a byte from absolute to register, 'd0 = *ptr'
-            Register = 3,
-            // move.b d0, (a0)
-            // Relative might not be needed
+            Indirect = 0,       // move.b d0, (a0)
+            Immediate = 1,      // move.b d0, 0x44        <- move a byte to register d0, or: 'd0 = 0x44'
+            Absolute = 2,       // move.b d0, [0x7ff001]  <- move a byte from absolute to register, 'd0 = *ptr'
+            Register = 3,       // move.b d0, d1
         } AddressMode;
 
         // high two bits of 'mode'

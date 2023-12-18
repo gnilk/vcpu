@@ -185,11 +185,36 @@ namespace gnilk {
                 return v;
             }
 
+            // Move this to base class
+            RegisterValue ReadFromMemory(OperandSize szOperand, uint64_t address) {
+                RegisterValue v = {};
+                switch(szOperand) {
+                    case OperandSize::Byte :
+                        v.data.byte = FetchFromRam<uint8_t>(address);
+                    break;
+                    case OperandSize::Word :
+                        v.data.word = FetchFromRam<uint16_t>(address);
+                    break;
+                    case OperandSize::DWord :
+                        v.data.dword = FetchFromRam<uint32_t>(address);
+                    break;
+                    case OperandSize::Long :
+                        v.data.longword = FetchFromRam<uint64_t>(address);
+                    break;
+                }
+                return v;
+            }
+
+
 
         protected:
             template<typename T>
             T FetchFromInstrPtr() {
                 auto address = registers.instrPointer.data.longword;
+                T value = FetchFromRam<T>(address);
+                registers.instrPointer.data.longword = address;
+                return value;
+/*
                 if (address > szRam) {
                     fmt::println(stderr, "Invalid address {}", address);
                     exit(1);
@@ -209,9 +234,36 @@ namespace gnilk {
                     numToFetch -= 1;
                 }
                 registers.instrPointer.data.longword = address;
+                return result;
+*/
+            }
 
+            template<typename T>
+            T FetchFromRam(uint64_t &address) {
+                if (address > szRam) {
+                    fmt::println(stderr, "Invalid address {}", address);
+                    exit(1);
+                }
+                T result = {};
+                uint32_t nBits = 0;
+                auto numToFetch = sizeof(T);
+                while(numToFetch > 0) {
+                    // FIXME: delegate to 'memory-reader'
+                    auto byte = ram[address];
+                    address++;
+                    // this results in 'hex' dumps easier to read - MSB first (most significant byte first) - Intel?
+                    result = (result << nBits) | T(byte);
+                    nBits = 8;
+                    // this results in LSB - least significant byte first (Motorola?)
+                    // result |= T(byte) << nBits);
+                    // nBits += 8;
+                    numToFetch -= 1;
+                }
                 return result;
             }
+
+
+
             // This one is used alot and should be faster...
             __inline uint8_t FetchByteFromInstrPtr() {
                 return FetchFromInstrPtr<uint8_t>();
