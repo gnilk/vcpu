@@ -30,8 +30,16 @@ emulated CPU...  Good riddance!
 - assembler
     - output elf files
     - make a linker step
+    - Ability to output a proper memory layout
+- VCPU
+    - Properly define the memory layout
+    - ROM/RAM area, Int-Vector table, etc...
+    - Raise exceptions
+        - Within the CPU using the Int-Vector table
+        - To the emulator
+        
 - emulator
-    - accept elf files as executeables
+    - accept elf files as executables
         
 - syscall handling
 - consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
