@@ -5,4 +5,4 @@
     brk
 
 datablock:
-    dc.b    1,2,3,4,5,6,7
+    dc.b    0xff,2,3,4,5,6,7
