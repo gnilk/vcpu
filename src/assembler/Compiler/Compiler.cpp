@@ -72,8 +72,26 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
             return ProcessTwoOpInstrStmt(std::dynamic_pointer_cast<ast::TwoOpInstrStatment>(stmt));
         case ast::NodeType::kIdentifier :
             return ProcessIdentifier(std::dynamic_pointer_cast<ast::Identifier>(stmt));
+        case ast::NodeType::kArrayLiteral :
+            return ProcessArrayLiteral(std::dynamic_pointer_cast<ast::ArrayLiteral>(stmt));
     }
     return false;
+}
+
+bool Compiler::ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt) {
+    auto opSize = stmt->OpSize();
+    auto &array = stmt->Array();
+
+    for(auto &exp : array) {
+        if (exp->Kind() != ast::NodeType::kNumericLiteral) {
+            fmt::println("Only numeric literals support for arrays");
+            return false;
+        }
+        if (!EmitNumericLiteral(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(exp))) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Compiler::ProcessIdentifier(ast::Identifier::Ref identifier) {
@@ -159,7 +177,7 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
     switch(operandExp->Kind()) {
         case ast::NodeType::kNumericLiteral :
             if (desc.features & vcpu::OperandDescriptionFlags::Immediate) {
-                return EmitNumericLiteral(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(operandExp));
+                return EmitNumericLiteralForInstr(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(operandExp));
             }
             fmt::println(stderr, "Instruction Operand does not support immediate");
             break;
@@ -218,7 +236,7 @@ bool Compiler::EmitInstrDst(vcpu::OperandSize opSize, ast::Expression::Ref dst) 
 bool Compiler::EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src) {
     switch(src->Kind()) {
         case ast::NodeType::kNumericLiteral :
-            return EmitNumericLiteral(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(src));
+            return EmitNumericLiteralForInstr(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(src));
         case ast::NodeType::kRegisterLiteral :
             return EmitRegisterLiteral(std::dynamic_pointer_cast<ast::RegisterLiteral>(src));
     }
@@ -244,12 +262,16 @@ bool Compiler::EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral) {
     return true;
 }
 
-bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
+bool Compiler::EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
     uint8_t regMode = 0; // no register
     regMode |= vcpu::AddressMode::Immediate;
 
     // Register|Mode = byte = RRRR | MMMM
     EmitByte(regMode);
+    return EmitNumericLiteral(opSize, numLiteral);
+}
+
+bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
 
     switch(opSize) {
         case vcpu::OperandSize::Byte :

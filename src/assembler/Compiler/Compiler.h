@@ -24,6 +24,8 @@ namespace gnilk {
             bool ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt);
             bool ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt);
             bool ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref stmt);
+            bool ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt);
+
 
             bool ReplaceIdentPlaceholdersWithAddresses();
 
@@ -33,6 +35,8 @@ namespace gnilk {
             bool EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src);
 
             bool EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral);
+            // Special version which will also output the reg|mode byte
+            bool EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitLabelAddress(ast::Identifier::Ref identifier);
             bool EmitDereference(ast::DeReferenceExpression::Ref expression);
