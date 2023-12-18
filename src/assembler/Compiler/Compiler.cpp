@@ -237,6 +237,8 @@ bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral:
 
 bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
     uint8_t regMode = 0; // no register
+
+    // FIXME: Should this be absolute???  - in principle Absolute and Immediate is the same..
     regMode |= vcpu::AddressMode::Absolute;
 
     // Register|Mode = byte = RRRR | MMMM
