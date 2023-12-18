@@ -17,7 +17,7 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
-ast::Program::Ref Parser::ProduceAST(const std::string&srcCode) {
+ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
     auto program = Begin(srcCode);
     while(!Done()) {
         auto stmt = ParseStatement();
@@ -30,7 +30,7 @@ ast::Program::Ref Parser::ProduceAST(const std::string&srcCode) {
     return program;
 }
 
-ast::Program::Ref Parser::Begin(const std::string &srcCode) {
+ast::Program::Ref Parser::Begin(const std::string_view &srcCode) {
     tokens = lexer.Tokenize(srcCode);
     it = tokens.begin();
     return std::make_shared<ast::Program>();

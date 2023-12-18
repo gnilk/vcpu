@@ -18,9 +18,9 @@ namespace gnilk {
             Parser() = default;
             virtual ~Parser() = default;
 
-            ast::Program::Ref ProduceAST(const std::string &srcCode);
+            ast::Program::Ref ProduceAST(const std::string_view &srcCode);
         protected:
-            ast::Program::Ref Begin(const std::string &srcCode);
+            ast::Program::Ref Begin(const std::string_view &srcCode);
 
 
             __inline bool Done() {
