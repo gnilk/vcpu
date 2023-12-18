@@ -121,6 +121,10 @@ namespace gnilk {
                 return opSize;
             }
 
+            std::vector<Expression::Ref> &Array() {
+                return array;
+            }
+
             void Dump() override {
                 WriteLine("ArrayLiteral");
                 Indent();
