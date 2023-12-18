@@ -91,6 +91,12 @@ static void DumpRegs(const VirtualCPU &cpu) {
             fmt::println("");
         }
     }
+    for(int i=0;i<8;i++) {
+        fmt::print("a{}=0x{:02x}  ",i,regs.dataRegisters[i+8].data.byte);
+        if ((i & 7) == 7) {
+            fmt::println("");
+        }
+    }
 }
 
 static uint8_t cpu_ram_memory[1024*512];    // 512kb of RAM for my CPU...
@@ -99,14 +105,26 @@ bool ExecuteData(const uint8_t *rawData, size_t szData) {
     VirtualCPU vcpu;
     vcpu.Begin(cpu_ram_memory, 1024);
     fmt::println("------->> Begin Execution <<--------------");
+    // Save ip before we step...
+    RegisterValue ip = vcpu.GetInstrPtr();
     while(vcpu.Step()) {
+        // generate op-codes for this instruction...
+        std::string strOpCodes = "";
+        for(auto ofs = ip.data.longword; ofs < vcpu.GetInstrPtr().data.longword;ofs++) {
+            strOpCodes += fmt::format("0x{:02x}, ",cpu_ram_memory[ofs]);
+        }
+        // Retrieve the last decoded instruction and transform to string
+        auto lastInstr = vcpu.GetLastDecodedInstr();
+        auto str = lastInstr->ToString();
+
+        // now output address (16 bit), instruction and opcodes
+        fmt::println("0x{:04x}\t\t{}\t\t; {}", ip.data.word,str, strOpCodes);
+        // Dump stats and register changes caused by this operation
         DumpStatus(vcpu);
         DumpRegs(vcpu);
 
-        // do something...
-        auto lastInstr = vcpu.GetLastDecodedInstr();
-        auto str = lastInstr->ToString();
-        fmt::println("{}", str);
+        // save current ip (this is for op-code)
+        ip = vcpu.GetInstrPtr();
         fmt::println("");
     }
     fmt::println("------->> Execution Complete <<--------------");
