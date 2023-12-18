@@ -6,6 +6,7 @@
 #define PARSER_H
 
 #include <string>
+#include <utility>
 #include "Lexer/TextLexer.h"
 #include "ast/ast.h"
 
@@ -38,6 +39,7 @@ namespace gnilk {
             const Token &Expect(TokenType token, const std::string &errmsg);
 
             ast::Statement::Ref ParseStatement();
+            ast::Statement::Ref ParseDeclaration();
             ast::Statement::Ref ParseIdentifierOrInstr();
             ast::Statement::Ref ParseInstruction();
             ast::Statement::Ref ParseOneOpInstruction(const std::string &symbol);
@@ -46,7 +48,8 @@ namespace gnilk {
             ast::Expression::Ref ParseExpression();
             ast::Expression::Ref ParsePrimaryExpression();
 
-
+        std::pair<bool, vcpu::OperandSize> ParseOpSize();
+            //std::optional<vcpu::OperandSize> ParseOpSize();
 
         private:
             Lexer lexer;

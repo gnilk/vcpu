@@ -40,10 +40,52 @@ ast::Statement::Ref Parser::ParseStatement() {
     switch(At().type) {
         case TokenType::Identifier :
             return ParseIdentifierOrInstr();
-        case TokenType::Instruction :
-            return ParseInstruction();
+        case TokenType::Declaration :
+            return ParseDeclaration();
     }
     return nullptr;
+}
+
+std::pair<bool, vcpu::OperandSize> Parser::ParseOpSize() {
+    if (At().type != TokenType::OpSize) {
+        return {false,{}};
+    }
+    auto opSize = Eat();
+    static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
+        {".b", gnilk::vcpu::OperandSize::Byte},
+        {".w", gnilk::vcpu::OperandSize::Word},
+        {".d", gnilk::vcpu::OperandSize::DWord},
+        {".l", gnilk::vcpu::OperandSize::Long},
+    };
+
+    if (!strToOpSize.contains(opSize.value)) {
+        fmt::println(stderr, "Unsupported operand size {}", opSize.value);
+        return {false,{}};
+    }
+
+    return {true, strToOpSize[opSize.value]};
+}
+
+
+ast::Statement::Ref Parser::ParseDeclaration() {
+    Eat();
+    auto [haveOpSize, opSize] = ParseOpSize();
+    auto array = ast::ArrayLiteral::Create(opSize);
+
+    do {
+        auto exp = ParseExpression();
+        if (exp->Kind() != ast::NodeType::kNumericLiteral) {
+            fmt::println(stderr, "Only numeric literals allowed in array declaration");
+            return nullptr;
+        }
+        array->PushToArray(exp);
+        if (At().type != TokenType::Comma) {
+            break;
+        }
+        Eat();
+    } while(true);
+
+    return array;
 }
 
 ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
@@ -80,7 +122,6 @@ ast::Statement::Ref Parser::ParseInstruction() {
         return ParseOneOpInstruction(operand);
     }
 
-
     Eat();      // Consume operand token!
 
     // We have a single instr. statement..
@@ -91,22 +132,11 @@ ast::Statement::Ref Parser::ParseOneOpInstruction(const std::string &symbol) {
     auto instrStatment = std::make_shared<ast::OneOpInstrStatment>(symbol);
 
     Eat();
-    if (At().type == TokenType::OpSize) {
-        auto opSize = Eat();
-        static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
-            {".b", gnilk::vcpu::OperandSize::Byte},
-            {".w", gnilk::vcpu::OperandSize::Word},
-            {".d", gnilk::vcpu::OperandSize::DWord},
-            {".l", gnilk::vcpu::OperandSize::Long},
-        };
-        if (!strToOpSize.contains(opSize.value)) {
-            fmt::println(stderr, "Unsupported operand size {}", opSize.value);
-            return nullptr;
-        }
-        instrStatment->SetOpSize(strToOpSize[opSize.value]);
+    auto [haveOpSize, opSize] = ParseOpSize();
+
+    if (haveOpSize) {
+        instrStatment->SetOpSize(opSize);
     }
-    // Swap out below for:
-    // dst = ParseExpression();
 
     auto operand = ParseExpression();
     instrStatment->SetOperand(operand);
@@ -119,22 +149,12 @@ ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &symbol) {
     auto instrStatment = std::make_shared<ast::TwoOpInstrStatment>(symbol);
 
     Eat();
-    if (At().type == TokenType::OpSize) {
-        auto opSize = Eat();
-        static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
-            {".b", gnilk::vcpu::OperandSize::Byte},
-            {".w", gnilk::vcpu::OperandSize::Word},
-            {".d", gnilk::vcpu::OperandSize::DWord},
-            {".l", gnilk::vcpu::OperandSize::Long},
-        };
-        if (!strToOpSize.contains(opSize.value)) {
-            fmt::println(stderr, "Unsupported operand size {}", opSize.value);
-            return nullptr;
-        }
-        instrStatment->SetOpSize(strToOpSize[opSize.value]);
+
+    auto [haveOpSize, opSize] = ParseOpSize();
+
+    if (haveOpSize) {
+        instrStatment->SetOpSize(opSize);
     }
-    // Swap out below for:
-    // dst = ParseExpression();
 
     auto dst = ParseExpression();
     if (dst->Kind() != ast::NodeType::kRegisterLiteral) {
