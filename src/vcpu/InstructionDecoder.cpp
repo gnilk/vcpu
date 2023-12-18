@@ -152,6 +152,14 @@ std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint8_t regI
                 opString += fmt::format("{:#x}",value.data.longword);
                 break;
         }
+    } else if (addrMode == AddressMode::Absolute) {
+        opString += fmt::format("{:#x}", value.data.longword);
+    } else if (addrMode == AddressMode::Indirect) {
+        if (regIndex > 7) {
+            opString += fmt::format("(a{})", regIndex-8);
+        } else {
+            opString += fmt::format("(d{})", regIndex);
+        }
     }
     return opString;
 }
