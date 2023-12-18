@@ -48,16 +48,8 @@ using namespace gnilk;
 
 const Context &gnilk::GetLexerContext() {
     static std::unordered_map<std::string, TokenType> keywords = {
-        // Instructions
-        {"move", TokenType::Instruction},
-        {"add", TokenType::Instruction},
-        {"sub", TokenType::Instruction},
-        {"mul", TokenType::Instruction},
-        {"div", TokenType::Instruction},
-        {"call", TokenType::Instruction},
-        {"ret",TokenType::Instruction},
-        {"nop",TokenType::Instruction},
-        {"brk",TokenType::Instruction},
+
+        {"dc", TokenType::Declaration},
         {"null", TokenType::Null},
         // Data Registers
         {"d0", TokenType::DataReg},
@@ -77,8 +69,7 @@ const Context &gnilk::GetLexerContext() {
         {"a5", TokenType::AddressReg},
         {"a6", TokenType::AddressReg},
         {"a7", TokenType::AddressReg},
-
-};
+    };
 
     static std::unordered_map<std::string, TokenType> operators = {
         // Size operators
