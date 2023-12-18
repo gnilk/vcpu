@@ -26,7 +26,14 @@ emulated CPU...  Good riddance!
 + disassembling (i.e. reconstructing an instruction from op-codes)     
 - bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
+- assembler
+    - output elf files
+    - make a linker step
+- emulator
+    - accept elf files as executeables
+        
 - syscall handling
+- consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
 - write an OS
 + have fun...       <- don't forget...
 ```
@@ -44,8 +51,8 @@ make -j
 Will give you a few libraries and executables..
 Nothing except the unit-tests will work right now...
 
-
 # External sources
 * libfmt - part of source tree.
 * testrunner - https://github.com/gnilk/testrunner - for unit testing
+* elfio - https://github.com/serge1/ELFIO
 
