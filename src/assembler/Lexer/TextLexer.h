@@ -144,7 +144,7 @@ namespace gnilk {
         Lexer() = default;
         virtual ~Lexer() = default;
 
-        std::vector<Token> Tokenize(const std::string &text);
+        std::vector<Token> Tokenize(const std::string_view &text);
         bool Tokenize(std::vector<Token> &outTokens, Context &context, const std::string_view &text);
 
         bool IsInt(int chr);

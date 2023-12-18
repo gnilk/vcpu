@@ -178,7 +178,7 @@ const Context &gnilk::GetLexerContext() {
     return context;
 } // 'GetCppContext
 
-std::vector<Token> Lexer::Tokenize(const std::string &text) {
+std::vector<Token> Lexer::Tokenize(const std::string_view &text) {
     auto context = GetLexerContext();
     std::vector<Token> outTokens;
     if (!Tokenize(outTokens, context, text)) {
