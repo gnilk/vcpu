@@ -35,6 +35,7 @@ namespace gnilk {
             kBreakStatement,
             kAssignmentStatement,
             kCallStatement,
+            kCommentStatement,
 
             kProperty,
             kObjectLiteral,
@@ -139,6 +140,31 @@ namespace gnilk {
             }
         protected:
             std::vector<Statement::Ref> body;
+        };
+
+        class LineComment : public Statement {
+        public:
+            using Ref = std::shared_ptr<LineComment>;
+        public:
+            LineComment() : Statement(NodeType::kCommentStatement) {
+
+            }
+            LineComment(const std::string &ctext) : Statement(NodeType::kCommentStatement), text(ctext) {
+
+            }
+            virtual ~LineComment() = default;
+
+            const std::string &Text() {
+                return text;
+            }
+            void Dump() override {
+                WriteLine("LineComment");
+                Indent();
+                WriteLine("Text: {}", text);
+                Unindent();
+            }
+        protected:
+            std::string text;
         };
 
 
