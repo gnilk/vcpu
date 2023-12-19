@@ -17,6 +17,11 @@ int main(int argc, const char **argv) {
     std::vector<std::string> filesToAssemble;
     for(int i=1;i<argc;i++) {
         if (argv[i][0] == '-') {
+            switch(argv[i][1]) {
+                case 'o' :
+                    outFilename = argv[++i];
+                    break;
+            }
             // parse
         } else {
             filesToAssemble.push_back(argv[i]);
@@ -43,7 +48,7 @@ int main(int argc, const char **argv) {
         if (!ProcessFile(outFilename, pathToFile)) {
             fmt::println("{} - failed", fToAsm);
         } else {
-            fmt::println("{} - OK", fToAsm);
+            fmt::println("Ok, {} -> {}", fToAsm, outFilename);
         }
     }
 
@@ -101,6 +106,7 @@ bool SaveCompiledData(const std::string &outFilename, const std::vector<uint8_t>
     }
     fwrite(data.data(), 1, data.size(), fOut);
     fclose(fOut);
+
     return true;
 }
 
