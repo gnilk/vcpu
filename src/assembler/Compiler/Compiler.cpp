@@ -5,6 +5,8 @@
 #include "Compiler.h"
 #include "InstructionSet.h"
 
+#include "fmt/format.h"
+
 #include <memory>
 #include <unordered_map>
 
@@ -33,23 +35,12 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 }
 
 //
-// This replaces identifier placesholders for instructions with their real address
-// When an instruction has a reference to an identifier the compiler inserts an absolute placeholder address and
-// records the identifier and location of the placeholder, in the 'addressPlaceholders' array...
-//
-// Same sense, when the compiler encounters an identifier, the address is stored for that identifier ('identifierAddresses')
-//
-// After the file has been compiled - all place-holder addresses are replaced with the proper address of the identifier
-//
-
-//
 // This is a simple single-unit self-linking thingie - produces something like a a.out file...
 // We should split this to it's own structure
 //
 bool Compiler::Link() {
-    // Make sure we are in the code segment
 
-
+    // Merge segments (.text and .data) to hidden 'link_out' segment...
     unit.MergeSegments("link_out", ".text");
     size_t ofsDataSegStart = unit.GetSegmentSize("link_out");
 
@@ -63,6 +54,12 @@ bool Compiler::Link() {
     // This is our target now...
     unit.SetActiveSegment("link_out");
 
+    auto baseAddress = unit.GetBaseAddress();
+
+    //
+    // Link code to stuff
+    //
+
     fmt::println("Linking");
     for(auto &placeHolder : addressPlaceholders) {
         if (!identifierAddresses.contains(placeHolder.ident)) {
@@ -72,9 +69,9 @@ bool Compiler::Link() {
         // This address is in a specific segment, we need to store that as well for the placeholder
         auto identifierAddr = identifierAddresses[placeHolder.ident];
 
-        fmt::println("  {}@{:#x} = {}@{:#x}",placeHolder.ident, placeHolder.address, identifierAddr.segment,identifierAddr.address + ofsDataSegStart);
+        fmt::println("  {}@{:#x} = {}@{:#x}",placeHolder.ident, placeHolder.address - baseAddress, identifierAddr.segment,identifierAddr.address + ofsDataSegStart);
 
-        unit.ReplaceAt(placeHolder.address, identifierAddr.address + ofsDataSegStart);
+        unit.ReplaceAt(placeHolder.address - baseAddress, identifierAddr.address + ofsDataSegStart);
     }
     return true;
 }
@@ -448,6 +445,10 @@ void CompiledUnit::SetBaseAddress(uint64_t address) {
     baseAddress = address;
 }
 
+uint64_t CompiledUnit::GetBaseAddress() {
+    return baseAddress;
+}
+
 
 bool CompiledUnit::WriteByte(uint8_t byte) {
     if (!activeSegment) {
@@ -468,7 +469,7 @@ uint64_t CompiledUnit::GetCurrentWritePtr() {
     if (!activeSegment) {
         return false;
     }
-    return activeSegment->GetCurrentWritePtr();
+    return activeSegment->GetCurrentWritePtr() + baseAddress;
 }
 
 const std::vector<uint8_t> &CompiledUnit::Data() {

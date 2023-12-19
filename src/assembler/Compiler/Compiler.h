@@ -23,6 +23,7 @@ namespace gnilk {
             bool WriteByte(uint8_t byte);
             void ReplaceAt(uint64_t offset, uint64_t newValue);
             void SetBaseAddress(uint64_t address);
+            uint64_t GetBaseAddress();
             uint64_t GetCurrentWritePtr();
 
             const std::vector<uint8_t> &Data();
