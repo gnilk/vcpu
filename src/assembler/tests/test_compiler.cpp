@@ -58,7 +58,7 @@ DLL_EXPORT int test_compiler_file(ITesting *t) {
     auto ast = parser.ProduceAST(strData);
     TR_ASSERT(t, ast != nullptr);
 
-    TR_ASSERT(t, compiler.GenerateCode(ast));
+    TR_ASSERT(t, compiler.CompileAndLink(ast));
 
     return kTR_Pass;
 }
@@ -70,7 +70,7 @@ DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
     // move.b d0, 0x45
     static std::vector<uint8_t> expectedCase1 = {0x20,0x00,0x03,0x01, 0x45};
     auto prg = parser.ProduceAST("move.b d0,0x45");
-    auto res = compiler.GenerateCode(prg);
+    auto res = compiler.CompileAndLink(prg);
     TR_ASSERT(t, res);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedCase1);
@@ -78,14 +78,14 @@ DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
     // move.w d0, 0x4433
     static std::vector<uint8_t> expectedCase2 = {0x20,0x01,0x03,0x01, 0x44,0x33};
     prg = parser.ProduceAST("move.w d0, 0x4433");
-    TR_ASSERT(t, compiler.GenerateCode(prg));
+    TR_ASSERT(t, compiler.CompileAndLink(prg));
     binary = compiler.Data();
     TR_ASSERT(t, binary == expectedCase2);
 
     // move.d d0, 0x44332211
     static std::vector<uint8_t> expectedCase3 = {0x20,0x02,0x03,0x01, 0x44,0x33,0x22,0x11};
     prg = parser.ProduceAST("move.d d0, 0x44332211");
-    TR_ASSERT(t, compiler.GenerateCode(prg));
+    TR_ASSERT(t, compiler.CompileAndLink(prg));
     binary = compiler.Data();
     TR_ASSERT(t, binary == expectedCase3);
 
@@ -96,7 +96,7 @@ DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
     // move.b d2, 0x44
     static std::vector<uint8_t> expectedCase4 = {0x20,0x00,0x23,0x01, 0x44};
     prg = parser.ProduceAST("move.b d2, 0x44");
-    TR_ASSERT(t, compiler.GenerateCode(prg));
+    TR_ASSERT(t, compiler.CompileAndLink(prg));
     binary = compiler.Data();
     TR_ASSERT(t, binary == expectedCase4);
 
@@ -121,7 +121,7 @@ DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t) {
     for(int i=0;i<code.size();i++) {
         auto ast = parser.ProduceAST(code[i]);
         TR_ASSERT(t, ast != nullptr);
-        TR_ASSERT(t, compiler.GenerateCode(ast));
+        TR_ASSERT(t, compiler.CompileAndLink(ast));
         auto binary = compiler.Data();
         TR_ASSERT(t, binary == binaries[i]);
     }
@@ -145,7 +145,7 @@ DLL_EXPORT int test_compiler_add_immediate(ITesting *t) {
     for(int i=0;i<code.size();i++) {
         auto ast = parser.ProduceAST(code[i]);
         TR_ASSERT(t, ast != nullptr);
-        TR_ASSERT(t, compiler.GenerateCode(ast));
+        TR_ASSERT(t, compiler.CompileAndLink(ast));
         auto binary = compiler.Data();
         TR_ASSERT(t, binary == binaries[i]);
     }
@@ -168,7 +168,7 @@ DLL_EXPORT int test_compiler_nop(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(code[0]);
     TR_ASSERT(t, ast != nullptr);
-    TR_ASSERT(t, compiler.GenerateCode(ast));
+    TR_ASSERT(t, compiler.CompileAndLink(ast));
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -199,7 +199,7 @@ DLL_EXPORT int test_compiler_push(ITesting *t) {
     for(size_t i=0;i<codes.size();i++) {
         auto ast = parser.ProduceAST(codes[i]);
         TR_ASSERT(t, ast != nullptr);
-        TR_ASSERT(t, compiler.GenerateCode(ast));
+        TR_ASSERT(t, compiler.CompileAndLink(ast));
         auto binary = compiler.Data();
         if (binary != expectedBinaries[i]) {
             printf("Failed %zu (%s)\n", i, codes[i].c_str());
@@ -232,7 +232,7 @@ DLL_EXPORT int test_compiler_pop(ITesting *t) {
     for(size_t i=0;i<codes.size();i++) {
         auto ast = parser.ProduceAST(codes[i]);
         TR_ASSERT(t, ast != nullptr);
-        TR_ASSERT(t, compiler.GenerateCode(ast));
+        TR_ASSERT(t, compiler.CompileAndLink(ast));
         auto binary = compiler.Data();
         if (binary != expectedBinaries[i]) {
             printf("Failed %zu (%s)\n", i, codes[i].c_str());
@@ -267,7 +267,7 @@ DLL_EXPORT int test_compiler_callrelative(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(codes[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.GenerateCode(ast);
+    auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -300,7 +300,7 @@ DLL_EXPORT int test_compiler_calllabel(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(codes[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.GenerateCode(ast);
+    auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -333,7 +333,7 @@ DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(codes[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.GenerateCode(ast);
+    auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -367,7 +367,7 @@ DLL_EXPORT int test_compiler_move_indirect(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(codes[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.GenerateCode(ast);
+    auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -387,7 +387,7 @@ DLL_EXPORT int test_compiler_array_bytedecl(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(code[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.GenerateCode(ast);
+    auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -406,7 +406,7 @@ DLL_EXPORT int test_compiler_array_worddecl(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(code[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.GenerateCode(ast);
+    auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -425,7 +425,7 @@ DLL_EXPORT int test_compiler_var_bytedecl(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(code[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.GenerateCode(ast);
+    auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
