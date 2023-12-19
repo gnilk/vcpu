@@ -214,28 +214,6 @@ namespace gnilk {
                 T value = FetchFromRam<T>(address);
                 registers.instrPointer.data.longword = address;
                 return value;
-/*
-                if (address > szRam) {
-                    fmt::println(stderr, "Invalid address {}", address);
-                    exit(1);
-                }
-                T result = {};
-                uint32_t nBits = 0;
-                auto numToFetch = sizeof(T);
-                while(numToFetch > 0) {
-                    auto byte = ram[address];
-                    address++;
-                    // this results in 'hex' dumps easier to read - MSB first (most significant byte first) - Intel?
-                    result = (result << nBits) | T(byte);
-                    nBits = 8;
-                    // this results in LSB - least significant byte first (Motorola?)
-                    // result |= T(byte) << nBits);
-                    // nBits += 8;
-                    numToFetch -= 1;
-                }
-                registers.instrPointer.data.longword = address;
-                return result;
-*/
             }
 
             template<typename T>
