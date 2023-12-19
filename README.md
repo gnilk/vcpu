@@ -31,6 +31,8 @@ Support for the following directives:
     - incbin, for binary inclusion; incbin "assets/somebinary.bin"
     - section <code/text/data/bss>  -> long form of '.code','.data', etc.. -> asmone
 
+! syscall, through sys instruction
+- Separate linker step in compiler (refactor it away from the compiler)
 - compare instructions
 - branching
 + disassembling (i.e. reconstructing an instruction from op-codes)     
@@ -50,7 +52,6 @@ Support for the following directives:
 - emulator
     - accept elf files as executables
         
-- syscall handling
 - consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
 - write an OS
 + have fun...       <- don't forget...
