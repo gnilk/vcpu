@@ -13,20 +13,23 @@ using namespace gnilk::assembler;
 
 
 
-bool Compiler::GenerateCode(ast::Program::Ref program) {
-    outStream.clear();
+bool Compiler::CompileAndLink(ast::Program::Ref program) {
+    if (!Compile(program)) {
+        return false;
+    }
+    return Link();
+}
+bool Compiler::Compile(gnilk::ast::Program::Ref program) {
+    unit.Clear();
+    // TEMP!
+    unit.GetOrAddSegment(".text", 0);
+
     for(auto &statement : program->Body()) {
         if (!ProcessStmt(statement)) {
             return false;
         }
     }
-    // Do we have placeholds??
-    if ((!addressPlaceholders.empty()) && (outStream.size() < sizeof(uint64_t))) {
-        fmt::println(stderr,"Invalid compiled size, can't possible hold address to anything");
-        return false;
-    }
-
-    return ReplaceIdentPlaceholdersWithAddresses();
+    return true;
 }
 
 //
@@ -38,7 +41,16 @@ bool Compiler::GenerateCode(ast::Program::Ref program) {
 //
 // After the file has been compiled - all place-holder addresses are replaced with the proper address of the identifier
 //
-bool Compiler::ReplaceIdentPlaceholdersWithAddresses() {
+bool Compiler::Link() {
+    // // Do we have placeholds??
+    // if ((!addressPlaceholders.empty()) && (outStream.size() < sizeof(uint64_t))) {
+    //     fmt::println(stderr,"Invalid compiled size, can't possible hold address to anything");
+    //     return false;
+    // }
+
+    // Make sure we are in the code segment
+    unit.SetActiveSegment(".text");
+
     for(auto &placeHolder : addressPlaceholders) {
         if (!identifierAddresses.contains(placeHolder.ident)) {
             fmt::println(stderr, "Unknown identifier: {}", placeHolder.ident);
@@ -46,22 +58,15 @@ bool Compiler::ReplaceIdentPlaceholdersWithAddresses() {
         }
         const uint64_t addr = identifierAddresses[placeHolder.ident];
         uint64_t ofs = placeHolder.address;
-        if (ofs > (outStream.size() - 8)) {
-            fmt::println("Binary size invalid - offset would overflow end binary code!");
-            return false;
-        }
-        outStream[ofs++] = (addr>>56 & 0xff);
-        outStream[ofs++] = (addr>>48 & 0xff);
-        outStream[ofs++] = (addr>>40 & 0xff);
-        outStream[ofs++] = (addr>>32 & 0xff);
-        outStream[ofs++] = (addr>>24 & 0xff);
-        outStream[ofs++] = (addr>>16 & 0xff);
-        outStream[ofs++] = (addr>>8 & 0xff);
-        outStream[ofs++] = (addr & 0xff);
+
+        unit.ReplaceAt(ofs, addr);
     }
     return true;
 }
 
+//
+// AST processing starts here...
+//
 bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
     switch(stmt->Kind()) {
         case ast::NodeType::kNoOpInstrStatement :
@@ -96,8 +101,7 @@ bool Compiler::ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt) {
 
 bool Compiler::ProcessIdentifier(ast::Identifier::Ref identifier) {
 
-    // FIXME: This is no good...
-    uint64_t ipNow = static_cast<uint64_t>(outStream.size());
+    uint64_t ipNow = unit.GetCurrentWritePtr();
 
     if (identifierAddresses.contains(identifier->Symbol())) {
         fmt::println(stderr,"Identifier {} already in use - can't use duplicate identifiers!", identifier->Symbol());
@@ -302,7 +306,7 @@ bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
     EmitByte(regMode);
 
     IdentifierAddressPlaceholder addressPlaceholder;
-    addressPlaceholder.address = static_cast<uint64_t>(outStream.size());
+    addressPlaceholder.address = static_cast<uint64_t>(unit.GetCurrentWritePtr());
     addressPlaceholder.ident = identifier->Symbol();
     addressPlaceholders.push_back(addressPlaceholder);
 
@@ -320,30 +324,82 @@ bool Compiler::EmitOpCodeForSymbol(const std::string &symbol) {
 }
 
 bool Compiler::EmitByte(uint8_t byte) {
-    outStream.push_back(byte);
+    unit.WriteByte(byte);
     return true;
 }
 
 bool Compiler::EmitWord(uint16_t word) {
-    outStream.push_back((word >> 8) & 0xff);
-    outStream.push_back(word & 0xff);
+    unit.WriteByte((word >> 8) & 0xff);
+    unit.WriteByte(word & 0xff);
     return true;
 }
 bool Compiler::EmitDWord(uint32_t dword) {
-    outStream.push_back((dword >> 24) & 0xff);
-    outStream.push_back((dword >> 16) & 0xff);
-    outStream.push_back((dword >> 8) & 0xff);
-    outStream.push_back(dword & 0xff);
+    unit.WriteByte((dword >> 24) & 0xff);
+    unit.WriteByte((dword >> 16) & 0xff);
+    unit.WriteByte((dword >> 8) & 0xff);
+    unit.WriteByte(dword & 0xff);
     return true;
 }
 bool Compiler::EmitLWord(uint64_t lword) {
-    outStream.push_back((lword >> 56) & 0xff);
-    outStream.push_back((lword >> 48) & 0xff);
-    outStream.push_back((lword >> 40) & 0xff);
-    outStream.push_back((lword >> 32) & 0xff);
-    outStream.push_back((lword >> 24) & 0xff);
-    outStream.push_back((lword >> 16) & 0xff);
-    outStream.push_back((lword >> 8) & 0xff);
-    outStream.push_back(lword & 0xff);
+    unit.WriteByte((lword >> 56) & 0xff);
+    unit.WriteByte((lword >> 48) & 0xff);
+    unit.WriteByte((lword >> 40) & 0xff);
+    unit.WriteByte((lword >> 32) & 0xff);
+    unit.WriteByte((lword >> 24) & 0xff);
+    unit.WriteByte((lword >> 16) & 0xff);
+    unit.WriteByte((lword >> 8) & 0xff);
+    unit.WriteByte(lword & 0xff);
     return true;
+}
+
+
+// Compiled Unit
+void CompiledUnit::Clear() {
+    segments.clear();
+}
+
+bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
+    if (!segments.contains(name)) {
+        auto segment = std::make_shared<Segment>(name, address);
+        segments[name] = segment;
+    }
+    activeSegment = segments.at(name);
+    return true;
+}
+bool CompiledUnit::SetActiveSegment(const std::string &name) {
+    if (!segments.contains(name)) {
+        return false;
+    }
+    activeSegment = segments.at(name);
+    return true;
+}
+
+bool CompiledUnit::WriteByte(uint8_t byte) {
+    if (!activeSegment) {
+        return false;
+    }
+    activeSegment->WriteByte(byte);
+    return true;
+}
+void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue) {
+    if (!activeSegment) {
+        return;
+    }
+    activeSegment->ReplaceAt(offset, newValue);
+}
+
+
+uint64_t CompiledUnit::GetCurrentWritePtr() {
+    if (!activeSegment) {
+        return false;
+    }
+    return activeSegment->GetCurrentWritePtr();
+}
+
+const std::vector<uint8_t> &CompiledUnit::Data() {
+    if (!GetOrAddSegment(".text", 0x00)) {
+        static std::vector<uint8_t> empty = {};
+        return empty;
+    }
+    return activeSegment->Data();
 }
