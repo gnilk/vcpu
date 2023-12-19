@@ -17,13 +17,19 @@ namespace gnilk {
             void Clear();
             bool GetOrAddSegment(const std::string &name, uint64_t address);
             bool SetActiveSegment(const std::string &name);
+            const std::string &GetActiveSegment();
+            bool MergeSegments(const std::string &dst, const std::string &src);
+            size_t GetSegmentSize(const std::string &name);
             bool WriteByte(uint8_t byte);
             void ReplaceAt(uint64_t offset, uint64_t newValue);
+            void SetBaseAddress(uint64_t address);
             uint64_t GetCurrentWritePtr();
 
             const std::vector<uint8_t> &Data();
         protected:
+            // Consider exposing the segments!!   it becomes tideous to access them through the unit...
             class Segment {
+                friend CompiledUnit;
             public:
                 using Ref = std::shared_ptr<Segment>;
             public:
@@ -32,6 +38,9 @@ namespace gnilk {
 
                 const std::vector<uint8_t> &Data() const {
                     return data;
+                }
+                size_t Size() const {
+                    return data.size();
                 }
                 uint64_t LoadAddress() const {
                     return loadAddress;
@@ -69,6 +78,7 @@ namespace gnilk {
                 uint64_t loadAddress = 0;
                 std::vector<uint8_t> data;
             };
+            uint64_t baseAddress = 0x0;
             std::unordered_map<std::string, Segment::Ref> segments;
             Segment::Ref activeSegment = nullptr;
         };
@@ -95,6 +105,7 @@ namespace gnilk {
             bool ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt);
             bool ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref stmt);
             bool ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt);
+            bool ProcessMetaStatement(ast::MetaStatement::Ref stmt);
 
 
 
@@ -123,10 +134,18 @@ namespace gnilk {
 
             struct IdentifierAddressPlaceholder {
                 std::string ident;
+                std::string segment;
+                uint64_t address;
+            };
+            struct IdentifierAddress {
+                std::string segment;
                 uint64_t address;
             };
             std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
-            std::unordered_map<std::string, uint64_t> identifierAddresses;
+            std::unordered_map<std::string, IdentifierAddress> identifierAddresses;
+
+
+            std::vector<uint8_t> linkdata;
         };
     }
 }

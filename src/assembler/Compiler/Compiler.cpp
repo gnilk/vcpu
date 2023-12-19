@@ -41,25 +41,40 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 //
 // After the file has been compiled - all place-holder addresses are replaced with the proper address of the identifier
 //
+
+//
+// This is a simple single-unit self-linking thingie - produces something like a a.out file...
+// We should split this to it's own structure
+//
 bool Compiler::Link() {
-    // // Do we have placeholds??
-    // if ((!addressPlaceholders.empty()) && (outStream.size() < sizeof(uint64_t))) {
-    //     fmt::println(stderr,"Invalid compiled size, can't possible hold address to anything");
-    //     return false;
-    // }
-
     // Make sure we are in the code segment
-    unit.SetActiveSegment(".text");
 
+
+    unit.MergeSegments("link_out", ".text");
+    size_t ofsDataSegStart = unit.GetSegmentSize("link_out");
+
+    // This will just fail if '.data' doesnt' exists..
+    if (!unit.MergeSegments("link_out", ".data")) {
+        fmt::println("No data segment, merging directly into '.text'");
+        // No data segment, well - we reset this one in that case...
+        ofsDataSegStart = 0;
+    }
+
+    // This is our target now...
+    unit.SetActiveSegment("link_out");
+
+    fmt::println("Linking");
     for(auto &placeHolder : addressPlaceholders) {
         if (!identifierAddresses.contains(placeHolder.ident)) {
             fmt::println(stderr, "Unknown identifier: {}", placeHolder.ident);
             return false;
         }
-        const uint64_t addr = identifierAddresses[placeHolder.ident];
-        uint64_t ofs = placeHolder.address;
+        // This address is in a specific segment, we need to store that as well for the placeholder
+        auto identifierAddr = identifierAddresses[placeHolder.ident];
 
-        unit.ReplaceAt(ofs, addr);
+        fmt::println("  {}@{:#x} = {}@{:#x}",placeHolder.ident, placeHolder.address, identifierAddr.segment,identifierAddr.address + ofsDataSegStart);
+
+        unit.ReplaceAt(placeHolder.address, identifierAddr.address + ofsDataSegStart);
     }
     return true;
 }
@@ -79,10 +94,46 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
             return ProcessIdentifier(std::dynamic_pointer_cast<ast::Identifier>(stmt));
         case ast::NodeType::kArrayLiteral :
             return ProcessArrayLiteral(std::dynamic_pointer_cast<ast::ArrayLiteral>(stmt));
+        case ast::NodeType::kMetaStatement :
+            return ProcessMetaStatement(std::dynamic_pointer_cast<ast::MetaStatement>(stmt));
+        case ast::NodeType::kCommentStatement :
+            return true;
     }
     return false;
 }
+bool Compiler::ProcessMetaStatement(ast::MetaStatement::Ref stmt) {
+    if (stmt->Symbol() == "org") {
+        auto arg = stmt->Argument();
+        if (arg == nullptr) {
+            fmt::println(stderr, ".org directive requires expression");
+            return false;
+        }
+        if (arg->Kind() != ast::NodeType::kNumericLiteral) {
+            fmt::println(stderr, ".org expects numeric expression");
+            return false;
+        }
+        auto numArg = std::dynamic_pointer_cast<ast::NumericLiteral>(arg);
+        unit.SetBaseAddress(numArg->Value());
+        return true;
+    }
 
+    // FIXME: Addresses...
+
+    if ((stmt->Symbol() == "text") || (stmt->Symbol() == "code")) {
+        unit.GetOrAddSegment(".text",0);
+        return true;
+    }
+    if (stmt->Symbol() == "data") {
+        unit.GetOrAddSegment(".data",0);
+        return true;
+    }
+    if (stmt->Symbol() == "bss") {
+        unit.GetOrAddSegment(".bss",0);
+        return true;
+    }
+
+    return true;
+}
 bool Compiler::ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt) {
     auto opSize = stmt->OpSize();
     auto &array = stmt->Array();
@@ -107,7 +158,8 @@ bool Compiler::ProcessIdentifier(ast::Identifier::Ref identifier) {
         fmt::println(stderr,"Identifier {} already in use - can't use duplicate identifiers!", identifier->Symbol());
         return false;
     }
-    identifierAddresses[identifier->Symbol()] = ipNow;
+    IdentifierAddress idAddress = {.segment = unit.GetActiveSegment(), .address = ipNow};
+    identifierAddresses[identifier->Symbol()] = idAddress;
     return true;
 }
 
@@ -306,6 +358,7 @@ bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
     EmitByte(regMode);
 
     IdentifierAddressPlaceholder addressPlaceholder;
+    addressPlaceholder.segment = unit.GetActiveSegment();
     addressPlaceholder.address = static_cast<uint64_t>(unit.GetCurrentWritePtr());
     addressPlaceholder.ident = identifier->Symbol();
     addressPlaceholders.push_back(addressPlaceholder);
@@ -366,6 +419,7 @@ bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
     activeSegment = segments.at(name);
     return true;
 }
+
 bool CompiledUnit::SetActiveSegment(const std::string &name) {
     if (!segments.contains(name)) {
         return false;
@@ -373,6 +427,27 @@ bool CompiledUnit::SetActiveSegment(const std::string &name) {
     activeSegment = segments.at(name);
     return true;
 }
+
+const std::string &CompiledUnit::GetActiveSegment() {
+    if (!activeSegment) {
+        static std::string invalidSeg = {};
+        return invalidSeg;
+    }
+    return activeSegment->Name();
+}
+
+size_t CompiledUnit::GetSegmentSize(const std::string &name) {
+    if (!segments.contains(name)) {
+        return 0;
+    }
+    return segments.at(name)->Size();
+}
+
+
+void CompiledUnit::SetBaseAddress(uint64_t address) {
+    baseAddress = address;
+}
+
 
 bool CompiledUnit::WriteByte(uint8_t byte) {
     if (!activeSegment) {
@@ -397,9 +472,26 @@ uint64_t CompiledUnit::GetCurrentWritePtr() {
 }
 
 const std::vector<uint8_t> &CompiledUnit::Data() {
-    if (!GetOrAddSegment(".text", 0x00)) {
+    if (!GetOrAddSegment("link_out", 0x00)) {
         static std::vector<uint8_t> empty = {};
         return empty;
     }
     return activeSegment->Data();
+}
+
+bool CompiledUnit::MergeSegments(const std::string &dst, const std::string &src) {
+    // The source must exists
+    if (!segments.contains(src)) {
+        return false;
+    }
+    auto srcSeg = segments.at(src);
+    if (!segments.contains(dst)) {
+        if (!GetOrAddSegment(dst, srcSeg->LoadAddress())) {
+            return false;
+        }
+    }
+    auto dstSeg = segments.at(dst);
+    // first merge is just a plain copy...
+    dstSeg->data.insert(dstSeg->data.end(), srcSeg->data.begin(), srcSeg->data.end());
+    return true;
 }
