@@ -11,6 +11,7 @@ extern "C" {
     DLL_EXPORT int test_lexer(ITesting *t);
     DLL_EXPORT int test_lexer_keywords(ITesting *t);
     DLL_EXPORT int test_lexer_number(ITesting *t);
+    DLL_EXPORT int test_lexer_linecomments(ITesting *t);
 }
 
 DLL_EXPORT int test_lexer(ITesting *t) {
@@ -60,5 +61,24 @@ DLL_EXPORT int test_lexer_keywords(ITesting *t) {
     TR_ASSERT(t, tokens[2].type == TokenType::DataReg);
     TR_ASSERT(t, tokens[3].type == TokenType::Comma);
     TR_ASSERT(t, tokens[4].type == TokenType::Number);
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_lexer_linecomments(ITesting *t) {
+    const char srcCode[]= {
+        "; -- this is a comment\n"\
+        "; one more\n"\
+        "\tmove d0,d1   ; number two\n"\
+        "\tlabel:\n"\
+        ""
+    };
+
+    std::string_view strSource(srcCode, sizeof(srcCode));
+    Lexer lexer;
+    auto tokens = lexer.Tokenize(strSource);
+    TR_ASSERT(t, tokens[0].type == TokenType::LineComment);
+    TR_ASSERT(t, tokens[1].type == TokenType::CommentedText);
+    TR_ASSERT(t, tokens[2].type == TokenType::EoL);
+
     return kTR_Pass;
 }
