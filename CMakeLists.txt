@@ -34,9 +34,9 @@ list(APPEND asmsrc src/assembler/Compiler/Compiler.cpp src/assembler/Compiler/Co
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)
 list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h)
 
-list(APPEND asmsrc src/assembler/ConvertUTF.cpp src/assembler/ConvertUTF.h)
-list(APPEND asmsrc src/assembler/StrUtil.cpp src/assembler/StrUtil.h)
-list(APPEND asmsrc src/assembler/UnicodeHelper.cpp src/assembler/UnicodeHelper.h)
+list(APPEND commonsrc src/common/ConvertUTF.cpp src/common/ConvertUTF.h)
+list(APPEND commonsrc src/common/StrUtil.cpp src/common/StrUtil.h)
+list(APPEND commonsrc src/common/UnicodeHelper.cpp src/common/UnicodeHelper.h)
 
 #
 # Assembler unit test src
@@ -47,7 +47,7 @@ list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 
 
 # test library for vcpu
-add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc})
+add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${commonsrc})
 target_include_directories(test PUBLIC src/vcpu)
 target_include_directories(test PUBLIC src/assembler)
 
@@ -63,11 +63,13 @@ list(APPEND emusrc apps/emulator/emulator.cpp)
 list(APPEND asmsrc apps/assembler/assembler.cpp)
 
 
-add_executable(emu ${emusrc} ${vcpusrc})
+add_executable(emu ${emusrc} ${vcpusrc} ${commonsrc})
 target_include_directories(emu PUBLIC src/vcpu)
+target_include_directories(emu PUBLIC src/common)
 
-add_executable(asm ${asmsrc} ${vcpusrc})
+add_executable(asm ${asmsrc} ${vcpusrc} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
+target_include_directories(asm PUBLIC src/common)
 target_include_directories(asm PUBLIC src/vcpu)
 
 #
