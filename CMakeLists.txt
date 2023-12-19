@@ -20,6 +20,7 @@ list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 # Virtual CPU unit test sources
 #
 list(APPEND vcputestsrc tests/test_vcpu.cpp)
+list(APPEND vcputestsrc tests/test_integration.cpp)
 
 
 #
