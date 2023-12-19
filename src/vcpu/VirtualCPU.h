@@ -16,22 +16,6 @@
 namespace gnilk {
 
     namespace vcpu {
-        class IMemReadWrite {
-        public:
-            virtual uint8_t  ReadU8(uint64_t address) = 0;
-            virtual uint16_t ReadU16(uint64_t address) = 0;
-            virtual uint32_t ReadU32(uint64_t address) = 0;
-            virtual uint64_t ReadU64(uint64_t address) = 0;
-
-            virtual void WriteU8(uint64_t address, uint8_t value) = 0;
-            virtual void WriteU16(uint64_t address, uint16_t value) = 0;
-            virtual void WriteU32(uint64_t address, uint32_t value) = 0;
-            virtual void WriteU64(uint64_t address, uint64_t value) = 0;
-        };
-
-
-
-
 
         class VirtualCPU : public CPUBase {
         public:
