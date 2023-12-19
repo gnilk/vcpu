@@ -88,10 +88,13 @@ namespace gnilk {
         } OperandSize;
 
 
+        // These are the op-codes, there is plenty of 'air' inbetween the numbers - no real thought went in to the
+        // numbers as such. The opcodes are 8-bit..
+        // Details for each op-code is in the 'InstructionSet.cpp' file..
         typedef enum : uint8_t {
             BRK = 0x00,
 
-            MOV = 0x20,
+            MOV = 0x20,     // one op-code for all 'move' instructions
             LEA = 0x28,
             ADD = 0x30,
             SUB = 0x40,
@@ -108,12 +111,9 @@ namespace gnilk {
             OR = 0xB1,
             XOR = 0xB2,
 
-            CALL = 0xC0,
-            // push next instr. on stack and jump
-            JMP = 0xC1,
-            // Jump
-            SYS = 0xC2,
-            // Issue a sys call
+            CALL = 0xC0,        // push next instr. on stack and jump
+            JMP = 0xC1,         // Jump
+            SYS = 0xC2,         // Issue a sys call, index (word) in d0, other arguments per syscall
 
 
             // CMP/ADD/SUB/MUL/DIV/MOV - will update zero
