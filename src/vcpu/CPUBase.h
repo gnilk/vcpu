@@ -145,6 +145,9 @@ namespace gnilk {
                 return registers.instrPointer;
             }
 
+            void SetInstrPtr(uint64_t newIp) {
+                registers.instrPointer.data.longword = newIp;
+            }
             RegisterValue &GetInstrPtr() {
                 return registers.instrPointer;
             }
