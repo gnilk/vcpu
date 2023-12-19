@@ -11,6 +11,7 @@ extern "C" {
     DLL_EXPORT int test_parser_instruction(ITesting *t);
     DLL_EXPORT int test_parser_declaration(ITesting *t);
     DLL_EXPORT int test_parser_linecomments(ITesting *t);
+    DLL_EXPORT int test_parser_meta(ITesting *t);
 }
 DLL_EXPORT int test_parser(ITesting *t) {
     return kTR_Pass;
@@ -48,5 +49,24 @@ DLL_EXPORT int test_parser_linecomments(ITesting *t) {
     TR_ASSERT(t, ast != nullptr);
     ast->Dump();
     return kTR_Pass;
+}
+DLL_EXPORT int test_parser_meta(ITesting *t) {
+    const char srcCode[]= {
+        ".data\n"\
+        ".org 0x100 \n"\
+        ".code\n"\
+        "\tmove d0,d1\n"\
+        ".data\n"\
+        "\tlabel: dc.b 0x101\n"\
+        ""
+    };
+    std::string_view strSource(srcCode, sizeof(srcCode));
+
+    Parser parser;
+    auto ast = parser.ProduceAST(strSource);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    return kTR_Pass;
 
 }
+

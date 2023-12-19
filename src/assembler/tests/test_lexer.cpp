@@ -57,10 +57,11 @@ DLL_EXPORT int test_lexer_keywords(ITesting *t) {
     Lexer lexer;
     auto tokens = lexer.Tokenize("move.l d0,1");
     TR_ASSERT(t, tokens[0].type == TokenType::Identifier);
-    TR_ASSERT(t, tokens[1].type == TokenType::OpSize);
-    TR_ASSERT(t, tokens[2].type == TokenType::DataReg);
-    TR_ASSERT(t, tokens[3].type == TokenType::Comma);
-    TR_ASSERT(t, tokens[4].type == TokenType::Number);
+    TR_ASSERT(t, tokens[1].type == TokenType::Dot);
+    TR_ASSERT(t, tokens[2].type == TokenType::OpSize);
+    TR_ASSERT(t, tokens[3].type == TokenType::DataReg);
+    TR_ASSERT(t, tokens[4].type == TokenType::Comma);
+    TR_ASSERT(t, tokens[5].type == TokenType::Number);
     return kTR_Pass;
 }
 

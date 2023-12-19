@@ -2,6 +2,9 @@
 // Created by gnilk on 15.12.23.
 //
 
+#include <stdio.h>
+#include <filesystem>
+
 #include <testinterface.h>
 #include "Parser/Parser.h"
 #include "Compiler/Compiler.h"
@@ -10,6 +13,7 @@ using namespace gnilk::assembler;
 
 extern "C" {
     DLL_EXPORT int test_compiler(ITesting *t);
+    DLL_EXPORT int test_compiler_file(ITesting *t);
     DLL_EXPORT int test_compiler_move_immediate(ITesting *t);
     DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t);
     DLL_EXPORT int test_compiler_add_immediate(ITesting *t);
@@ -31,6 +35,34 @@ DLL_EXPORT int test_compiler(ITesting *t) {
     t->CaseDepends("add_reg2reg", "move_reg2reg");
     return kTR_Pass;
 }
+DLL_EXPORT int test_compiler_file(ITesting *t) {
+
+    std::filesystem::path pathToSrcFile("Assets/test.asm");
+    size_t szFile = file_size(pathToSrcFile);
+    char *data = (char *)malloc(szFile + 10);
+    if (data == nullptr) {
+        return false;
+    }
+    memset(data, 0, szFile + 10);
+    std::string_view strData(data, szFile);
+
+
+    FILE *f = fopen("Assets/test.asm", "r+");
+    TR_ASSERT(t, f != nullptr);
+    auto nRead = fread(data, 1, szFile, f);
+    fclose(f);
+
+    gnilk::assembler::Parser parser;
+    gnilk::assembler::Compiler compiler;
+
+    auto ast = parser.ProduceAST(strData);
+    TR_ASSERT(t, ast != nullptr);
+
+    TR_ASSERT(t, compiler.GenerateCode(ast));
+
+    return kTR_Pass;
+}
+
 DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
     Parser parser;
     Compiler compiler;
