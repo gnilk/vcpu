@@ -121,6 +121,12 @@ static uint8_t cpu_ram_memory[1024*512];    // 512kb of RAM for my CPU...
 bool ExecuteData(const uint8_t *rawData, size_t szData) {
     VirtualCPU vcpu;
 
+    // Test syscall dispatch...
+    vcpu.RegisterSysCall(0x01, "writeline",[](Registers &regs, CPUBase *cpu) {
+       fmt::println("wefwef - from syscall");
+    });
+
+
     fmt::println("Copy firmware to address: {:#x}", loadToAddress);
     memcpy(&cpu_ram_memory[loadToAddress], rawData, szData);
     vcpu.Begin(cpu_ram_memory, 1024 * 512);
