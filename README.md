@@ -13,15 +13,24 @@ emulated CPU...  Good riddance!
 ! basic infrastructure (cpu, assembler, etc..)
 ! stack handling in CPU (needed for call routines)
 ! call/ret instructions
-+ labels and variables in assembler
-    - consider scoping!
-    - how to fix local variables (like asmone; .var)?    
-+ add jump routines (call, goto, etc..) and return
-    this is mostly an assembler problem...
+! global labels and variables in assembler
+- local labels/variables (like asmone; .var)?    
+! add call/ret routines 
+- add jmp    
 + basic addressing and referencing; 
     + move d0, (a0), and friends
     + lea a0, <label>, and friends
 ! variable/array declarations (variable is just an array with one element)
+Support for the following directives:
+    - struct definitions; struct <name> ...  endstruct      ?? not sure
+        - rs.<opsize>   <num>       <- reserve, alt.
+    - struct instances; istruct <typename> at <member> <value> iend     <- this is the nasm way... (asmone just have macros to do this)
+    - alignment options (align <num>)
+    - block/buffer declarations; dcb.<opsize> <num>{,<initial value>}
+    - include; include "lib/mylib.asm" or include "defs/structs.inc"
+    - incbin, for binary inclusion; incbin "assets/somebinary.bin"
+    - section <code/text/data/bss>  -> long form of '.code','.data', etc.. -> asmone
+
 - compare instructions
 - branching
 + disassembling (i.e. reconstructing an instruction from op-codes)     
