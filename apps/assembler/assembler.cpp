@@ -86,7 +86,7 @@ bool CompileData(const std::string &outFilename, const std::string_view &srcData
     if (ast == nullptr) {
         return false;
     }
-    if (!compiler.GenerateCode(ast)) {
+    if (!compiler.CompileAndLink(ast)) {
         return false;
     }
 
