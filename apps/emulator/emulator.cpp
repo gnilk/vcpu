@@ -4,13 +4,19 @@
 #include <vector>
 #include <string>
 #include <filesystem>
+#include <functional>
 
 #include "fmt/format.h"
-
+#include "StrUtil.h"
 #include "VirtualCPU.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
+
+static uint64_t loadToAddress = 0;
+static uint64_t startAddress = 0;
+
+std::optional<uint64_t> ParseNumber(const std::string_view &line);
 
 bool ProcessFile(std::filesystem::path &pathToBinary);
 
@@ -18,7 +24,18 @@ int main(int argc, char **argv)  {
     std::vector<std::string> filesToRun;
     for(int i=1;i<argc;i++) {
         if (argv[i][0] == '-') {
-
+            switch(argv[i][1]) {
+                case 'd' : {
+                        auto tmp = ParseNumber(argv[++i]);
+                        if (!tmp.has_value()) {
+                            fmt::println(stderr, "Invalid number {} as argument, use: -d <number>", argv[i]);
+                            return 1;
+                        }
+                        loadToAddress = *tmp;
+                        startAddress = *tmp;
+                    }
+                    break;
+            }
         } else {
             filesToRun.push_back(argv[i]);
         }
@@ -100,13 +117,22 @@ static void DumpRegs(const VirtualCPU &cpu) {
 }
 
 static uint8_t cpu_ram_memory[1024*512];    // 512kb of RAM for my CPU...
+
 bool ExecuteData(const uint8_t *rawData, size_t szData) {
-    memcpy(cpu_ram_memory, rawData, szData);
     VirtualCPU vcpu;
-    vcpu.Begin(cpu_ram_memory, 1024);
-    fmt::println("------->> Begin Execution <<--------------");
+
+    fmt::println("Copy firmware to address: {:#x}", loadToAddress);
+    memcpy(&cpu_ram_memory[loadToAddress], rawData, szData);
+    vcpu.Begin(cpu_ram_memory, 1024 * 512);
+
+
+    fmt::println("Set Initial IP to: {:#x}", startAddress);
+    vcpu.SetInstrPtr(startAddress);
+
     // Save ip before we step...
     RegisterValue ip = vcpu.GetInstrPtr();
+
+    fmt::println("------->> Begin Execution <<--------------");
     while(vcpu.Step()) {
         // generate op-codes for this instruction...
         std::string strOpCodes = "";
@@ -131,3 +157,85 @@ bool ExecuteData(const uint8_t *rawData, size_t szData) {
     return true;
 }
 
+
+///////// Helpers
+std::optional<uint64_t> ParseNumber(const std::string_view &line) {
+
+    std::string num;
+    auto it = line.begin();
+
+    std::function<bool(const int chr)> isnumber = [](const int chr) -> bool {
+        return std::isdigit(chr);
+    };
+
+    //
+    // We could enhance this with more features normally found in assemblers
+    // $<hex> - for address
+    // #$<hex> - alt. syntax for hex numbers
+    // #<dec>  - alt. syntax for dec numbers
+    //
+    // '#' is a common denominator for numerical values
+    if (*it == '#') {
+        ++it;
+    }
+
+    enum class TNum {
+        Number,
+        NumberHex,
+        NumberBinary,
+        NumberOctal,
+    };
+
+    auto numberType = TNum::Number;
+    if (*it == '0') {
+        num += *it;
+        it++;
+        // Convert number here or during parsing???
+        switch(tolower(*it)) {
+            case 'x' : // hex
+                num += *it;
+                ++it;
+                numberType = TNum::NumberHex;
+                isnumber = [](const int chr) -> bool {
+                    static std::string hexnum = {"abcdef"};
+                    return (std::isdigit(chr) || (hexnum.find(tolower(chr)) != std::string::npos));
+                };
+                break;
+            case 'b' : // binary
+                num += *it;
+                ++it;
+                numberType = TNum::NumberBinary;
+                isnumber = [](const int chr) -> bool {
+                    return (chr=='1' || chr=='0');
+                };
+
+                break;
+            case 'o' : // octal
+                num += *it;
+                ++it;
+                numberType = TNum::NumberOctal;
+                isnumber = [](const int chr) -> bool {
+                    static std::string hexnum = {"01234567"};
+                    return (hexnum.find(tolower(chr)) != std::string::npos);
+                };
+                break;
+            default :
+                if (std::isdigit(*it)) {
+                    fprintf(stderr,"WARNING: Numerical tokens shouldn't start with zero!");
+                }
+                break;
+        }
+    }
+
+    while(it != line.end() && isnumber(*it)) {
+        num += *it;
+        ++it;
+    }
+    if (numberType == TNum::Number) {
+        return {strutil::to_int32(num)};
+    } else if (numberType == TNum::NumberHex) {
+        return {uint64_t(strutil::hex2dec(num))};
+    }
+
+    return {};
+}
