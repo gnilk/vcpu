@@ -42,6 +42,8 @@ bool VirtualCPU::Step() {
             return false;
         case NOP :
             break;
+        case SYS :
+            ExecuteSysCallInstr(instrDecoder);
         case CALL :
             ExecuteCallInstr(instrDecoder);
             break;
@@ -75,6 +77,13 @@ bool VirtualCPU::Step() {
 //
 // Move of these will be small - consider supporting lambda in description code instead...
 //
+void VirtualCPU::ExecuteSysCallInstr(InstructionDecoder::Ref instrDecoder) {
+    auto id = registers.dataRegisters[0].data.word;
+    if (syscalls.contains(id)) {
+        syscalls.at(id)->Invoke(registers, this);
+    }
+}
+
 void VirtualCPU::ExecutePushInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
     stack.push(v);

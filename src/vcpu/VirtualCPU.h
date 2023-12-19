@@ -58,6 +58,7 @@ namespace gnilk {
             void ExecutePopInstr(InstructionDecoder::Ref instrDecoder);
 
             // two operand instr.
+            void ExecuteSysCallInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteAddInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteSubInstr(InstructionDecoder::Ref instrDecoder);
