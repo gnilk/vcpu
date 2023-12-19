@@ -8,13 +8,14 @@
 #include <stdint.h>
 #include <type_traits>
 #include <stack>
+#include <functional>
 
 #include "fmt/format.h"
-
 #include "InstructionSet.h"
 
 namespace gnilk {
     namespace vcpu {
+
         struct RegisterValue {
             union {
                 uint8_t byte;
@@ -122,6 +123,31 @@ namespace gnilk {
         };
 
 
+        class CPUBase;
+
+        using SysCallDelegate = std::function<void(Registers &regs, CPUBase *cpu)>;
+
+        class SysCall {
+        public:
+            using Ref = std::shared_ptr<SysCall>;   // this can probably be unique ptr
+        public:
+            SysCall(uint16_t sysId, const std::string &sysName, SysCallDelegate handler) : id(sysId), name(sysName), cbHandler(handler) {
+
+            }
+            virtual ~SysCall() = default;
+            static SysCall::Ref Create(uint16_t id, const std::string &name, SysCallDelegate handler) {
+                return std::make_shared<SysCall>(id, name, handler);
+            }
+            void Invoke(Registers &regs, CPUBase *cpu) {
+                cbHandler(regs, cpu);
+            }
+        protected:
+            uint16_t id;
+            std::string name;
+            SysCallDelegate cbHandler;
+        };
+
+
         class InstructionDecoder;
         class CPUBase {
             friend InstructionDecoder;
@@ -129,6 +155,8 @@ namespace gnilk {
             CPUBase() = default;
             virtual ~CPUBase() = default;
 
+
+            bool RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler);
 
             const Registers &GetRegisters() const {
                 return registers;
@@ -271,6 +299,8 @@ namespace gnilk {
             Registers registers = {};
             CPUStatusReg statusReg = {};
             std::stack<RegisterValue> stack;
+
+            std::unordered_map<uint32_t, SysCall::Ref> syscalls;
 
 
         };
