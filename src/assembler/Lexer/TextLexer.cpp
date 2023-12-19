@@ -48,8 +48,18 @@ using namespace gnilk;
 
 const Context &gnilk::GetLexerContext() {
     static std::unordered_map<std::string, TokenType> keywords = {
-        // Meta declaration operators
-
+        // New stuff (not done yet)
+/*
+        {"dcb", TokenType::Unknown},
+        {"align", TokenType::Unknown},
+        {"struct", TokenType::Unknown},
+        {"endstruct", TokenType::Unknown},
+        {"include", TokenType::Unknown},
+        {"incbin", TokenType::Unknown},
+        {"section", TokenType::Unknown},
+        {"rs", TokenType::Unknown},
+*/
+        // Size operands
         {"b", TokenType::OpSize},
         {"w", TokenType::OpSize},
         {"d", TokenType::OpSize},
@@ -79,14 +89,6 @@ const Context &gnilk::GetLexerContext() {
     };
 
     static std::unordered_map<std::string, TokenType> operators = {
-
-        // Size operators
-/*
-        {".b", TokenType::OpSize},
-        {".w", TokenType::OpSize},
-        {".d", TokenType::OpSize},
-        {".l", TokenType::OpSize},
-*/
 
         // compare operators
         {"==", TokenType::CompareOperator},
