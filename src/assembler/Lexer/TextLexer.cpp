@@ -92,7 +92,6 @@ const Context &gnilk::GetLexerContext() {
         {"}", TokenType::CloseBrace},
         {"{", TokenType::OpenBracket},
         {"}", TokenType::CloseBracket},
-        {";", TokenType::Semicolon},
         {":", TokenType::Colon},
         {",", TokenType::Comma},
         {".", TokenType::Dot},
@@ -100,6 +99,8 @@ const Context &gnilk::GetLexerContext() {
         {"!", TokenType::Exclamation},
         {"\"", TokenType::Quote},
         {"//", TokenType::LineComment},
+        {";", TokenType::LineComment},
+        {"\n", TokenType::EoL},
 
         // binary operators
         {"+", TokenType::BinaryOperator},
