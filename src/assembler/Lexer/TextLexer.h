@@ -26,6 +26,7 @@ namespace gnilk {
         AddressReg,
         // special registers
         sp,ip,
+        Meta,
 
         // Operand Size specifier
         OpSize,
