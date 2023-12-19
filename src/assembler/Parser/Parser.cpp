@@ -63,6 +63,8 @@ ast::Statement::Ref Parser::ParseMetaStatement() {
         return nullptr;
     }
     auto &symbol = At().value;
+
+    // Really validate this already here - or push this to compiler stage?
     static std::unordered_set<std::string> validMetaSymbols = {
         "org",
         "code",
@@ -150,6 +152,9 @@ ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
     // This is just an identifier - deal with it...
     auto ident = At().value;
     Eat();
+
+    // FIXME: Support constants, check if next is '=' or 'EQU'
+
     Expect(TokenType::Colon, "Labels must end with colon");
     return std::make_shared<ast::Identifier>(ident);
 }
