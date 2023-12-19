@@ -20,6 +20,12 @@ using namespace gnilk::assembler;
 ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
     auto program = Begin(srcCode);
     while(!Done()) {
+        // EOL statements - we just continue
+        if (At().type == TokenType::EoL) {
+            Eat();
+            continue;
+        }
+
         auto stmt = ParseStatement();
         // we could expect ';' here?
         if (stmt == nullptr) {
@@ -42,8 +48,17 @@ ast::Statement::Ref Parser::ParseStatement() {
             return ParseIdentifierOrInstr();
         case TokenType::Declaration :
             return ParseDeclaration();
+        case TokenType::LineComment :
+            return ParseLineComment();
     }
     return nullptr;
+}
+
+ast::Statement::Ref Parser::ParseLineComment() {
+    Eat();
+    auto text = Expect(TokenType::CommentedText, "Line comment should be followed by commented text");
+    Expect(TokenType::EoL, "Should be end of line");
+    return std::make_shared<ast::LineComment>(text.value);
 }
 
 std::pair<bool, vcpu::OperandSize> Parser::ParseOpSize() {
@@ -96,7 +111,7 @@ ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
     // This is just an identifier - deal with it...
     auto ident = At().value;
     Eat();
-    Expect(TokenType::Colon, "Labels must end with semi-colon");
+    Expect(TokenType::Colon, "Labels must end with colon");
     return std::make_shared<ast::Identifier>(ident);
 }
 
