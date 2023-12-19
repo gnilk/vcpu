@@ -50,6 +50,7 @@ list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${commonsrc})
 target_include_directories(test PUBLIC src/vcpu)
 target_include_directories(test PUBLIC src/assembler)
+target_include_directories(test PUBLIC src/common)
 
 if (APPLE)
     target_include_directories(test PUBLIC /usr/local/include)
