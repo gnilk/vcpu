@@ -44,6 +44,8 @@ ast::Program::Ref Parser::Begin(const std::string_view &srcCode) {
 
 ast::Statement::Ref Parser::ParseStatement() {
     switch(At().type) {
+        case TokenType::Dot :
+            return ParseMetaStatement();
         case TokenType::Identifier :
             return ParseIdentifierOrInstr();
         case TokenType::Declaration :
@@ -54,6 +56,41 @@ ast::Statement::Ref Parser::ParseStatement() {
     return nullptr;
 }
 
+ast::Statement::Ref Parser::ParseMetaStatement() {
+    Eat();
+    if (At().type != TokenType::Identifier) {
+        fmt::println(stderr,"Identifier expected in meta statement; .<meta>, got: {}", At().value);
+        return nullptr;
+    }
+    auto &symbol = At().value;
+    static std::unordered_set<std::string> validMetaSymbols = {
+        "org",
+        "code",
+        "data",
+        "text",
+    };
+
+    if (!validMetaSymbols.contains(symbol)) {
+        fmt::println(stderr,"Invalid/Unsupported meta directive: {}", symbol);
+        return nullptr;
+    }
+
+
+    auto meta = std::make_shared<ast::MetaStatement>(symbol);
+    Eat();
+
+    if (symbol == "org") {
+        auto optExp = ParseExpression();
+        if (optExp == nullptr) {
+            fmt::println(stderr, "expected expression after '.org', like: .org 0x100");
+            return nullptr;
+        }
+        meta->SetOptional(optExp);
+    }
+
+    return meta;
+}
+
 ast::Statement::Ref Parser::ParseLineComment() {
     Eat();
     auto text = Expect(TokenType::CommentedText, "Line comment should be followed by commented text");
@@ -62,15 +99,17 @@ ast::Statement::Ref Parser::ParseLineComment() {
 }
 
 std::pair<bool, vcpu::OperandSize> Parser::ParseOpSize() {
-    if (At().type != TokenType::OpSize) {
+    if (At().type != TokenType::Dot) {
         return {false,{}};
     }
+    Eat();
+
     auto opSize = Eat();
     static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
-        {".b", gnilk::vcpu::OperandSize::Byte},
-        {".w", gnilk::vcpu::OperandSize::Word},
-        {".d", gnilk::vcpu::OperandSize::DWord},
-        {".l", gnilk::vcpu::OperandSize::Long},
+        {"b", gnilk::vcpu::OperandSize::Byte},
+        {"w", gnilk::vcpu::OperandSize::Word},
+        {"d", gnilk::vcpu::OperandSize::DWord},
+        {"l", gnilk::vcpu::OperandSize::Long},
     };
 
     if (!strToOpSize.contains(opSize.value)) {
