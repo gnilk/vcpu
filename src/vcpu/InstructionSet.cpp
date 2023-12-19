@@ -13,6 +13,7 @@ using namespace gnilk::vcpu;
 // This holds the full instruction set definition
 //
 static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
+    {OperandClass::SYS,{.name="sys", .features = {} }},
     {OperandClass::NOP,{.name="nop", .features = {} }},
     {OperandClass::BRK,{.name="brk", .features = {} }},
     {OperandClass::RET,{.name="ret", .features = {} }},
