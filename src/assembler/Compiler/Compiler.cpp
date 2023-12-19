@@ -95,7 +95,10 @@ bool Compiler::ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt) {
 }
 
 bool Compiler::ProcessIdentifier(ast::Identifier::Ref identifier) {
+
+    // FIXME: This is no good...
     uint64_t ipNow = static_cast<uint64_t>(outStream.size());
+
     if (identifierAddresses.contains(identifier->Symbol())) {
         fmt::println(stderr,"Identifier {} already in use - can't use duplicate identifiers!", identifier->Symbol());
         return false;
