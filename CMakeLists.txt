@@ -35,6 +35,9 @@ list(APPEND asmsrc src/assembler/Compiler/Compiler.cpp src/assembler/Compiler/Co
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)
 list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h)
 
+list(APPEND asmsrc src/assembler/Linker/CompiledUnit.cpp src/assembler/Linker/CompiledUnit.h)
+list(APPEND asmsrc src/assembler/Linker/Segment.h)
+
 list(APPEND commonsrc src/common/ConvertUTF.cpp src/common/ConvertUTF.h)
 list(APPEND commonsrc src/common/StrUtil.cpp src/common/StrUtil.h)
 list(APPEND commonsrc src/common/UnicodeHelper.cpp src/common/UnicodeHelper.h)
