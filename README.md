@@ -1,5 +1,59 @@
 # CPU Emulator and Assembler
 
+Virtual/Emulated CPU (m68k look-alike) with Assembler/Linker.
+
+# Building
+This has so far only been tested with Clang on Linux. Anyway...
+
+CMake driven build, clone and run:
+```shell
+git clone https://github.com/gnilk/vcpu
+cd vcpu
+mkdir bld
+cd bld
+cmake ..
+cmake --build . --target asm -j
+cmake --build . --target emu -j
+```
+There are 3 targets
+* `asm`, the assembler and linker (only outputs files similar to `a.out`)
+* `emu`, the emulator (only accepts `a.out` files - no check is made)
+* `test`, code compiled as shared library for unit-testing (see dependencies)
+
+## assembler
+Use like (no help is provided):
+```shell
+./asm -o firmware.bin file.asm
+```
+
+## emulator
+The emulator is equally good documented, you basically just run:
+```shell
+./emu firmware.bin
+```
+There is however one flag you can specify `-d <addr>` which specifies the address of where the firmware should be loaded in the emulated ram.
+This is to support `.org <offset>` type of statements..
+
+# Dependencies
+* libfmt - part of source tree.
+* testrunner - https://github.com/gnilk/testrunner - for unit testing
+* elfio - https://github.com/serge1/ELFIO (not yet)
+
+# Details
+* Instruction set is documented in the file `InstructionSet.cpp` and `InstructionSet.h`
+* Any kind of meta-statements for the compiler is not documented
+* The following sections are recognized; `.code` / `.text`, `.data`, `.bss` (not used)
+* Declaration of data is like: `dc.b 0x44, 0x11` (can also handle strings)
+* Operand sizes supported
+  * `.b` - byte (uint8_t), example: `move.b d0, #43`
+  * `.w` - word (uint16_t), example: `move.w d0, #43`
+  * `.d` - dword (uint32_t), example: `move.d d0, #43`
+  * `.l` - long (uint64_t), example: `move.l d0, #43`
+* Only one namespace right now (no locals), labels must terminate with ':'
+* Error messages are sparse (at best)
+* Only a handful of instructions implemented
+
+# Why?
 This tries to emulate a 64bit Motorola 68k look-alike CPU.
 I wanted to generate machine code for my toy-language.
 So I naturally invented a CPU since I thought x86 was too complicated.
@@ -146,8 +200,4 @@ make -j
 Will give you a few libraries and executables..
 Nothing except the unit-tests will work right now...
 
-# External sources
-* libfmt - part of source tree.
-* testrunner - https://github.com/gnilk/testrunner - for unit testing
-* elfio - https://github.com/serge1/ELFIO
 
