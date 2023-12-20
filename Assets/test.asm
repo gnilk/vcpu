@@ -2,7 +2,7 @@
 ; asm file
 ;----------------------
 ; struct int_table absolute 0     ;; do I want this??   I don't need it - sugar...
-;    syscall_1   rs.l    1       ;; rs = ReServe
+;    syscall_1   rs.l    1       ;; rs = ReServe - asmone syntax, we could also use: 'dc.l  <default>' ?
 ;    syscall_2   rs.l    1
 ;    syscall_3   rs.l    1
 ; endstruct
