@@ -13,7 +13,8 @@ InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
 
     auto inst = std::make_shared<InstructionDecoder>();
     inst->memoryOffset = memoryOffset;
-
+    inst->ofsStartInstr = 0;
+    inst->ofsEndInstr = 0;
     return inst;
 }
 
