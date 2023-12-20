@@ -84,6 +84,20 @@ namespace gnilk {
 
         };
 
+        static constexpr size_t ByteSizeOfOperandSize(OperandSize opSize) {
+            switch(opSize) {
+                case OperandSize::Byte :
+                    return sizeof(uint8_t);
+                case OperandSize::Word :
+                    return sizeof(uint16_t);
+                case OperandSize::DWord :
+                    return sizeof(uint32_t);
+                case OperandSize::Long :
+                default:
+                    return sizeof(uint64_t);
+            }
+        }
+
 
         // These are the op-codes, there is plenty of 'air' inbetween the numbers - no real thought went in to the
         // numbers as such. The opcodes are 8-bit..

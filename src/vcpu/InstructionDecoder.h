@@ -19,7 +19,7 @@ namespace gnilk {
         public:
             InstructionDecoder()  = default;
             virtual ~InstructionDecoder() = default;
-            static InstructionDecoder::Ref Create(OperandClass opClass);
+            static InstructionDecoder::Ref Create(uint64_t memoryOffset);
 
             bool Decode(CPUBase &cpu);
             // Converts a decoded instruction back to it's mnemonic form
@@ -35,7 +35,18 @@ namespace gnilk {
                 return value;
             }
 
+            size_t GetInstrSizeInBytes() {
+                return ofsEndInstr - ofsStartInstr;
+            }
+            uint64_t GetInstrStartOfs() {
+                return ofsStartInstr;
+            }
+            uint64_t GetInstrEndOfs() {
+                return ofsEndInstr;
+            }
+
         private:
+            uint8_t NextByte(CPUBase &cpu);
             // Helper for 'ToString'
             std::string DisasmOperand(AddressMode addrMode, uint8_t regIndex) const;
             // Perhaps move to base class
@@ -45,6 +56,7 @@ namespace gnilk {
 
         public:
             // Used during by decoder...
+            uint8_t opCode;
             OperandClass opClass;
             OperandDescription description;
 
@@ -65,6 +77,10 @@ namespace gnilk {
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand
 
+        private:
+            uint64_t memoryOffset = {};
+            uint64_t ofsStartInstr = {};
+            uint64_t ofsEndInstr = {};
         };
     }
 }

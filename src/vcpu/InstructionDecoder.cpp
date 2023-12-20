@@ -9,28 +9,38 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-InstructionDecoder::Ref InstructionDecoder::Create(OperandClass opClass) {
-    // check if we have this instruction defined
-    if (!gnilk::vcpu::GetInstructionSet().contains(opClass)) {
-        return nullptr;
-    }
+InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
 
     auto inst = std::make_shared<InstructionDecoder>();
-
-    inst->opClass = opClass;
-    inst->description = gnilk::vcpu::GetInstructionSet().at(opClass);
+    inst->memoryOffset = memoryOffset;
 
     return inst;
 }
 
 bool InstructionDecoder::Decode(CPUBase &cpu) {
+
+    // Save the start offset
+    ofsStartInstr = memoryOffset;
+
+    opCode = NextByte(cpu);
+    if (opCode == 0xff) {
+        return false;
+    }
+
+    opClass =  static_cast<OperandClass>(opCode);
+    // check if we have this instruction defined
+    if (!gnilk::vcpu::GetInstructionSet().contains(opClass)) {
+        return false;
+    }
+
+    description = gnilk::vcpu::GetInstructionSet().at(opClass);
+
     //
     // Setup addressing
     //
     uint8_t szAddressing = 0;   // FIXME: default!!!
-
     if (description.features & OperandDescriptionFlags::OperandSize) {
-        szAddressing = cpu.FetchByteFromInstrPtr();
+        szAddressing = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
         szOperand = static_cast<OperandSize>(szAddressing);
     }
 
@@ -41,17 +51,16 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     srcRegAndFlags = 0;
 
     // FIXME: refactor dst/src value -> value, we do NOT write values back to the CPU but we do READ data as part of decoding
-
     if (description.features & OperandDescriptionFlags::OneOperand) {
-        dstRegAndFlags = cpu.FetchByteFromInstrPtr();
+        dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
 
         dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
         dstRegIndex = (dstRegAndFlags>>4) & 15;
 
         value = ReadFrom(cpu, szOperand, dstAddrMode, dstRegIndex);
     } else if (description.features & OperandDescriptionFlags::TwoOperands) {
-        dstRegAndFlags = cpu.FetchByteFromInstrPtr();
-        srcRegAndFlags = cpu.FetchByteFromInstrPtr();
+        dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
+        srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
 
         dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
         srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x0f);
@@ -66,7 +75,8 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
         // No operands
     }
 
-
+    // Mark end of instruction decoding...
+    ofsEndInstr = memoryOffset;
     return true;
 }
 
@@ -75,17 +85,25 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
 
     // This should be performed by instr. decoder...
     if (addrMode == AddressMode::Immediate) {
-        return cpuBase.ReadImmediateMode(szOperand);
+        v = cpuBase.ReadFromMemory(szOperand, memoryOffset);
+        memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Register) {
         auto &reg = cpuBase.GetRegisterValue(idxRegister);
         v.data = reg.data;
     } else if (addrMode == AddressMode::Absolute) {
-        return cpuBase.ReadImmediateMode(OperandSize::Long);
+        v = cpuBase.ReadFromMemory(szOperand, memoryOffset);
+        memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
         auto &reg = cpuBase.GetRegisterValue(idxRegister);
         v = cpuBase.ReadFromMemory(szOperand, reg.data.longword);
     }
     return v;
+}
+
+uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
+    // Note: FetchFromRam will modifiy the address!!!!
+    auto nextByte = cpu.FetchFromRam<uint8_t>(memoryOffset);
+    return nextByte;
 }
 
 

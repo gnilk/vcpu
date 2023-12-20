@@ -13,7 +13,7 @@ using namespace gnilk::vcpu;
 // This holds the full instruction set definition
 //
 static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
-    {OperandClass::SYS,{.name="sys", .features = {} }},
+    {OperandClass::SYS,{.name="syscall", .features = {} }},
     {OperandClass::NOP,{.name="nop", .features = {} }},
     {OperandClass::BRK,{.name="brk", .features = {} }},
     {OperandClass::RET,{.name="ret", .features = {} }},
@@ -53,7 +53,7 @@ static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
     // Pop can only be to register...
   {OperandClass::POP,{.name="pop", .features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register}},
 
-    {OperandClass::CALL, {.name="call", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Addressing}},
+    {OperandClass::CALL, {.name="call", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Register  | OperandDescriptionFlags::Addressing}},
 };
 
 const std::unordered_map<OperandClass, OperandDescription> &gnilk::vcpu::GetInstructionSet() {

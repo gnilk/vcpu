@@ -16,26 +16,21 @@ using namespace gnilk::vcpu;
 
 
 bool VirtualCPU::Step() {
-    auto nextOperand = FetchByteFromInstrPtr();
-    if (nextOperand == 0xff) {
-        return false;
-    }
-    auto opClass = static_cast<OperandClass>(nextOperand);
 
-    auto instrDecoder = InstructionDecoder::Create(opClass);
-    if (instrDecoder == nullptr) {
-        return false;
-    }
-
+    auto instrDecoder = InstructionDecoder::Create(GetInstrPtr().data.longword);
     // Tell decoder to decode the basics of this instruction
-    instrDecoder->Decode(*this);
+    if (!instrDecoder->Decode(*this)) {
+        return false;
+    }
+    // Advance forward..
+    AdvanceInstrPtr(instrDecoder->GetInstrSizeInBytes());
 
     //
     // This would be cool:
     // Also, we should put enough information in the first 2-3 bytes to understand the fully decoded size
     // This way we can basically have multiple threads decoding instructions -> super scalar emulation
     //
-    switch(opClass) {
+    switch(instrDecoder->opClass) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
             // raise halt exception
@@ -67,7 +62,7 @@ bool VirtualCPU::Step() {
             break;
         default:
             // raise invaild-instr. exception here!
-            fmt::println(stderr, "Invalid operand: {}", nextOperand);
+            fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCode);
             return false;
     }
     lastDecodedInstruction = instrDecoder;

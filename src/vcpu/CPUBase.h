@@ -176,6 +176,10 @@ namespace gnilk {
             void SetInstrPtr(uint64_t newIp) {
                 registers.instrPointer.data.longword = newIp;
             }
+
+            void AdvanceInstrPtr(uint64_t ipOffset) {
+                registers.instrPointer.data.longword += ipOffset;
+            }
             RegisterValue &GetInstrPtr() {
                 return registers.instrPointer;
             }
@@ -247,10 +251,11 @@ namespace gnilk {
                 return value;
             }
 
+            // WILL UPDATE ADDRESS!!!
             template<typename T>
             T FetchFromRam(uint64_t &address) {
                 if (address > szRam) {
-                    fmt::println(stderr, "Invalid address {}", address);
+                    fmt::println(stderr, "FetchFromRam - Invalid address {}", address);
                     exit(1);
                 }
                 T result = {};
