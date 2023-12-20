@@ -107,22 +107,12 @@ void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 //
-// This tries to implement add/sub handling with CPU status updates at the same time
-// The idea was to minize code-duplication due to register layout - but I couldn't really figure out
-// a good way...
+// Add/Sub helpers with CPU status updates
+// The idea was to minize code-duplication due to register layout - not sure if this is a good way..
 //
-#define VCPU_MAX_BYTE     std::numeric_limits<uint8_t>::max()
-#define VCPU_MAX_WORD     std::numeric_limits<uint16_t>::max()
-#define VCPU_MAX_DWORD    std::numeric_limits<uint32_t>::max()
-#define VCPU_MAX_LWORD   std::numeric_limits<uint64_t>::max()
+//
 
-#define chk_add_overflow(__max__,__a__,__b__) (__b__ > (__max__ - __a__))
-#define chk_sub_negative(__a__, __b__) (__b__ > __a__)
-#define chk_sub_zero(__a__, __b__) (__b__== __a__)
-/*
- * If I want to mimic M68k - check out the M68000PRM.pdf page 89 for details...
- * I think Carry, Extend, Zero and Negative are correct - overflow is not at all done..
- */
+// Update the CPU flags
 template<typename T>
 static void UpdateCPUFlags(CPUStatusReg &statusReg, uint64_t numRes, uint64_t numDst, uint64_t numSrc) {
     // Flag computation
