@@ -13,10 +13,11 @@
     lea     a0, funcA
     call    a0          ;; call the value 'a0' points at, assume you have jump-table you could do call (a0)
 
-    lea     a0, datablock
+    lea     a0, string
     move.b  d0, (a0)
     brk
 funcA:
+    lea     a0, string
     move.l  d0, 0x01
     syscall
     ret
@@ -26,7 +27,8 @@ funcA:
 ; segments... just declare them up front..
 ;
     .data
-datablock:
-    dc.b    0xff,2,3,4,5,6,7
+string:
+    dc.b    "mamma is a hamster",0      ;; you need to terminate the strings!!!
+
 
     .text
