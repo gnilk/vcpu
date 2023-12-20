@@ -9,11 +9,10 @@
 
 #include <memory>
 #include <unordered_map>
+#include "Linker/CompiledUnit.h"
 
 using namespace gnilk;
 using namespace gnilk::assembler;
-
-
 
 bool Compiler::CompileAndLink(ast::Program::Ref program) {
     if (!Compile(program)) {
@@ -40,6 +39,13 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 //
 bool Compiler::Link() {
 
+    std::vector<Segment::Ref> segments;
+    unit.GetSegments(segments);
+    fmt::println("Segments:");
+    for(auto &s : segments) {
+        fmt::println("  Name={}, LoadAddress={}",s->Name(), s->LoadAddress());
+    }
+
     // Merge segments (.text and .data) to hidden 'link_out' segment...
     unit.MergeSegments("link_out", ".text");
     size_t ofsDataSegStart = unit.GetSegmentSize("link_out");
@@ -51,10 +57,22 @@ bool Compiler::Link() {
         ofsDataSegStart = 0;
     }
 
+
     // This is our target now...
     unit.SetActiveSegment("link_out");
 
     auto baseAddress = unit.GetBaseAddress();
+    auto dataSeg = unit.GetSegment(".data");
+    if (dataSeg != nullptr) {
+        dataSeg->SetLoadAddress(unit.GetCurrentWritePtr());
+    }
+
+    // Since we merge the segments we need to replace this...
+    if (unit.HaveSegment(".data")) {
+        unit.GetSegment(".data")->SetLoadAddress(ofsDataSegStart + baseAddress);
+    }
+
+
 
     //
     // Link code to stuff
@@ -69,9 +87,17 @@ bool Compiler::Link() {
         // This address is in a specific segment, we need to store that as well for the placeholder
         auto identifierAddr = identifierAddresses[placeHolder.ident];
 
-        fmt::println("  {}@{:#x} = {}@{:#x}",placeHolder.ident, placeHolder.address - baseAddress, identifierAddr.segment,identifierAddr.address + ofsDataSegStart);
+        fmt::println("  {}@{:#x} = {}@{:#x}",
+            placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
+            identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
-        unit.ReplaceAt(placeHolder.address - baseAddress, identifierAddr.address + ofsDataSegStart);
+        // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
+        if (identifierAddr.segment == nullptr) {
+            fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder.ident);
+            exit(1);
+        }
+
+        unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
     }
     return true;
 }
@@ -110,11 +136,17 @@ bool Compiler::ProcessMetaStatement(ast::MetaStatement::Ref stmt) {
             return false;
         }
         auto numArg = std::dynamic_pointer_cast<ast::NumericLiteral>(arg);
-        unit.SetBaseAddress(numArg->Value());
+
+        auto seg = unit.GetActiveSegment();
+        if (seg->LoadAddress() == 0) {
+            seg->SetLoadAddress(numArg->Value());
+        } else {
+            // A segment can only have one base-address, in case we issue '.org' twice within the same segment - we duplicate the segment...
+            fmt::println(stderr, "Compiler, segment already have base address - can have .org statement twice within same segment");
+        }
+
         return true;
     }
-
-    // FIXME: Addresses...
 
     if ((stmt->Symbol() == "text") || (stmt->Symbol() == "code")) {
         unit.GetOrAddSegment(".text",0);
@@ -403,96 +435,3 @@ bool Compiler::EmitLWord(uint64_t lword) {
 }
 
 
-// Compiled Unit
-void CompiledUnit::Clear() {
-    segments.clear();
-}
-
-bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
-    if (!segments.contains(name)) {
-        auto segment = std::make_shared<Segment>(name, address);
-        segments[name] = segment;
-    }
-    activeSegment = segments.at(name);
-    return true;
-}
-
-bool CompiledUnit::SetActiveSegment(const std::string &name) {
-    if (!segments.contains(name)) {
-        return false;
-    }
-    activeSegment = segments.at(name);
-    return true;
-}
-
-const std::string &CompiledUnit::GetActiveSegment() {
-    if (!activeSegment) {
-        static std::string invalidSeg = {};
-        return invalidSeg;
-    }
-    return activeSegment->Name();
-}
-
-size_t CompiledUnit::GetSegmentSize(const std::string &name) {
-    if (!segments.contains(name)) {
-        return 0;
-    }
-    return segments.at(name)->Size();
-}
-
-
-void CompiledUnit::SetBaseAddress(uint64_t address) {
-    baseAddress = address;
-}
-
-uint64_t CompiledUnit::GetBaseAddress() {
-    return baseAddress;
-}
-
-
-bool CompiledUnit::WriteByte(uint8_t byte) {
-    if (!activeSegment) {
-        return false;
-    }
-    activeSegment->WriteByte(byte);
-    return true;
-}
-void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue) {
-    if (!activeSegment) {
-        return;
-    }
-    activeSegment->ReplaceAt(offset, newValue);
-}
-
-
-uint64_t CompiledUnit::GetCurrentWritePtr() {
-    if (!activeSegment) {
-        return false;
-    }
-    return activeSegment->GetCurrentWritePtr() + baseAddress;
-}
-
-const std::vector<uint8_t> &CompiledUnit::Data() {
-    if (!GetOrAddSegment("link_out", 0x00)) {
-        static std::vector<uint8_t> empty = {};
-        return empty;
-    }
-    return activeSegment->Data();
-}
-
-bool CompiledUnit::MergeSegments(const std::string &dst, const std::string &src) {
-    // The source must exists
-    if (!segments.contains(src)) {
-        return false;
-    }
-    auto srcSeg = segments.at(src);
-    if (!segments.contains(dst)) {
-        if (!GetOrAddSegment(dst, srcSeg->LoadAddress())) {
-            return false;
-        }
-    }
-    auto dstSeg = segments.at(dst);
-    // first merge is just a plain copy...
-    dstSeg->data.insert(dstSeg->data.end(), srcSeg->data.begin(), srcSeg->data.end());
-    return true;
-}
