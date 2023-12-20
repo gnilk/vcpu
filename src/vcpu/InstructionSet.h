@@ -76,16 +76,13 @@ namespace gnilk {
             AbsRelative = 3,
         } RelativeAddressing;
 
-        typedef enum : uint8_t {
-            Byte,
-            // 8 bit
-            Word,
-            // 16 bit
-            DWord,
-            // 32 bit
-            Long,
-            // 64 bit
-        } OperandSize;
+        enum class OperandSize : uint8_t {
+            Byte,   // 8 bit
+            Word,   // 16 bit
+            DWord,  // 32 bit
+            Long,   // 64 bit
+
+        };
 
 
         // These are the op-codes, there is plenty of 'air' inbetween the numbers - no real thought went in to the
