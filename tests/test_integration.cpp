@@ -5,6 +5,7 @@
 //
 #include <stdint.h>
 #include <vector>
+#include <filesystem>
 #include <testinterface.h>
 
 #include "VirtualCPU.h"
@@ -21,6 +22,7 @@ static void DumpRegs(const VirtualCPU &cpu);
 extern "C" {
     DLL_EXPORT int test_integration(ITesting *t);
     DLL_EXPORT int test_integration_syscall(ITesting *t);
+    DLL_EXPORT int test_integration_file(ITesting *t);
 }
 DLL_EXPORT int test_integration(ITesting *t) {
     return kTR_Pass;
@@ -64,7 +66,7 @@ DLL_EXPORT int test_integration_syscall(ITesting *t) {
 
     const char code[]=".code\n"\
     "move.l d0, 0x01\n"\
-    "sys\n"\
+    "syscall\n"\
     "brk\n"\
     "";
 
@@ -74,3 +76,30 @@ DLL_EXPORT int test_integration_syscall(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_integration_file(ITesting *t) {
+
+    std::filesystem::path pathToSrcFile("Assets/test.asm");
+    size_t szFile = file_size(pathToSrcFile);
+    char *data = (char *)malloc(szFile + 10);
+    TR_ASSERT(t, data != nullptr);
+
+    memset(data, 0, szFile + 10);
+
+
+    FILE *f = fopen("Assets/test.asm", "r+");
+    TR_ASSERT(t, f != nullptr);
+    auto nRead = fread(data, 1, szFile, f);
+    fclose(f);
+
+    VirtualCPU vcpu;
+
+    bool wasCalled = false;
+    vcpu.RegisterSysCall(0x01, "writeline",[&wasCalled](Registers &regs, CPUBase *cpu) {
+       fmt::println("wefwef - from syscall");
+        wasCalled = true;
+    });
+
+    TR_ASSERT(t, RunAndExecute(data, vcpu));
+
+    return kTR_Pass;
+}
