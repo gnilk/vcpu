@@ -131,6 +131,25 @@ bool ExecuteData(const uint8_t *rawData, size_t szData) {
     memcpy(&cpu_ram_memory[loadToAddress], rawData, szData);
     vcpu.Begin(cpu_ram_memory, 1024 * 512);
 
+    // --> Break out to own function
+    fmt::println("Disasm firmware from address: {:#x}", loadToAddress);
+    // This is pretty lousy, as we have no clue where code/data ends...
+    uint64_t disasmPtr = loadToAddress;
+    while(disasmPtr < (loadToAddress + szData)) {
+        auto instrDec = InstructionDecoder::Create(disasmPtr);
+        if (!instrDec->Decode(vcpu)) {
+            break;
+        }
+        std::string strOpCodes = "";
+        for(auto ofs = instrDec->GetInstrStartOfs(); ofs < instrDec->GetInstrEndOfs(); ofs++) {
+            strOpCodes += fmt::format("0x{:02x}, ",cpu_ram_memory[ofs]);
+        }
+        // Retrieve the last decoded instruction and transform to string
+        fmt::println("0x{:04x}\t\t{}\t\t; {}", disasmPtr, instrDec->ToString(), strOpCodes);
+        disasmPtr += instrDec->GetInstrSizeInBytes();
+    }
+    // <-- end of disassembly..
+
 
     fmt::println("Set Initial IP to: {:#x}", startAddress);
     vcpu.SetInstrPtr(startAddress);
@@ -142,7 +161,10 @@ bool ExecuteData(const uint8_t *rawData, size_t szData) {
     while(vcpu.Step()) {
         // generate op-codes for this instruction...
         std::string strOpCodes = "";
-        for(auto ofs = ip.data.longword; ofs < vcpu.GetInstrPtr().data.longword;ofs++) {
+
+        auto &lastDecoded = vcpu.GetLastDecodedInstr();
+
+        for(auto ofs = lastDecoded->GetInstrStartOfs(); ofs < lastDecoded->GetInstrEndOfs(); ofs++) {
             strOpCodes += fmt::format("0x{:02x}, ",cpu_ram_memory[ofs]);
         }
         // Retrieve the last decoded instruction and transform to string
