@@ -57,6 +57,81 @@ Support for the following directives:
 + have fun...       <- don't forget...
 ```
 
+From https://github.com/kstenerud/Musashi/blob/master/m68k_in.c
+This is how Musashi handles flags - specifically interested in the FLAG_V (overflow)
+```c++
+// example instr. m68k_in.c
+M68KMAKE_OP(add, 8, er, d)
+{
+	uint* r_dst = &DX;
+	uint src = MASK_OUT_ABOVE_8(DY);
+	uint dst = MASK_OUT_ABOVE_8(*r_dst);
+	uint res = src + dst;
+
+	FLAG_N = NFLAG_8(res);
+	FLAG_V = VFLAG_ADD_8(src, dst, res);
+	FLAG_X = FLAG_C = CFLAG_8(res);
+	FLAG_Z = MASK_OUT_ABOVE_8(res);
+
+	*r_dst = MASK_OUT_BELOW_8(*r_dst) | FLAG_Z;
+}
+
+// macros as follows (m68kcpu.h)
+/* Flag Calculation Macros */
+#define CFLAG_8(A) (A)
+#define CFLAG_16(A) ((A)>>8)
+
+#if M68K_INT_GT_32_BIT
+	#define CFLAG_ADD_32(S, D, R) ((R)>>24)
+	#define CFLAG_SUB_32(S, D, R) ((R)>>24)
+#else
+	#define CFLAG_ADD_32(S, D, R) (((S & D) | (~R & (S | D)))>>23)
+	#define CFLAG_SUB_32(S, D, R) (((S & R) | (~D & (S | R)))>>23)
+#endif /* M68K_INT_GT_32_BIT */
+
+#define VFLAG_ADD_8(S, D, R) ((S^R) & (D^R))
+#define VFLAG_ADD_16(S, D, R) (((S^R) & (D^R))>>8)
+#define VFLAG_ADD_32(S, D, R) (((S^R) & (D^R))>>24)
+
+#define VFLAG_SUB_8(S, D, R) ((S^D) & (R^D))
+#define VFLAG_SUB_16(S, D, R) (((S^D) & (R^D))>>8)
+#define VFLAG_SUB_32(S, D, R) (((S^D) & (R^D))>>24)
+
+#define NFLAG_8(A) (A)
+#define NFLAG_16(A) ((A)>>8)
+#define NFLAG_32(A) ((A)>>24)
+#define NFLAG_64(A) ((A)>>56)
+
+#define ZFLAG_8(A) MASK_OUT_ABOVE_8(A)
+#define ZFLAG_16(A) MASK_OUT_ABOVE_16(A)
+#define ZFLAG_32(A) MASK_OUT_ABOVE_32(A)
+
+
+/* Turn flag values into 1 or 0 */
+#define XFLAG_AS_1() ((FLAG_X>>8)&1)
+#define NFLAG_AS_1() ((FLAG_N>>7)&1)
+#define VFLAG_AS_1() ((FLAG_V>>7)&1)
+#define ZFLAG_AS_1() (!FLAG_Z)
+#define CFLAG_AS_1() ((FLAG_C>>8)&1)
+
+
+/* Conditions */
+#define COND_CS() (FLAG_C&0x100)
+#define COND_CC() (!COND_CS())
+#define COND_VS() (FLAG_V&0x80)
+#define COND_VC() (!COND_VS())
+#define COND_NE() FLAG_Z
+#define COND_EQ() (!COND_NE())
+#define COND_MI() (FLAG_N&0x80)
+#define COND_PL() (!COND_MI())
+#define COND_LT() ((FLAG_N^FLAG_V)&0x80)
+#define COND_GE() (!COND_LT())
+#define COND_HI() (COND_CC() && COND_NE())
+#define COND_LS() (COND_CS() || COND_EQ())
+#define COND_GT() (COND_GE() && COND_NE())
+#define COND_LE() (COND_LT() || COND_EQ())
+
+```
 wef
 
 # Compile and build
