@@ -188,6 +188,7 @@ namespace gnilk {
                 return stack;
             }
 
+            void *GetRawPtrToRAM(uint64_t addr);
 
             const CPUStatusReg &GetStatusReg() const {
                 return statusReg;

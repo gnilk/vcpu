@@ -8,6 +8,12 @@
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
+void *CPUBase::GetRawPtrToRAM(uint64_t addr) {
+    if (addr > szRam) {
+        return nullptr;
+    }
+    return &ram[addr];
+}
 
 bool CPUBase::RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler) {
     if (syscalls.contains(id)) {
