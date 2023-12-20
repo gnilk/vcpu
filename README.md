@@ -32,7 +32,8 @@ Support for the following directives:
     - section <code/text/data/bss>  -> long form of '.code','.data', etc.. -> asmone
 
 ! syscall, through sys instruction
-- Separate linker step in compiler (refactor it away from the compiler)
++ Separate linker step in compiler (refactor it away from the compiler)
+- refactor segments and their handling...
 - compare instructions
 - branching
 + disassembling (i.e. reconstructing an instruction from op-codes)     
