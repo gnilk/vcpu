@@ -7,16 +7,19 @@
 ;    syscall_3   rs.l    1
 ; endstruct
 
-    .org 0x2000
+    ; .org 0x2000
     .code
 ; BASE EQU 45
-;    move.l  a0, 0       ;; address of int.table
-;    lea     a0, int_table           ;; should load the absolute address of 0
-;    call    int_table.syscall_1      ;; this would work, if I can support 'absolute' need to see how the compiler handles this...
+    lea     a0, funcA
+    call    a0          ;; call the value 'a0' points at, assume you have jump-table you could do call (a0)
 
     lea     a0, datablock
     move.b  d0, (a0)
     brk
+funcA:
+    move.l  d0, 0x01
+    syscall
+    ret
 
 ;
 ; this will be merged at the end anyway, if you want data items within your code-statements you should not switch
