@@ -155,7 +155,7 @@ ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
 
     // FIXME: Support constants, check if next is '=' or 'EQU'
 
-    Expect(TokenType::Colon, "Labels must end with colon");
+    Expect(TokenType::Colon, "Label must end with colon");
     return std::make_shared<ast::Identifier>(ident);
 }
 
