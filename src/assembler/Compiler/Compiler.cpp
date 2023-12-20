@@ -170,7 +170,7 @@ bool Compiler::ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt) {
     }
     auto opSize = stmt->OpSize();
 
-    if (!EmitByte(opSize)) {
+    if (!EmitByte(static_cast<uint8_t>(opSize))) {
         return false;
     }
     // FIXME: Cache this in the parser stage(?)
@@ -190,7 +190,7 @@ bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
         return false;
     }
     auto opSize = twoOpInstr->OpSize();
-    if (!EmitByte(opSize)) {
+    if (!EmitByte(static_cast<uint8_t>(opSize))) {
         return false;
     }
     // FIXME: Cache this in the parser stage(?)
