@@ -60,7 +60,7 @@ DLL_EXPORT int test_integration_syscall(ITesting *t) {
 
     bool wasCalled = false;
     vcpu.RegisterSysCall(0x01, "writeline",[&wasCalled](Registers &regs, CPUBase *cpu) {
-       fmt::println("wefwef - from syscall");
+        fmt::println("wefwef - from syscall");
         wasCalled = true;
     });
 
@@ -95,7 +95,9 @@ DLL_EXPORT int test_integration_file(ITesting *t) {
 
     bool wasCalled = false;
     vcpu.RegisterSysCall(0x01, "writeline",[&wasCalled](Registers &regs, CPUBase *cpu) {
-       fmt::println("wefwef - from syscall");
+        auto addrString = regs.addressRegisters[0].data.longword;
+        auto ptrString = cpu->GetRawPtrToRAM(addrString);
+        fmt::println("wefwef - from syscall, str={}",(char *)ptrString);
         wasCalled = true;
     });
 
