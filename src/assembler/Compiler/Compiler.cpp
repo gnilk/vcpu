@@ -168,13 +168,22 @@ bool Compiler::ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt) {
     auto &array = stmt->Array();
 
     for(auto &exp : array) {
-        if (exp->Kind() != ast::NodeType::kNumericLiteral) {
-            fmt::println("Only numeric literals support for arrays");
-            return false;
+        switch(exp->Kind()) {
+            case ast::NodeType::kNumericLiteral :
+                if (!EmitNumericLiteral(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(exp))) {
+                    return false;
+                }
+                break;
+            case ast::NodeType::kStringLiteral :
+                if (!EmitStringLiteral(opSize, std::dynamic_pointer_cast<ast::StringLiteral>(exp))) {
+                    return false;
+                }
+                break;
+            default:
+                fmt::println("Compiler, Only numeric and string literals are supported for arrays");
+                return false;
         }
-        if (!EmitNumericLiteral(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(exp))) {
-            return false;
-        }
+
     }
     return true;
 }
@@ -358,6 +367,14 @@ bool Compiler::EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::Numeric
     EmitByte(regMode);
     return EmitNumericLiteral(opSize, numLiteral);
 }
+
+bool Compiler::EmitStringLiteral(vcpu::OperandSize opSize, ast::StringLiteral::Ref strLiteral) {
+    for(auto &v : strLiteral->Value()) {
+        EmitByte(v);
+    }
+    return true;
+}
+
 
 bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
 
