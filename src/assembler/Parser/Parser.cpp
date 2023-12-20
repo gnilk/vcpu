@@ -130,15 +130,17 @@ ast::Statement::Ref Parser::ParseDeclaration() {
 
     do {
         auto exp = ParseExpression();
-        if (exp->Kind() != ast::NodeType::kNumericLiteral) {
+
+        if ((exp->Kind() == ast::NodeType::kNumericLiteral) || (exp->Kind() == ast::NodeType::kStringLiteral)) {
+            array->PushToArray(exp);
+            if (At().type != TokenType::Comma) {
+                break;
+            }
+            Eat();
+        } else {
             fmt::println(stderr, "Only numeric literals allowed in array declaration");
             return nullptr;
         }
-        array->PushToArray(exp);
-        if (At().type != TokenType::Comma) {
-            break;
-        }
-        Eat();
     } while(true);
 
     return array;
@@ -264,6 +266,8 @@ ast::Expression::Ref Parser::ParsePrimaryExpression() {
             return ast::NumericLiteral::Create(Eat().value);
         case TokenType::NumberHex :
             return ast::NumericLiteral::CreateFromHex(Eat().value);
+        case TokenType::String :
+            return ast::StringLiteral::Create(Eat().value);
         case TokenType::Identifier :
             return ast::Identifier::Create(Eat().value);
         case TokenType::OpenParen :
