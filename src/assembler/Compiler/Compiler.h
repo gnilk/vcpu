@@ -34,8 +34,10 @@ namespace gnilk {
             bool ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref stmt);
             bool ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt);
             bool ProcessMetaStatement(ast::MetaStatement::Ref stmt);
+            bool ProcessStructStatement(ast::StructStatement::Ref stmt);
 
 
+            ast::Literal::Ref EvaluateConstantExpression(ast::Expression::Ref expression);
 
             bool EmitOpCodeForSymbol(const std::string &symbol);
             bool EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
@@ -61,6 +63,11 @@ namespace gnilk {
             // FIXME: replace this...
             //std::vector<uint8_t> outStream;
 
+            struct StructDefinition {
+                std::string ident;
+                size_t byteSize;
+            };
+
             struct IdentifierAddressPlaceholder {
                 std::string ident;
                 Segment::Ref segment;
@@ -70,6 +77,7 @@ namespace gnilk {
                 Segment::Ref segment;
                 uint64_t address;
             };
+            std::vector<StructDefinition> structDefinitions;
             std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
             std::unordered_map<std::string, IdentifierAddress> identifierAddresses;
 

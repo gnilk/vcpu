@@ -122,13 +122,43 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
         case ast::NodeType::kCommentStatement :
             return true;
         case ast::NodeType::kStructStatement :
-            // skip for now
-            return true;
+            return ProcessStructStatement(std::dynamic_pointer_cast<ast::StructStatement>(stmt));
         default :
             fmt::println(stderr, "Compiler, unknown statment");
     }
     return false;
 }
+
+bool Compiler::ProcessStructStatement(ast::StructStatement::Ref stmt) {
+
+    auto &members = stmt->Declarations();
+    size_t nBytes = 0;
+    for(auto &m : members) {
+        if (m->Kind() != ast::NodeType::kReservationStatment) {
+            fmt::println(stderr, "Compiler, struct definition should only contain reservation statments");
+            return false;
+        }
+        auto reservation = std::dynamic_pointer_cast<ast::ReservationStatement>(m);
+        auto elemLiteral = EvaluateConstantExpression(reservation->NumElements());
+        if (elemLiteral->Kind() != ast::NodeType::kNumericLiteral) {
+            fmt::println(stderr, "Compiler, reservation expression did not yield a numerical result!");
+            return false;
+        }
+        auto numElem = std::dynamic_pointer_cast<ast::NumericLiteral>(elemLiteral);
+        auto szPerElem = vcpu::ByteSizeOfOperandSize(reservation->OperandSize());
+
+        nBytes += numElem->Value() * szPerElem;
+    }
+
+    StructDefinition structDefinition  = {
+        .ident = stmt->Name(),
+        .byteSize = nBytes,
+    };
+    structDefinitions.push_back(structDefinition);
+
+    return true;
+}
+
 bool Compiler::ProcessMetaStatement(ast::MetaStatement::Ref stmt) {
     if (stmt->Symbol() == "org") {
         auto arg = stmt->Argument();
@@ -252,6 +282,34 @@ bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
 
     return true;
 }
+
+//
+// Evaluate a constant expression...
+//
+ast::Literal::Ref Compiler::EvaluateConstantExpression(ast::Expression::Ref expression) {
+    switch (expression->Kind()) {
+        case ast::NodeType::kNumericLiteral :
+            return std::dynamic_pointer_cast<ast::Literal>(expression);
+/*
+        case ast::NodeType::kIdentifier :
+            return EvaluateIdentifier(std::dynamic_pointer_cast<ast::Identifier>(node));
+        case ast::NodeType::kCompareExpression :
+            return EvaluateCompareExpression(std::dynamic_pointer_cast<ast::CompareExpression>(node));
+        case ast::NodeType::kBinaryExpression :
+            return EvaluateBinaryExpression(std::dynamic_pointer_cast<ast::BinaryExpression>(node));
+        case ast::NodeType::kObjectLiteral :
+            return EvaluateObjectLiteral(std::dynamic_pointer_cast<ast::ObjectLiteral>(node));
+        case ast::NodeType::kMemberExpression :
+            return EvaluateMemberExpression(std::dynamic_pointer_cast<ast::MemberExpression>(node), {});
+*/
+        default :
+            fmt::println(stderr, "Compiler, Unsupported AST node type: {}", ast::NodeTypeToString(expression->Kind()));
+            exit(1);
+    }
+    return {};
+
+}
+
 
 // Note: these are 'raw' values - in order to have them in the REGMODE byte of an instr. they must be shifted
 //       see 'EmitRegisterLiteral'
