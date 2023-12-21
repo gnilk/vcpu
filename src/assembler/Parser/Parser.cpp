@@ -75,7 +75,6 @@ ast::Statement::Ref Parser::ParseStruct() {
             continue;
         }
 
-        // We should actually just parse reservation statments...
         auto stmt = ParseReservationStatement();
         if (stmt == nullptr) {
             return nullptr;
