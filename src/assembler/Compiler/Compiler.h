@@ -32,7 +32,10 @@ namespace gnilk {
             bool ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt);
             bool ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt);
             bool ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref stmt);
+
             bool ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt);
+            bool ProcessStructLiteral(ast::StructLiteral::Ref stmt);
+
             bool ProcessMetaStatement(ast::MetaStatement::Ref stmt);
             bool ProcessStructStatement(ast::StructStatement::Ref stmt);
 

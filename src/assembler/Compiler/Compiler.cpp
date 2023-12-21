@@ -123,6 +123,8 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
             return true;
         case ast::NodeType::kStructStatement :
             return ProcessStructStatement(std::dynamic_pointer_cast<ast::StructStatement>(stmt));
+        case ast::NodeType::kStructLiteral :
+            return ProcessStructLiteral(std::dynamic_pointer_cast<ast::StructLiteral>(stmt));
         default :
             fmt::println(stderr, "Compiler, unknown statment");
     }
@@ -223,6 +225,48 @@ bool Compiler::ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt) {
     return true;
 }
 
+bool Compiler::ProcessStructLiteral(ast::StructLiteral::Ref stmt) {
+
+    bool bFoundStructType = false;
+    size_t szExpected = 0;
+    for(auto &structDef : structDefinitions) {
+        if (structDef.ident == stmt->StructTypeName()) {
+            szExpected = structDef.byteSize;
+            bFoundStructType = true;
+            break;
+        }
+    }
+
+    if (!bFoundStructType) {
+        fmt::println(stderr, "Compiler, undefined struct type '{}'", stmt->StructTypeName());
+        return false;
+    }
+
+    auto writeStart = unit.GetCurrentWritePtr();
+    for (auto &m : stmt->Members()) {
+        ProcessStmt(m);
+    }
+    auto nBytesGenerated =  unit.GetCurrentWritePtr() - writeStart;
+
+    // This is no error as such or is it??
+    if (nBytesGenerated > szExpected) {
+        fmt::println(stderr, "Compiler, to many elements in struct declaration");
+        return true;
+    }
+
+    if (nBytesGenerated < szExpected) {
+        fmt::println(stderr, "Compiler, not enough bytes, filling with zero");
+        while(nBytesGenerated < szExpected) {
+            EmitByte(0x00);
+            nBytesGenerated++;
+        }
+        return true;
+    }
+
+    // Perfect - structure definintion matches instance...
+
+    return true;
+}
 bool Compiler::ProcessIdentifier(ast::Identifier::Ref identifier) {
 
     uint64_t ipNow = unit.GetCurrentWritePtr();
