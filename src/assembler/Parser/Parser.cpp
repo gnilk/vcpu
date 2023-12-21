@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include "Parser.h"
 #include "InstructionSet.h"
+
 /*
  * TO-OD:
  * - Move over Expression and Literals from 'astparser' project
@@ -378,6 +379,35 @@ ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &symbol) {
 
 
 ast::Expression::Ref Parser::ParseExpression() {
+    return ParseAdditiveExpression();
+}
+
+ast::Expression::Ref Parser::ParseAdditiveExpression() {
+    auto left = ParseMultiplicativeExpression();
+    while(At().value == "+" || At().value == "-") {
+        auto oper = Eat().value;
+        auto right = ParseMultiplicativeExpression();
+        left = std::make_shared<ast::BinaryExpression>(left,right,oper);
+    }
+    return left;
+}
+
+ast::Expression::Ref Parser::ParseMultiplicativeExpression() {
+    auto left = ParseUnaryExpression();
+    while(At().value == "/" || At().value == "*" || At().value == "%") {
+        auto oper = Eat().value;
+        auto right = ParseUnaryExpression();
+        left = std::make_shared<ast::BinaryExpression>(left, right, oper);
+    }
+    return left;
+}
+
+ast::Expression::Ref Parser::ParseUnaryExpression() {
+    if ((At().type == TokenType::Exclamation) || (At().value == "-")) {
+        auto oper = Eat().value;
+        auto right = ParsePrimaryExpression();
+        return std::make_shared<ast::UnaryExpression>(right, oper);
+    }
     return ParsePrimaryExpression();
 }
 

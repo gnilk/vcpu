@@ -53,6 +53,9 @@ namespace gnilk {
             ast::Statement::Ref ParseTwoOpInstruction(const std::string &symbol);
 
             ast::Expression::Ref ParseExpression();
+            ast::Expression::Ref ParseAdditiveExpression();
+            ast::Expression::Ref ParseMultiplicativeExpression();
+            ast::Expression::Ref ParseUnaryExpression();
             ast::Expression::Ref ParsePrimaryExpression();
 
             union OpSizeOrStruct {
