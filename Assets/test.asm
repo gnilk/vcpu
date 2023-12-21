@@ -9,6 +9,8 @@
 
 struct table {
     some_byte    rs.b    1
+    some_word    rs.w    1
+    some_dword   rs.d    1
 }
 
     ; .org 0x2000
@@ -31,8 +33,24 @@ funcA:
 ; segments... just declare them up front..
 ;
     .data
+data:
+    ;; Generates exactly 7 bytes in binary
+    dc.struct table {
+        dc.b    1       ;; some_byte
+        dc.w    2       ;; some_word
+        dc.d    3       ;; some_dword
+    }
+
+    ;; Empty - will fill with zero => this should go to BSS
+    dc.struct table {
+    }
+
+    ;; Overflow - will generate all bytes defined below and issue a warning
+    dc.struct table {
+        dc.w    1,2,3,4
+    }
+
 string:
     dc.b    "mamma is a hamster",0      ;; you need to terminate the strings!!!
-
 
     .text
