@@ -75,7 +75,9 @@ namespace gnilk {
             StructStatement() : Statement(NodeType::kStructStatement) {
 
             }
-            StructStatement(const std::string &nameOfStruct, const std::vector<ast::Statement::Ref> &scope) : ident(nameOfStruct), declarations(scope) {
+            StructStatement(const std::string &nameOfStruct, const std::vector<ast::Statement::Ref> &scope) :
+                Statement(NodeType::kStructStatement),
+                ident(nameOfStruct), declarations(scope) {
 
             }
 
@@ -112,6 +114,7 @@ namespace gnilk {
             ReservationStatement() : Statement(NodeType::kReservationStatment) {
             }
             ReservationStatement(ast::Identifier::Ref identifier, vcpu::OperandSize szOperand, ast::Expression::Ref numElem) :
+                Statement(NodeType::kReservationStatment),
                 ident(identifier), opSize(szOperand), numElemExpression(numElem) {
 
             }
