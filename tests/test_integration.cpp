@@ -40,6 +40,7 @@ static bool RunAndExecute(const char *code, VirtualCPU &cpu) {
     if (ast == nullptr) {
         return false;
     }
+    ast->Dump();
     if (!compiler.CompileAndLink(ast)) {
         return false;
     }
