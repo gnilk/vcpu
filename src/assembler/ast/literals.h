@@ -143,6 +143,46 @@ namespace gnilk {
             std::vector<Expression::Ref> array;
         };
 
+
+        class StructLiteral : public Expression {
+        public:
+            using Ref = std::shared_ptr<StructLiteral>;
+        public:
+            StructLiteral() : Expression(NodeType::kStructLiteral) {}
+            StructLiteral(const std::string &typeStruct) : Expression(NodeType::kStructLiteral),
+                structTypeName(typeStruct) {}
+
+            virtual ~StructLiteral() = default;
+
+            const std::string &StructTypeName() {
+                return structTypeName;
+            }
+
+            const std::vector<ast::Statement::Ref> &Members() {
+                return members;
+            }
+            void AddMember(ast::Statement::Ref newMember) {
+                members.push_back(newMember);
+            }
+
+            void Dump() override {
+                WriteLine("Struct Literal");
+                Indent();
+                WriteLine("Struct Type: {}", structTypeName);
+                WriteLine("Members:");
+                Indent();
+                for(auto &m : members) {
+                    m->Dump();
+                }
+                Unindent();
+                Unindent();
+            }
+        protected:
+            std::string structTypeName;
+            std::vector<ast::Statement::Ref> members;
+        };
+
+
         class RegisterLiteral : public Expression {
         public:
             using Ref = std::shared_ptr<RegisterLiteral>;

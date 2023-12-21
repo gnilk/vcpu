@@ -47,6 +47,7 @@ namespace gnilk {
             kNullLiteral,
             kRegisterLiteral,
             kArrayLiteral,
+            kStructLiteral,
             kIdentifier,
             kDeRefExpression,
 
