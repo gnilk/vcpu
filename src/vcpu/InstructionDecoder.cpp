@@ -66,14 +66,9 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
 
         value = ReadFrom(cpu, szOperand, dstAddrMode, dstRelAddrMode, dstRegIndex);
     } else if (description.features & OperandDescriptionFlags::TwoOperands) {
-        // decode dst/src flags and register index
+        // decode dst flags and register index
         dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-        srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-
-        //
         // decode dst operand details
-        //
-
         // This can be put in a specific function
         // perhaps merge the 'dstAddrMode' 'dstRelAddrMode' and 'dstRegIndex' to a struct - they are the same for both src/dst
         dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
@@ -83,9 +78,10 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
         }
         dstRegIndex = (dstRegAndFlags>>4) & 15;
 
-        //
+
+        // Decode source flags and register index and source operand
+        srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
         // decode source operand details
-        //
         srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x03);
         srcRelAddrMode.mode  = static_cast<RelativeAddressMode>((srcRegAndFlags & 0x0c)>>2);
         if ((srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (srcRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
