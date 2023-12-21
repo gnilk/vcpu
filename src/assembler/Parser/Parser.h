@@ -36,6 +36,7 @@ namespace gnilk {
                 ++it;
                 return current;
             }
+            // TODO: Rewrite expect as ast::StatementWriter::WriteLine, so we can supply arguments!
             const Token &Expect(TokenType token, const std::string &errmsg);
 
             ast::Statement::Ref ParseStatement();
