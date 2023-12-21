@@ -51,7 +51,6 @@ const Context &gnilk::GetLexerContext() {
         // New stuff (not done yet)
 /*
         {"dcb", TokenType::Unknown},
-        {"align", TokenType::Unknown},
         {"struct", TokenType::Unknown},
         {"endstruct", TokenType::Unknown},
         {"include", TokenType::Unknown},
@@ -59,13 +58,15 @@ const Context &gnilk::GetLexerContext() {
         {"section", TokenType::Unknown},
         {"rs", TokenType::Unknown},
 */
+        {"struct", TokenType::Struct},
+
         // Size operands
         {"b", TokenType::OpSize},
         {"w", TokenType::OpSize},
         {"d", TokenType::OpSize},
         {"l", TokenType::OpSize},
 
-
+        {"rs", TokenType::Reservation},
         {"dc", TokenType::Declaration},
         {"null", TokenType::Null},
         // Data Registers
@@ -468,8 +469,11 @@ bool Lexer::IsAlpha(int chr) {
     return std::isalpha(chr);
 }
 
+// Consider renaming this...
 bool Lexer::IsAlphaNum(int chr) {
-    return std::isalnum(chr);
+    if (std::isalnum(chr)) return true;
+    if (chr == '_') return true;        // we allow '_' in alpha num...
+    return false;
 }
 
 bool Lexer::IsSkippable(int chr) {

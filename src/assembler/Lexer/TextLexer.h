@@ -18,6 +18,8 @@ namespace gnilk {
         NumberOctal,
         NumberBinary,
 
+        Struct,         // Struct declaration
+        Reservation,    // Data Reservation 'rs.<op size>'
         Declaration,    // Data Declaration 'dc.<op size>'
         String,
         Identifier,
