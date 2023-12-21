@@ -25,8 +25,8 @@ ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
             Eat();
             continue;
         }
-
         auto stmt = ParseStatement();
+
         // we could expect ';' here?
         if (stmt == nullptr) {
             return nullptr;
@@ -236,16 +236,16 @@ ast::Statement::Ref Parser::ParseStructDeclaration() {
             Eat();
             continue;
         }
-        if (At().type != TokenType::Declaration) {
-            fmt::println(stderr, "Execpted declaration");
-            return nullptr;
-        }
 
-        auto declStmt = ParseDeclaration();
+        auto declStmt = ParseStatement();
+
         if (declStmt == nullptr) {
             return nullptr;
         }
-        structDecl->AddMember(declStmt);
+
+        if (declStmt->Kind() == ast::NodeType::kArrayLiteral) {
+            structDecl->AddMember(declStmt);
+        }
     }
     Eat();  // Close brace
     return structDecl;
