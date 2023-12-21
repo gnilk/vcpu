@@ -136,6 +136,7 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
         // op code = 0x02,
         // op size = 0x01,
         // dstRegMode = 0x03,
+        // dstRelMode = -
         // srcRegMode = 0x84,   => RRRR | MMMM => Reg = 8, Mode = 8 => b0100 => 01|00 => RelAddrMode = 01 = RegRelative, 00 = Indirect
         // relAddrMode = 0x30   => RegRelative => RRRR | SSSS, R = RegIndex, S => Shift
         0x20,0x01,0x03,0x84,0x30,        // move.w d0, (a0+d3)
@@ -145,7 +146,7 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
         0x20,0x01,0x03,0x88,0x47,        // move.w d0, (a0+0x47)
 
         // this is a side-effect of the
-        0x20,0x01,0x94,0x84,0x43,0x30,        // move.w (a1+d4<<3), (a0+d3<<1)
+        0x20,0x01,0x94,0x43,0x84,0x30,        // move.w (a1+d4<<3), (a0+d3<<1)
 
         0x20,0x01,0x03,0x80,             // move.w d0, (a0)
         0x00                                // brk
