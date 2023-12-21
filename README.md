@@ -64,6 +64,7 @@ emulated CPU...  Good riddance!
 
 # TO-DO
 ```pre
+- Lexer should NOT produce EOL tokens!!!!
 ! basic infrastructure (cpu, assembler, etc..)
 ! stack handling in CPU (needed for call routines)
 ! call/ret instructions
