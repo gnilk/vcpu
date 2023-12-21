@@ -410,12 +410,12 @@ bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
 
     auto deref = expression->GetDeRefExp();
     if (deref->Kind() != ast::NodeType::kRegisterLiteral) {
-        fmt::println("Only register deref possible at the moment!");
+        fmt::println(stderr, "Compiler, Only register deref possible at the moment!");
         return false;
     }
     auto regLiteral = std::dynamic_pointer_cast<ast::RegisterLiteral>(deref);
     if (!regToIdx.contains(regLiteral->Symbol())) {
-        fmt::println(stderr, "Illegal register: {}", regLiteral->Symbol());
+        fmt::println(stderr, "Compiler, Illegal register: {}", regLiteral->Symbol());
         return false;
     }
 
