@@ -52,14 +52,66 @@ ast::Statement::Ref Parser::ParseStatement() {
             return ParseDeclaration();
         case TokenType::LineComment :
             return ParseLineComment();
+        case TokenType::Struct :
+            return ParseStruct();
     }
     return nullptr;
+}
+
+ast::Statement::Ref Parser::ParseStruct() {
+    Eat();
+    if (At().type != TokenType::Identifier) {
+        fmt::println(stderr, "Parser, Identifier expected for struct; struct <name>,  got: {}", At().value);
+        return nullptr;
+    }
+    auto ident = Eat().value;
+    Expect(TokenType::OpenBrace, "Parser, missing '{' at beginning of struct declaration");
+
+    std::vector<ast::Statement::Ref> declarations;
+    // This is one of the few spawning multiple lines...
+    while(At().type != TokenType::CloseBrace) {
+        if (At().type == TokenType::EoL) {
+            Eat();
+            continue;
+        }
+
+        // We should actually just parse reservation statments...
+        auto stmt = ParseReservationStatement();
+        if (stmt == nullptr) {
+            return nullptr;
+        }
+        declarations.push_back(stmt);
+    }
+    Eat();
+
+    return std::make_shared<ast::StructStatement>(ident, declarations);
+}
+
+ast::Statement::Ref Parser::ParseReservationStatement() {
+    auto identifier = ParseExpression();
+    if (identifier->Kind() != ast::NodeType::kIdentifier) {
+        fmt::println(stderr, "Parser, Expected Identifier in struct body!");
+        return nullptr;
+    }
+    Expect(TokenType::Reservation, "'rs' must follow identifier!");
+
+    auto [ok, opSize] = ParseOpSize();
+    if (!ok) {
+        return nullptr;
+    }
+    auto numToReserve = ParseExpression();
+    if (numToReserve->Kind() != ast::NodeType::kNumericLiteral) {
+        fmt::println(stderr, "Parser, expected numeric literal for number of elements");
+        return nullptr;
+    }
+
+    return std::make_shared<ast::ReservationStatement>(std::dynamic_pointer_cast<ast::Identifier>(identifier), opSize, numToReserve);
 }
 
 ast::Statement::Ref Parser::ParseMetaStatement() {
     Eat();
     if (At().type != TokenType::Identifier) {
-        fmt::println(stderr,"Identifier expected in meta statement; .<meta>, got: {}", At().value);
+        fmt::println(stderr,"Parser, Identifier expected in meta statement; .<meta>, got: {}", At().value);
         return nullptr;
     }
     auto &symbol = At().value;
