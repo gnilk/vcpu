@@ -71,10 +71,10 @@ namespace gnilk {
         // high two bits of 'mode'
         typedef enum : uint8_t {
             None = 0,
-            RegRelative = 1,
-            RegRelativeShift = 2,
-            AbsRelative = 3,
-        } RelativeAddressing;
+            RegRelative = 1,        // move.b d0, (a0 + d0)
+            AbsRelative = 2,        // move.b d0, (a0 + <const>)
+            Unused = 3,             // ?? move.b d0, (a0 + d0<<1) ??
+        } RelativeAddressMode;
 
         enum class OperandSize : uint8_t {
             Byte,   // 8 bit
