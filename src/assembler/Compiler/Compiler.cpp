@@ -121,6 +121,11 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
             return ProcessMetaStatement(std::dynamic_pointer_cast<ast::MetaStatement>(stmt));
         case ast::NodeType::kCommentStatement :
             return true;
+        case ast::NodeType::kStructStatement :
+            // skip for now
+            return true;
+        default :
+            fmt::println(stderr, "Compiler, unknown statment");
     }
     return false;
 }
