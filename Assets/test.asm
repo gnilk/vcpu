@@ -7,6 +7,10 @@
 ;    syscall_3   rs.l    1
 ; endstruct
 
+struct table {
+    some_byte    rs.b    1
+}
+
     ; .org 0x2000
     .code
 ; BASE EQU 45
