@@ -37,6 +37,8 @@ namespace gnilk {
             kCallStatement,
             kCommentStatement,
             kMetaStatement,
+            kStructStatement,
+            kReservationStatment,
 
             kProperty,
             kObjectLiteral,
@@ -143,65 +145,6 @@ namespace gnilk {
             std::vector<Statement::Ref> body;
         };
 
-        class MetaStatement : public Statement {
-        public:
-            using Ref = std::shared_ptr<MetaStatement>;
-        public:
-            MetaStatement(const std::string &metaSymbol) : Statement(NodeType::kMetaStatement), symbol(metaSymbol) {
-
-            }
-            virtual ~MetaStatement() = default;
-            void SetOptional(const ast::Statement::Ref &newOptStmtArg) {
-                optStmtArg = newOptStmtArg;
-            }
-            const std::string &Symbol() {
-                return symbol;
-            }
-            ast::Statement::Ref Argument() {
-                return optStmtArg;
-            }
-
-            void Dump() override {
-                WriteLine("MetaStatement");
-                Indent();
-                WriteLine("Symbol: {}", symbol);
-                if (optStmtArg) {
-                    WriteLine("Arg");
-                    Indent();
-                    optStmtArg->Dump();
-                    Unindent();
-                }
-                Unindent();
-            }
-        protected:
-            std::string symbol = {};
-            ast::Statement::Ref optStmtArg = {};
-        };
-
-        class LineComment : public Statement {
-        public:
-            using Ref = std::shared_ptr<LineComment>;
-        public:
-            LineComment() : Statement(NodeType::kCommentStatement) {
-
-            }
-            LineComment(const std::string &ctext) : Statement(NodeType::kCommentStatement), text(ctext) {
-
-            }
-            virtual ~LineComment() = default;
-
-            const std::string &Text() {
-                return text;
-            }
-            void Dump() override {
-                WriteLine("LineComment");
-                Indent();
-                WriteLine("Text: {}", text);
-                Unindent();
-            }
-        protected:
-            std::string text;
-        };
 
 
         class Expression : public Statement {

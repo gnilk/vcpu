@@ -8,5 +8,6 @@
 #include "astbase.h"
 #include "instructions.h"
 #include "literals.h"
+#include "statements.h"
 
 #endif //AST_H
