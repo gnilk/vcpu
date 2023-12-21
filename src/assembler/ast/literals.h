@@ -79,11 +79,11 @@ namespace gnilk {
             std::string value = {};
         };
 
-        class NullLiteral : public Expression {
+        class NullLiteral : public Literal {
         public:
             using Ref = std::shared_ptr<NullLiteral>;
         public:
-            NullLiteral() : Expression(NodeType::kNullLiteral) {
+            NullLiteral() : Literal(NodeType::kNullLiteral) {
 
             }
             virtual ~NullLiteral() = default;
@@ -97,12 +97,12 @@ namespace gnilk {
             }
         };
 
-        class ArrayLiteral : public Expression {
+        class ArrayLiteral : public Literal {
         public:
             using Ref = std::shared_ptr<ArrayLiteral>;
         public:
-            ArrayLiteral() : Expression(NodeType::kArrayLiteral) {}
-            ArrayLiteral(vcpu::OperandSize szElem) : Expression(NodeType::kArrayLiteral), opSize(szElem) {
+            ArrayLiteral() : Literal(NodeType::kArrayLiteral) {}
+            ArrayLiteral(vcpu::OperandSize szElem) : Literal(NodeType::kArrayLiteral), opSize(szElem) {
 
             }
             virtual ~ArrayLiteral() {
@@ -144,12 +144,12 @@ namespace gnilk {
         };
 
 
-        class StructLiteral : public Expression {
+        class StructLiteral : public Literal {
         public:
             using Ref = std::shared_ptr<StructLiteral>;
         public:
-            StructLiteral() : Expression(NodeType::kStructLiteral) {}
-            StructLiteral(const std::string &typeStruct) : Expression(NodeType::kStructLiteral),
+            StructLiteral() : Literal(NodeType::kStructLiteral) {}
+            StructLiteral(const std::string &typeStruct) : Literal(NodeType::kStructLiteral),
                 structTypeName(typeStruct) {}
 
             virtual ~StructLiteral() = default;
@@ -183,15 +183,15 @@ namespace gnilk {
         };
 
 
-        class RegisterLiteral : public Expression {
+        class RegisterLiteral : public Literal {
         public:
             using Ref = std::shared_ptr<RegisterLiteral>;
         public:
-            RegisterLiteral() : Expression(NodeType::kRegisterLiteral) {
+            RegisterLiteral() : Literal(NodeType::kRegisterLiteral) {
 
             }
 
-            explicit RegisterLiteral(const std::string &reg) : Expression(NodeType::kRegisterLiteral), regValue(reg) {
+            explicit RegisterLiteral(const std::string &reg) : Literal(NodeType::kRegisterLiteral), regValue(reg) {
 
             }
 
@@ -213,9 +213,48 @@ namespace gnilk {
             std::string regValue = {};
         };
 
+        class RelativeRegisterLiteral : public Literal {
+        public:
+            using Ref = std::shared_ptr<RelativeRegisterLiteral>;
+        public:
+            RelativeRegisterLiteral() : Literal(NodeType::kRelativeRegisterLiteral) {
 
+            }
 
+            explicit RelativeRegisterLiteral(const ast::RegisterLiteral::Ref &baseReg, const ast::Expression::Ref &relative) :
+                Literal(NodeType::kRelativeRegisterLiteral),
+                baseRegValue(baseReg), relValue(relative) {
 
+            }
+
+            virtual ~RelativeRegisterLiteral() = default;
+
+            static Ref Create(const ast::RegisterLiteral::Ref  &baseReg, const ast::Expression::Ref &relReg) {
+                return std::make_shared<RelativeRegisterLiteral>(baseReg, relReg);
+            }
+
+            ast::RegisterLiteral::Ref BaseRegister() {
+                return baseRegValue;
+            }
+            ast::Expression::Ref RelativeExpression() {
+                return relValue;
+            }
+
+            void Dump() override {
+                WriteLine("Relative Register Literal");
+                Indent();
+                WriteLine("Base Reg: {}", baseRegValue->Symbol());
+                WriteLine("Relative");
+                Indent();
+                relValue->Dump();
+                Unindent();
+
+            }
+
+        protected:
+            ast::RegisterLiteral::Ref baseRegValue = {};
+            ast::Expression::Ref relValue = {};
+        };
     }    // namespace ast
 }    // namespace gnilk
 
