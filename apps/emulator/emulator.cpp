@@ -123,7 +123,9 @@ bool ExecuteData(const uint8_t *rawData, size_t szData) {
 
     // Test syscall dispatch...
     vcpu.RegisterSysCall(0x01, "writeline",[](Registers &regs, CPUBase *cpu) {
-       fmt::println("wefwef - from syscall");
+        auto addrString = regs.addressRegisters[0].data.longword;
+        auto ptrString = cpu->GetRawPtrToRAM(addrString);
+        fmt::println("syscall - writeline - a0 = {}",(char *)ptrString);
     });
 
 
