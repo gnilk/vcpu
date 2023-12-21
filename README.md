@@ -71,26 +71,35 @@ emulated CPU...  Good riddance!
 - local labels/variables (like asmone; .var)?    
 ! add call/ret routines 
 - add jmp    
-+ basic addressing and referencing; 
-    + move d0, (a0), and friends
-    + lea a0, <label>, and friends
+! basic addressing and referencing; 
+    ! move d0, (a0), and friends
+    ! lea a0, <label>, and friends
+- Advanced addressing (note; the contents within '()' is just a compile-time expression where a0 is a predefined variable...
+    - move d0, (a0 + <reg>)
+    - move d0, (a0 + <num>)
+    - move d0, (a0)++       ;; I want the m68k post/pre-fix advancement stuff (this is not how it is defined though)
 ! variable/array declarations (variable is just an array with one element)
-Support for the following directives:
-    - struct definitions; struct <name> ...  endstruct      ?? not sure
-        - rs.<opsize>   <num>       <- reserve, alt.
-    - struct instances; istruct <typename> at <member> <value> iend     <- this is the nasm way... (asmone just have macros to do this)
+! Struct definintions and declarations
+    ! struct definitions; struct typename { ... }
+        !  <member>  rs.<opsize>  <num>    <- reserve number of opsize elements
+    ! struct instances;
+        dc.struct <typename> {  dc.<opsize> <data> }    <- more work can be done here!! 
+        
     - alignment options (align <num>)
+        This is actually pretty easy - just insert zero's until alignment matches..
+        
+Support for the following directives:
     - block/buffer declarations; dcb.<opsize> <num>{,<initial value>}
     - include; include "lib/mylib.asm" or include "defs/structs.inc"
     - incbin, for binary inclusion; incbin "assets/somebinary.bin"
     - section <code/text/data/bss>  -> long form of '.code','.data', etc.. -> asmone
 
 ! syscall, through sys instruction
+! disassembling (i.e. reconstructing an instruction from op-codes)     
 + Separate linker step in compiler (refactor it away from the compiler)
-- refactor segments and their handling...
++ refactor segments and their handling...
 - compare instructions
 - branching
-+ disassembling (i.e. reconstructing an instruction from op-codes)     
 - bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
