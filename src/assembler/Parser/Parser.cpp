@@ -95,17 +95,22 @@ ast::Statement::Ref Parser::ParseReservationStatement() {
     }
     Expect(TokenType::Reservation, "'rs' must follow identifier!");
 
-    auto [ok, opSize] = ParseOpSize();
-    if (!ok) {
+    auto [parseRes, opSize] = ParseOpSizeOrStruct();
+    if (parseRes == ParseOpSizeResult::Error) {
         return nullptr;
     }
+    if (parseRes == ParseOpSizeResult::StructType) {
+        fmt::println(stderr, "Parser, struct in struct not yet supported!");
+        return nullptr;
+    }
+
     auto numToReserve = ParseExpression();
     if (numToReserve->Kind() != ast::NodeType::kNumericLiteral) {
         fmt::println(stderr, "Parser, expected numeric literal for number of elements");
         return nullptr;
     }
 
-    return std::make_shared<ast::ReservationStatement>(std::dynamic_pointer_cast<ast::Identifier>(identifier), opSize, numToReserve);
+    return std::make_shared<ast::ReservationStatement>(std::dynamic_pointer_cast<ast::Identifier>(identifier), opSize.opSize, numToReserve);
 }
 
 ast::Statement::Ref Parser::ParseMetaStatement() {
@@ -156,9 +161,11 @@ std::pair<bool, vcpu::OperandSize> Parser::ParseOpSize() {
     if (At().type != TokenType::Dot) {
         return {false,{}};
     }
-    Eat();
+    Eat();  // Remove dot
 
+    // take op size declaration
     auto opSize = Eat();
+
     static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
         {"b", gnilk::vcpu::OperandSize::Byte},
         {"w", gnilk::vcpu::OperandSize::Word},
@@ -172,12 +179,79 @@ std::pair<bool, vcpu::OperandSize> Parser::ParseOpSize() {
     }
 
     return {true, strToOpSize[opSize.value]};
+
+}
+std::pair<Parser::ParseOpSizeResult, Parser::OpSizeOrStruct> Parser::ParseOpSizeOrStruct() {
+    if (At().type != TokenType::Dot) {
+        return {ParseOpSizeResult::Error,{}};
+    }
+    Eat();
+
+    auto opSize = Eat();
+    if (opSize.value == "struct") {
+        return {ParseOpSizeResult::StructType, {}};
+    }
+
+    static std::unordered_map<std::string, gnilk::vcpu::OperandSize> strToOpSize = {
+        {"b", gnilk::vcpu::OperandSize::Byte},
+        {"w", gnilk::vcpu::OperandSize::Word},
+        {"d", gnilk::vcpu::OperandSize::DWord},
+        {"l", gnilk::vcpu::OperandSize::Long},
+    };
+
+    if (!strToOpSize.contains(opSize.value)) {
+        fmt::println(stderr, "Unsupported operand size {}", opSize.value);
+        return {ParseOpSizeResult::Error,{}};
+    }
+
+    return {ParseOpSizeResult::OpSize, {.opSize = strToOpSize[opSize.value]}};
 }
 
 
 ast::Statement::Ref Parser::ParseDeclaration() {
     Eat();
-    auto [haveOpSize, opSize] = ParseOpSize();
+    auto [result, opSizeOrStruct] = ParseOpSizeOrStruct();
+
+    if (result == ParseOpSizeResult::OpSize) {
+        return ParseArrayDeclaration(opSizeOrStruct.opSize);
+    }
+    if (result == ParseOpSizeResult::StructType) {
+        return ParseStructDeclaration();
+    }
+    return nullptr;
+}
+
+ast::Statement::Ref Parser::ParseStructDeclaration() {
+    if (At().type != TokenType::Identifier) {
+        fmt::println(stderr, "Parser, Identifer of struct expected after 'dc.struct'");
+        return nullptr;
+    }
+    auto identifier = Eat();
+    Expect(TokenType::OpenBrace, "Parser, missing '{' after identifier for struct instance");
+
+    auto structDecl = std::make_shared<ast::StructLiteral>(identifier.value);
+
+    while(At().type != TokenType::CloseBrace) {
+        if (At().type == TokenType::EoL) {
+            Eat();
+            continue;
+        }
+        if (At().type != TokenType::Declaration) {
+            fmt::println(stderr, "Execpted declaration");
+            return nullptr;
+        }
+
+        auto declStmt = ParseDeclaration();
+        if (declStmt == nullptr) {
+            return nullptr;
+        }
+        structDecl->AddMember(declStmt);
+    }
+    Eat();  // Close brace
+    return structDecl;
+}
+
+ast::Statement::Ref Parser::ParseArrayDeclaration(vcpu::OperandSize opSize) {
     auto array = ast::ArrayLiteral::Create(opSize);
 
     do {
@@ -197,6 +271,7 @@ ast::Statement::Ref Parser::ParseDeclaration() {
 
     return array;
 }
+
 
 ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
     // Check if this is a proper instruction

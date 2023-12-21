@@ -45,6 +45,8 @@ namespace gnilk {
             ast::Statement::Ref ParseMetaStatement();
             ast::Statement::Ref ParseLineComment();
             ast::Statement::Ref ParseDeclaration();
+            ast::Statement::Ref ParseArrayDeclaration(vcpu::OperandSize opSize);
+            ast::Statement::Ref ParseStructDeclaration();
             ast::Statement::Ref ParseIdentifierOrInstr();
             ast::Statement::Ref ParseInstruction();
             ast::Statement::Ref ParseOneOpInstruction(const std::string &symbol);
@@ -53,7 +55,19 @@ namespace gnilk {
             ast::Expression::Ref ParseExpression();
             ast::Expression::Ref ParsePrimaryExpression();
 
-        std::pair<bool, vcpu::OperandSize> ParseOpSize();
+            union OpSizeOrStruct {
+                vcpu::OperandSize opSize;
+                bool structType;
+            };
+
+            enum class ParseOpSizeResult {
+                Error,
+                OpSize,
+                StructType,
+            };
+
+            std::pair<ParseOpSizeResult, OpSizeOrStruct> ParseOpSizeOrStruct();
+            std::pair<bool, vcpu::OperandSize> ParseOpSize();
             //std::optional<vcpu::OperandSize> ParseOpSize();
 
         private:
