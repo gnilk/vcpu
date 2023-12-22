@@ -492,6 +492,7 @@ bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
         if (relativeRegLiteral->RelativeExpression()->Kind() == ast::NodeType::kRelativeRegisterLiteral) {
 
             // 1 - output the base register tag as reg-relative
+            // this is the '(a0..+'  part of the expressions
             int addrMode = vcpu::AddressMode::Indirect;
             addrMode |= (vcpu::RelativeAddressMode::RegRelative) << 2;
             // Output base register
@@ -499,19 +500,26 @@ bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
                 return false;
             }
 
-            // Calculate the reg-relative with shift-scaling
+            // 2 - calculate and output the relative part with scaling
+            // this is the '(.. + d3<<1)'  part of the expressions
             const auto relRegShift = std::dynamic_pointer_cast<ast::RelativeRegisterLiteral>(relativeRegLiteral->RelativeExpression());
 
+            // Check the operator - the parser is pretty dumb in this case - as I reuse the normal 'binary' expressions
             if (relRegShift->Operator() != "<<") {
                 fmt::println(stderr, "Compiler, only '<<' operator is supported for relative register scaling!");
                 return false;
             }
+
+            // Also check that we have a number; we don't want someone doing '(... + d1 << d2)'
             if (relRegShift->RelativeExpression()->Kind() != ast::NodeType::kNumericLiteral) {
                 fmt::println(stderr, "Compiler, relative register scaling must be a numerical value!");
                 return false;
             }
             auto relRegShiftValue = std::dynamic_pointer_cast<ast::NumericLiteral>(relRegShift->RelativeExpression());
             auto shiftNum = relRegShiftValue->Value();
+
+            // we only have 4 bits for the shift number - but I guess that range is sufficient for now...
+            // because shift number is the lower 4 bits of the reg-index; 'RRRR | SSSS' in this mode..
             if (shiftNum > 15) {
                 fmt::println(stderr, "Compiler, relative register scaling too high {}, allowed range is 0..15",shiftNum);
                 return false;
