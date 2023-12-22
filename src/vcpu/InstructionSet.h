@@ -121,6 +121,11 @@ namespace gnilk {
             AND = 0xB0,
             OR = 0xB1,
             XOR = 0xB2,
+            LSR = 0xB3, // Logical Shift Left, 0 will be shifted (or carry??)
+            ASR = 0xB4, // Arithmetic Shift Right, CARRY will be shifted out, sign will be preserved..
+            LSL = 0xB5, // Logical Shift Right, 0 will be shifted in (or carry??)
+            ASL = 0xB6, // Arithmetic Shift Left, CARRY will be shifted out, sign will be preserved..
+
 
             CALL = 0xC0,        // push next instr. on stack and jump
             JMP = 0xC1,         // Jump
