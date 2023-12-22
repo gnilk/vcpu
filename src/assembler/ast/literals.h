@@ -233,6 +233,14 @@ namespace gnilk {
                 return std::make_shared<RelativeRegisterLiteral>(baseReg, relReg);
             }
 
+            void SetOperator(const std::string &newOpr) {
+                opr = newOpr;
+            }
+
+            const std::string &Operator() {
+                return opr;
+            }
+
             ast::RegisterLiteral::Ref BaseRegister() {
                 return baseRegValue;
             }
@@ -254,6 +262,8 @@ namespace gnilk {
         protected:
             ast::RegisterLiteral::Ref baseRegValue = {};
             ast::Expression::Ref relValue = {};
+            // empty by default - compiler will check applicable
+            std::string opr = {};
         };
     }    // namespace ast
 }    // namespace gnilk
