@@ -28,6 +28,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_nop(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_lea(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_lsr(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_lsl(ITesting *t);
     DLL_EXPORT int test_vcpu_move_indirect(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
     DLL_EXPORT int test_vcpu_disasm(ITesting *t);
@@ -496,6 +497,30 @@ DLL_EXPORT int test_vcpu_instr_lsr(ITesting *t) {
     TR_ASSERT(t, res);
 
     TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0x20);
+
+    return kTR_Pass;
+
+}
+
+DLL_EXPORT int test_vcpu_instr_lsl(ITesting *t) {
+    uint8_t program[]= {
+        // 0xB3 - opcode, LSR
+        // 0x00 - OP Size, 0 = byte
+        // 0x03 - DstRegMode, RRRR|MMMM = 0000 | 0011 => d0 | 3 => 3 = register
+        // 0x01 - SrcRegMode, 0000|MMMM = 0000 | 0001 => xx | 1 => Immediate
+        // 0x01 - Immediate value (0x01)
+
+        0xB5,0x00,0x03,0x01,0x01    // lsl.b d0, #1
+    };
+    VirtualCPU vcpu;
+    auto &regs = vcpu.GetRegisters();
+
+    vcpu.Begin(program, 1024);
+    regs.dataRegisters[0].data.byte = 0x20;
+    auto res = vcpu.Step();
+    TR_ASSERT(t, res);
+
+    TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0x40);
 
     return kTR_Pass;
 
