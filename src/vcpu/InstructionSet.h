@@ -76,6 +76,15 @@ namespace gnilk {
             Unused = 3,             // ?? move.b d0, (a0 + d0<<1) ??
         } RelativeAddressMode;
 
+        // Operand Size has 1 byte and we only use the two lowest bits
+        //  OpSize: xxxx | xxss
+        // Perhaps: Add one bit for 'zero extend'?
+        //  OpSize: xxxx | xZSS  ?
+        // Perhaps add a family of instructions which always have <byte> size operand
+        // specifically bit-shift operands where currently if I want to shift a DWORD with an immediate value
+        // that value will occupy 32 bits (as src/dst operands must have same size)
+        // However, I want the decoder to as simple as possible and without look-up tables..
+        // So best would be to reserve a range:
         enum class OperandSize : uint8_t {
             Byte,   // 8 bit
             Word,   // 16 bit
@@ -121,11 +130,6 @@ namespace gnilk {
             AND = 0xB0,
             OR = 0xB1,
             XOR = 0xB2,
-            LSR = 0xB3, // Logical Shift Left, 0 will be shifted (or carry??)
-            ASR = 0xB4, // Arithmetic Shift Right, CARRY will be shifted out, sign will be preserved..
-            LSL = 0xB5, // Logical Shift Right, 0 will be shifted in (or carry??)
-            ASL = 0xB6, // Arithmetic Shift Left, CARRY will be shifted out, sign will be preserved..
-
 
             CALL = 0xC0,        // push next instr. on stack and jump
             JMP = 0xC1,         // Jump
@@ -133,15 +137,24 @@ namespace gnilk {
 
 
             // CMP/ADD/SUB/MUL/DIV/MOV - will update zero
-            BZC = 0xD0,
-            // Branch Zero Clear
-            BZS = 0xD1,
-            // Branch Zero Set
+            BZC = 0xD0, // Branch Zero Clear
+            BZS = 0xD1, // Branch Zero Set
             // ADD/SUB/MUL/DIV - will update carry
-            BCC = 0xD2,
-            // Branch Carry Clear
-            BCS = 0xD3,
-            // Branch Carry Set
+            BCC = 0xD2, // Branch Carry Clear
+            BCS = 0xD3, // Branch Carry Set
+
+            // The Ex family is special - their dst operand is also the src operand is the operate value
+            // the operate value is also locked to byte-access...
+            // Thus,
+            //      LSR.l dst/src, <imm><reg><deref>
+            //  .l affects only the dst/src while the imm/reg/deref will be byte-access
+            // Reason: There is no point shifting a value more than 255 bits!
+
+            LSR = 0xE3, // Logical Shift Left, 0 will be shifted (or carry??)
+            ASR = 0xE4, // Arithmetic Shift Right, CARRY will be shifted out, sign will be preserved..
+            LSL = 0xE5, // Logical Shift Right, 0 will be shifted in (or carry??)
+            ASL = 0xE6, // Arithmetic Shift Left, CARRY will be shifted out, sign will be preserved..
+
 
             RET = 0xF0,
             // pop addr. from stack and jump absolute..

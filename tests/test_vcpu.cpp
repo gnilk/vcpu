@@ -486,7 +486,7 @@ DLL_EXPORT int test_vcpu_instr_lsr(ITesting *t) {
         // 0x01 - SrcRegMode, 0000|MMMM = 0000 | 0001 => xx | 1 => Immediate
         // 0x01 - Immediate value (0x01)
 
-        0xB3,0x00,0x03,0x01,0x01    // lsr.b d0, #1
+        0xE3,0x00,0x03,0x01,0x01    // lsr.b d0, #1
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
@@ -510,7 +510,7 @@ DLL_EXPORT int test_vcpu_instr_lsl(ITesting *t) {
         // 0x01 - SrcRegMode, 0000|MMMM = 0000 | 0001 => xx | 1 => Immediate
         // 0x01 - Immediate value (0x01)
 
-        0xB5,0x00,0x03,0x01,0x01    // lsl.b d0, #1
+        0xE5,0x00,0x03,0x01,0x01    // lsl.b d0, #1
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
