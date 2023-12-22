@@ -394,7 +394,7 @@ ast::Expression::Ref Parser::ParseAdditiveExpression() {
 
 ast::Expression::Ref Parser::ParseMultiplicativeExpression() {
     auto left = ParseUnaryExpression();
-    while(At().value == "/" || At().value == "*" || At().value == "%") {
+    while(At().value == "/" || At().value == "*" || At().value == "%" || (At().value == "<<") || (At().value == ">>")) {
         auto oper = Eat().value;
         auto right = ParseUnaryExpression();
         left = std::make_shared<ast::BinaryExpression>(left, right, oper);
