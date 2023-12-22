@@ -375,6 +375,19 @@ ast::Literal::Ref Compiler::EvaluateBinaryExpression(ast::BinaryExpression::Ref 
         auto literal = ast::RelativeRegisterLiteral::Create(std::dynamic_pointer_cast<ast::RegisterLiteral>(lhs),
             std::dynamic_pointer_cast<ast::NumericLiteral>(rhs));
 
+        literal->SetOperator(expression->Operator());
+
+        return literal;
+    }
+
+    if ((lhs->Kind() == ast::NodeType::kRegisterLiteral) && (rhs->Kind() == ast::NodeType::kRelativeRegisterLiteral)) {
+
+        auto literal = ast::RelativeRegisterLiteral::Create(std::dynamic_pointer_cast<ast::RegisterLiteral>(lhs),
+            std::dynamic_pointer_cast<ast::Literal>(rhs));
+
+
+        literal->SetOperator(expression->Operator());
+
         return literal;
     }
 
@@ -433,11 +446,12 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
     return false;
 }
 
+// This is a bit hairy - to say the least
 bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
 
     auto deref = EvaluateConstantExpression(expression->GetDeRefExp());
 
-    // Regular dereference
+    // Regular dereference, (<reg>)
     if (deref->Kind() == ast::NodeType::kRegisterLiteral) {
         return EmitRegisterLiteralWithAddrMode(std::dynamic_pointer_cast<ast::RegisterLiteral>(deref), vcpu::AddressMode::Indirect);
     }
@@ -458,7 +472,7 @@ bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
             // Output the relative register (mode is discared in this case)
             return EmitRegisterLiteralWithAddrMode(std::dynamic_pointer_cast<ast::RegisterLiteral>(relativeRegLiteral->RelativeExpression()), 0);
         }
-        // Relative to an absolute value?
+        // Relative to an absolute value; (reg + <number>)
         if (relativeRegLiteral->RelativeExpression()->Kind() == ast::NodeType::kNumericLiteral) {
             int addrMode = vcpu::AddressMode::Indirect;
             addrMode |= (vcpu::RelativeAddressMode::AbsRelative) << 2;
@@ -473,7 +487,44 @@ bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
             }
             return EmitByte(relLiteral->Value());
         }
-        // TODO: Handle shift values...   (a0+d1<<1)
+
+        // Handle shift values...   (a0+d1<<1)
+        if (relativeRegLiteral->RelativeExpression()->Kind() == ast::NodeType::kRelativeRegisterLiteral) {
+
+            // 1 - output the base register tag as reg-relative
+            int addrMode = vcpu::AddressMode::Indirect;
+            addrMode |= (vcpu::RelativeAddressMode::RegRelative) << 2;
+            // Output base register
+            if (!EmitRegisterLiteralWithAddrMode(relativeRegLiteral->BaseRegister(), addrMode)) {
+                return false;
+            }
+
+            // Calculate the reg-relative with shift-scaling
+            const auto relRegShift = std::dynamic_pointer_cast<ast::RelativeRegisterLiteral>(relativeRegLiteral->RelativeExpression());
+
+            if (relRegShift->Operator() != "<<") {
+                fmt::println(stderr, "Compiler, only '<<' operator is supported for relative register scaling!");
+                return false;
+            }
+            if (relRegShift->RelativeExpression()->Kind() != ast::NodeType::kNumericLiteral) {
+                fmt::println(stderr, "Compiler, relative register scaling must be a numerical value!");
+                return false;
+            }
+            auto relRegShiftValue = std::dynamic_pointer_cast<ast::NumericLiteral>(relRegShift->RelativeExpression());
+            auto shiftNum = relRegShiftValue->Value();
+            if (shiftNum > 15) {
+                fmt::println(stderr, "Compiler, relative register scaling too high {}, allowed range is 0..15",shiftNum);
+                return false;
+            }
+
+            addrMode = shiftNum;
+            if (!EmitRegisterLiteralWithAddrMode(relRegShift->BaseRegister(), addrMode)) {
+                return false;
+            }
+
+            return true;
+
+        }
 
     }
 
