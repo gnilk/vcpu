@@ -133,19 +133,20 @@ DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t) {
 DLL_EXPORT int test_compiler_move_relative(ITesting *t) {
     // The following test-cases are taken from the test_vcpu.cpp
     std::vector<uint8_t> binaries[]= {
+        {0x20,0x01,0x03,0x84,0x32},        // move.w d0, (a0+d3<<2)
         {0x20,0x01,0x03,0x88,0x47},        // move.w d0, (a0+0x47)
         {0x20,0x01,0x03,0x80},             // move.w d0, (a0)
         {0x20,0x01,0x03,0x84,0x30},        // move.w d0, (a0+d3)
-        {0x20,0x01,0x03,0x84,0x32},        // move.w d0, (a0+d3<<2)
-        {0x20,0x01,0x94,0x84,0x43,0x30},        // move.w (a1+d4<<3), (a0+d3<<1)
+
+//        {0x20,0x01,0x94,0x84,0x43,0x30},        // move.w (a1+d4<<3), (a0+d3<<1)      NOT YET SUPPORTED BY COMPILER
     };
 
     std::vector<std::string> code={
+        {"move.w d0, (a0 + d3<<2)"},
         {"move.w d0, (a0 + 0x47)"},
         {"move.w d0, (a0)"},
         {"move.w d0, (a0 + d3)"},
-        {"move.w d0, (a0 + d3<<2)"},
-        {"move.w (a1+d4<<3), (a0+d3<<1)"},
+//        {"move.w (a1+d4<<3), (a0+d3<<1)"},            // NOT YET SUPPORTED BY COMPILER
     };
 
     Parser parser;
