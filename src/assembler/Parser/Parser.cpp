@@ -345,10 +345,6 @@ ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &symbol) {
     }
 
     auto dst = ParseExpression();
-    if (dst->Kind() != ast::NodeType::kRegisterLiteral) {
-        fmt::println(stderr, "Destination must be DataRegister or AddressRegister");
-        return nullptr;
-    }
     instrStatment->SetDst(dst);
 
     // literal must be separated by ','
