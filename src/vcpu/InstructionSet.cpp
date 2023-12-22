@@ -11,20 +11,21 @@ using namespace gnilk::vcpu;
 
 //
 // This holds the full instruction set definition
+// I probably want the features to specifify valid SRC/DST combos
 //
 static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
     {OperandClass::SYS,{.name="syscall", .features = {} }},
     {OperandClass::NOP,{.name="nop", .features = {} }},
     {OperandClass::BRK,{.name="brk", .features = {} }},
     {OperandClass::RET,{.name="ret", .features = {} }},
-{OperandClass::LSL, {.name="lsl", .features = { OperandDescriptionFlags::OperandSize |
+{OperandClass::LSL, {.name="lsl", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
-                                        OperandDescriptionFlags::Register} }},
-{OperandClass::LSR, {.name="lsr", .features = { OperandDescriptionFlags::OperandSize |
+                                        OperandDescriptionFlags::Register }},
+{OperandClass::LSR, {.name="lsr", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
-                                        OperandDescriptionFlags::Register} }},
+                                        OperandDescriptionFlags::Register }},
 {OperandClass::LEA,{.name="lea", .features = OperandDescriptionFlags::OperandSize |
                                             OperandDescriptionFlags::TwoOperands |
                                             OperandDescriptionFlags::Immediate |
