@@ -9,5 +9,6 @@
 #include "instructions.h"
 #include "literals.h"
 #include "statements.h"
+#include "expressions.h"
 
 #endif //AST_H

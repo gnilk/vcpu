@@ -16,6 +16,17 @@ namespace gnilk {
         class InstructionDecoder {
         public:
             using Ref = std::shared_ptr<InstructionDecoder>;
+            struct RelativeAddressing {
+                RelativeAddressMode mode;
+                // not sure this is a good idea
+                union {
+                    uint8_t absoulte;
+                    struct {
+                        uint8_t shift : 4;      // LSB
+                        uint8_t index : 4;      // MSB
+                    } reg;
+                } relativeAddress;
+            };
         public:
             InstructionDecoder()  = default;
             virtual ~InstructionDecoder() = default;
@@ -48,13 +59,14 @@ namespace gnilk {
         private:
             uint8_t NextByte(CPUBase &cpu);
             // Helper for 'ToString'
-            std::string DisasmOperand(AddressMode addrMode, uint8_t regIndex) const;
+            std::string DisasmOperand(AddressMode addrMode, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const;
             // Perhaps move to base class
-            RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, int idxRegister);
+            RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, RelativeAddressing relAddr, int idxRegister);
 
 
 
         public:
+
             // Used during by decoder...
             uint8_t opCode;
             OperandClass opClass;
@@ -64,15 +76,16 @@ namespace gnilk {
             uint8_t dstRegAndFlags; // Always set
             uint8_t srcRegAndFlags; // Only if 'description.features & TwoOperands' == true
 
-            AddressMode dstAddrMode; // Always decoded from 'dstRegAndFlags'
+            AddressMode dstAddrMode;        // decoded from 'dstRegAndFlags'
+            RelativeAddressing dstRelAddrMode;  // decoded from 'dstRegAndFlags'
             uint8_t dstRegIndex; // decoded like: (dstRegAndFlags>>4) & 15;
-//            RegisterValue dstValue; // this can be an immediate or something else, essentially result from operand
-
 
             // Only if 'description.features & TwoOperands' == true
-            AddressMode srcAddrMode; // decoded from srcRegAndFlags
+            AddressMode srcAddrMode;        // decoded from srcRegAndFlags
+            RelativeAddressing srcRelAddrMode;  // decoded from srcRegAndFlags
+
+
             uint8_t srcRegIndex; // decoded like: (srcRegAndFlags>>4) & 15;
-//            RegisterValue srcValue; // this can be an immediate or register, essentially result from operand
 
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand

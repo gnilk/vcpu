@@ -75,10 +75,10 @@ emulated CPU...  Good riddance!
 ! basic addressing and referencing; 
     ! move d0, (a0), and friends
     ! lea a0, <label>, and friends
-- Advanced addressing (note; the contents within '()' is just a compile-time expression where a0 is a predefined variable...
-    - move d0, (a0 + <reg>)
-    - move d0, (a0 + <num>)
-    - move d0, (a0)++       ;; I want the m68k post/pre-fix advancement stuff (this is not how it is defined though)
+! Advanced addressing (note; the contents within '()' is just a compile-time expression where a0 is a predefined variable...
+    ! move d0, (a0 + <reg>)
+    ! move d0, (a0 + <num>)
+    - move d0, (a0)++       ;; There are a few bits left in the op-size byte...
 ! variable/array declarations (variable is just an array with one element)
 ! Struct definintions and declarations
     ! struct definitions; struct typename { ... }

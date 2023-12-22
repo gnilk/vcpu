@@ -121,6 +121,8 @@ const Context &gnilk::GetLexerContext() {
         {"*", TokenType::BinaryOperator},
         {"/", TokenType::BinaryOperator},
         {"%", TokenType::BinaryOperator},
+        {"<<", TokenType::BinaryOperator},
+        {">>", TokenType::BinaryOperator},
 
         // logical operators
         {"&&", TokenType::LogicalAndOperator},

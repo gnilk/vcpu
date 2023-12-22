@@ -36,6 +36,7 @@ namespace gnilk {
                 ++it;
                 return current;
             }
+            // TODO: Rewrite expect as ast::StatementWriter::WriteLine, so we can supply arguments!
             const Token &Expect(TokenType token, const std::string &errmsg);
 
             ast::Statement::Ref ParseStatement();
@@ -53,6 +54,9 @@ namespace gnilk {
             ast::Statement::Ref ParseTwoOpInstruction(const std::string &symbol);
 
             ast::Expression::Ref ParseExpression();
+            ast::Expression::Ref ParseAdditiveExpression();
+            ast::Expression::Ref ParseMultiplicativeExpression();
+            ast::Expression::Ref ParseUnaryExpression();
             ast::Expression::Ref ParsePrimaryExpression();
 
             union OpSizeOrStruct {

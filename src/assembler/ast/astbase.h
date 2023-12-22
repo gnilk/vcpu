@@ -46,6 +46,7 @@ namespace gnilk {
             kStringLiteral,
             kNullLiteral,
             kRegisterLiteral,
+            kRelativeRegisterLiteral,   // holds 1 base register and a relative expr.
             kArrayLiteral,
             kStructLiteral,
             kIdentifier,

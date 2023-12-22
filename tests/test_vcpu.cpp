@@ -18,6 +18,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_reg2reg(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t);
@@ -29,6 +30,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_move_indirect(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
     DLL_EXPORT int test_vcpu_disasm(ITesting *t);
+
 }
 
 DLL_EXPORT int test_vcpu(ITesting *t) {
@@ -126,6 +128,44 @@ DLL_EXPORT int test_vcpu_instr_move_reg2reg(ITesting *t) {
 
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
+    uint8_t program[]= {
+        // not quite sure how I should store this addressing...
+
+        // op code = 0x02,
+        // op size = 0x01,
+        // dstRegMode = 0x03,
+        // dstRelMode = -
+        // srcRegMode = 0x84,   => RRRR | MMMM => Reg = 8, Mode = 8 => b0100 => 01|00 => RelAddrMode = 01 = RegRelative, 00 = Indirect
+        // relAddrMode = 0x30   => RegRelative => RRRR | SSSS, R = RegIndex, S => Shift
+        0x20,0x01,0x03,0x84,0x30,        // move.w d0, (a0+d3)
+        0x20,0x01,0x03,0x84,0x32,        // move.w d0, (a0+d3<<2)
+        0x20,0x01,0x03,0x84,0x33,        // move.w d0, (a0+d3<<3)
+        0x20,0x01,0x03,0x84,0x37,        // move.w d0, (a0+d3<<7)
+        0x20,0x01,0x03,0x88,0x47,        // move.w d0, (a0+0x47)
+
+        // this is a side-effect of the
+        0x20,0x01,0x94,0x43,0x84,0x30,        // move.w (a1+d4<<3), (a0+d3<<1)
+
+        0x20,0x01,0x03,0x80,             // move.w d0, (a0)
+        0x00                                // brk
+    };
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+    auto &regs = vcpu.GetRegisters();
+    // preload reg d0 with 0x477
+    regs.dataRegisters[0].data.word = 0x4711;
+
+    while(vcpu.Step()) {
+        fmt::println("{}", vcpu.GetLastDecodedInstr()->ToString());
+    }
+
+    return kTR_Pass;
+
+    return kTR_Pass;
+}
+
 
 DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t) {
     uint8_t byteAdd[]= {

@@ -51,25 +51,45 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     dstRegAndFlags = 0;
     srcRegAndFlags = 0;
 
-    // FIXME: refactor dst/src value -> value, we do NOT write values back to the CPU but we do READ data as part of decoding
+    // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
     if (description.features & OperandDescriptionFlags::OneOperand) {
         dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
 
-        dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
+        // Same as below..
+        dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
+        dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
+        if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+            dstRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
+        }
         dstRegIndex = (dstRegAndFlags>>4) & 15;
 
-        value = ReadFrom(cpu, szOperand, dstAddrMode, dstRegIndex);
+
+        value = ReadFrom(cpu, szOperand, dstAddrMode, dstRelAddrMode, dstRegIndex);
     } else if (description.features & OperandDescriptionFlags::TwoOperands) {
+        // decode dst flags and register index
         dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-        srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-
-        dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x0f);
-        srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x0f);
-
+        // decode dst operand details
+        // This can be put in a specific function
+        // perhaps merge the 'dstAddrMode' 'dstRelAddrMode' and 'dstRegIndex' to a struct - they are the same for both src/dst
+        dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
+        dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
+        if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+            dstRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
+        }
         dstRegIndex = (dstRegAndFlags>>4) & 15;
+
+
+        // Decode source flags and register index and source operand
+        srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
+        // decode source operand details
+        srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x03);
+        srcRelAddrMode.mode  = static_cast<RelativeAddressMode>((srcRegAndFlags & 0x0c)>>2);
+        if ((srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (srcRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+            srcRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
+        }
         srcRegIndex = (srcRegAndFlags>>4) & 15;
 
-        value = ReadFrom(cpu, szOperand, srcAddrMode, srcRegIndex);
+        value = ReadFrom(cpu, szOperand, srcAddrMode, srcRelAddrMode, srcRegIndex);
 //        dstValue = ReadFrom(cpu, szOperand, dstAddrMode, dstRegIndex);
 
     } else {
@@ -81,7 +101,7 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     return true;
 }
 
-RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, int idxRegister) {
+RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, RelativeAddressing relAddrMode, int idxRegister) {
     RegisterValue v = {};
 
     // This should be performed by instr. decoder...
@@ -96,6 +116,7 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
         memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
         auto &reg = cpuBase.GetRegisterValue(idxRegister);
+        // TODO: take relative addressing into account..
         v = cpuBase.ReadFromMemory(szOperand, reg.data.longword);
     }
     return v;
@@ -135,20 +156,20 @@ std::string InstructionDecoder::ToString() const {
 
     if (desc.features & OperandDescriptionFlags::OneOperand) {
         opString += "\t";
-        opString += DisasmOperand(dstAddrMode, dstRegIndex);
+        opString += DisasmOperand(dstAddrMode, dstRegIndex, dstRelAddrMode);
     }
 
     if (desc.features & OperandDescriptionFlags::TwoOperands) {
         opString += "\t";
-        opString += DisasmOperand(dstAddrMode, dstRegIndex);
+        opString += DisasmOperand(dstAddrMode, dstRegIndex, dstRelAddrMode);
         opString += ",";
-        opString += DisasmOperand(srcAddrMode, srcRegIndex);
+        opString += DisasmOperand(srcAddrMode, srcRegIndex, srcRelAddrMode);
     }
 
     return opString;
 }
 
-std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint8_t regIndex) const {
+std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const {
     std::string opString = "";
     if (addrMode == AddressMode::Register) {
         if (regIndex > 7) {
@@ -175,10 +196,28 @@ std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint8_t regI
         opString += fmt::format("{:#x}", value.data.longword);
     } else if (addrMode == AddressMode::Indirect) {
         if (regIndex > 7) {
-            opString += fmt::format("(a{})", regIndex-8);
+            opString += fmt::format("(a{}", regIndex-8);
         } else {
-            opString += fmt::format("(d{})", regIndex);
+            opString += fmt::format("(d{}", regIndex);
         }
+        // decode relative register handling...
+        if (relAddr.mode == RelativeAddressMode::AbsRelative) {
+            opString += fmt::format(" + {:#x}", relAddr.relativeAddress.absoulte);
+        } else if (relAddr.mode == RelativeAddressMode::RegRelative) {
+            auto relRegIdx = relAddr.relativeAddress.reg.index;
+            opString += " + ";
+            if (relRegIdx > 7) {
+                opString += "a" + fmt::format("{}", relRegIdx-8);
+            } else {
+                opString += "d" + fmt::format("{}", relRegIdx);
+            }
+            if (relAddr.relativeAddress.reg.shift > 0) {
+                auto shift = relAddr.relativeAddress.reg.shift;
+                opString += fmt::format("<<{}", shift);
+            }
+        }
+        opString += fmt::format(")");
+
     }
     return opString;
 }

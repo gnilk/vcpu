@@ -31,6 +31,7 @@ list(APPEND asmsrc src/assembler/ast/astbase.h)
 list(APPEND asmsrc src/assembler/ast/instructions.h)
 list(APPEND asmsrc src/assembler/ast/literals.h)
 list(APPEND asmsrc src/assembler/ast/statements.h)
+list(APPEND asmsrc src/assembler/ast/expressions.h)
 
 list(APPEND asmsrc src/assembler/Compiler/Compiler.cpp src/assembler/Compiler/Compiler.h)
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)

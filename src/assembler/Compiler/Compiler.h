@@ -40,7 +40,9 @@ namespace gnilk {
             bool ProcessStructStatement(ast::StructStatement::Ref stmt);
 
 
+            // FIXME: Replace literal with CompilerValue (or similar) - like 'RuntimeValue' from Interpreter
             ast::Literal::Ref EvaluateConstantExpression(ast::Expression::Ref expression);
+            ast::Literal::Ref EvaluateBinaryExpression(ast::BinaryExpression::Ref expression);
 
             bool EmitOpCodeForSymbol(const std::string &symbol);
             bool EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
@@ -48,6 +50,7 @@ namespace gnilk {
             bool EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src);
 
             bool EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral);
+            bool EmitRegisterLiteralWithAddrMode(ast::RegisterLiteral::Ref regLiteral, uint8_t addrMode);
             // Special version which will also output the reg|mode byte
             bool EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitStringLiteral(vcpu::OperandSize opSize, ast::StringLiteral::Ref strLiteral);

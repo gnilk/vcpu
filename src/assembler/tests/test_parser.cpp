@@ -13,6 +13,7 @@ extern "C" {
     DLL_EXPORT int test_parser_linecomments(ITesting *t);
     DLL_EXPORT int test_parser_meta(ITesting *t);
     DLL_EXPORT int test_parser_struct(ITesting *t);
+    DLL_EXPORT int test_parser_expressions(ITesting *t);
 }
 DLL_EXPORT int test_parser(ITesting *t) {
     return kTR_Pass;
@@ -79,6 +80,21 @@ DLL_EXPORT int test_parser_struct(ITesting *t) {
         "   some_dword rs.d 1\n"\
         "   some_long rs.l 1\n"\
         "}\n"\
+        ""
+    };
+
+    Parser parser;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    return kTR_Pass;
+
+}
+DLL_EXPORT int test_parser_expressions(ITesting *t) {
+    const char srcCode[]= {
+        "move.l d0, (a0+4)\n"\
+        "move.l d0, 4+5\n"\
+        "\n"\
         ""
     };
 

@@ -9,6 +9,8 @@
 
 #include <memory>
 #include <unordered_map>
+
+#include "InstructionSet.h"
 #include "Linker/CompiledUnit.h"
 
 using namespace gnilk;
@@ -334,6 +336,10 @@ ast::Literal::Ref Compiler::EvaluateConstantExpression(ast::Expression::Ref expr
     switch (expression->Kind()) {
         case ast::NodeType::kNumericLiteral :
             return std::dynamic_pointer_cast<ast::Literal>(expression);
+        case ast::NodeType::kBinaryExpression :
+            return EvaluateBinaryExpression(std::dynamic_pointer_cast<ast::BinaryExpression>(expression));
+        case ast::NodeType::kRegisterLiteral :
+            return std::dynamic_pointer_cast<ast::Literal>(expression);
 /*
         case ast::NodeType::kIdentifier :
             return EvaluateIdentifier(std::dynamic_pointer_cast<ast::Identifier>(node));
@@ -351,7 +357,41 @@ ast::Literal::Ref Compiler::EvaluateConstantExpression(ast::Expression::Ref expr
             exit(1);
     }
     return {};
+}
 
+ast::Literal::Ref Compiler::EvaluateBinaryExpression(ast::BinaryExpression::Ref expression) {
+    auto lhs = EvaluateConstantExpression(expression->Left());
+    auto rhs = EvaluateConstantExpression(expression->Right());
+    if ((lhs->Kind() == ast::NodeType::kRegisterLiteral) && (rhs->Kind() == ast::NodeType::kRegisterLiteral)) {
+
+        auto literal = ast::RelativeRegisterLiteral::Create(std::dynamic_pointer_cast<ast::RegisterLiteral>(lhs),
+            std::dynamic_pointer_cast<ast::RegisterLiteral>(rhs));
+
+        return literal;
+    }
+
+    if ((lhs->Kind() == ast::NodeType::kRegisterLiteral) && (rhs->Kind() == ast::NodeType::kNumericLiteral)) {
+
+        auto literal = ast::RelativeRegisterLiteral::Create(std::dynamic_pointer_cast<ast::RegisterLiteral>(lhs),
+            std::dynamic_pointer_cast<ast::NumericLiteral>(rhs));
+
+        literal->SetOperator(expression->Operator());
+
+        return literal;
+    }
+
+    if ((lhs->Kind() == ast::NodeType::kRegisterLiteral) && (rhs->Kind() == ast::NodeType::kRelativeRegisterLiteral)) {
+
+        auto literal = ast::RelativeRegisterLiteral::Create(std::dynamic_pointer_cast<ast::RegisterLiteral>(lhs),
+            std::dynamic_pointer_cast<ast::Literal>(rhs));
+
+
+        literal->SetOperator(expression->Operator());
+
+        return literal;
+    }
+
+    return nullptr;
 }
 
 
@@ -406,26 +446,98 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
     return false;
 }
 
+// This is a bit hairy - to say the least
 bool Compiler::EmitDereference(ast::DeReferenceExpression::Ref expression) {
 
-    auto deref = expression->GetDeRefExp();
-    if (deref->Kind() != ast::NodeType::kRegisterLiteral) {
-        fmt::println("Only register deref possible at the moment!");
-        return false;
-    }
-    auto regLiteral = std::dynamic_pointer_cast<ast::RegisterLiteral>(deref);
-    if (!regToIdx.contains(regLiteral->Symbol())) {
-        fmt::println(stderr, "Illegal register: {}", regLiteral->Symbol());
-        return false;
+    auto deref = EvaluateConstantExpression(expression->GetDeRefExp());
+
+    // Regular dereference, (<reg>)
+    if (deref->Kind() == ast::NodeType::kRegisterLiteral) {
+        return EmitRegisterLiteralWithAddrMode(std::dynamic_pointer_cast<ast::RegisterLiteral>(deref), vcpu::AddressMode::Indirect);
     }
 
-    auto idxReg = regToIdx[regLiteral->Symbol()];
-    // Register|Mode = byte = RRRR | MMMM
-    auto regMode = (idxReg << 4) & 0xf0;
-    regMode |= vcpu::AddressMode::Indirect;
+    // Check if we have a relative register dereference;  (reg + <expression>)
+    if (deref->Kind() == ast::NodeType::kRelativeRegisterLiteral) {
+        const auto relativeRegLiteral = std::dynamic_pointer_cast<ast::RelativeRegisterLiteral>(deref);
 
-    EmitByte(regMode);
-    return true;
+        // Relative to a register?
+        if (relativeRegLiteral->RelativeExpression()->Kind() == ast::NodeType::kRegisterLiteral) {
+            // Setup address mode
+            int addrMode = vcpu::AddressMode::Indirect;
+            addrMode |= (vcpu::RelativeAddressMode::RegRelative) << 2;
+            // Output base register
+            if (!EmitRegisterLiteralWithAddrMode(relativeRegLiteral->BaseRegister(), addrMode)) {
+                return false;
+            }
+            // Output the relative register (mode is discared in this case)
+            return EmitRegisterLiteralWithAddrMode(std::dynamic_pointer_cast<ast::RegisterLiteral>(relativeRegLiteral->RelativeExpression()), 0);
+        }
+        // Relative to an absolute value; (reg + <number>)
+        if (relativeRegLiteral->RelativeExpression()->Kind() == ast::NodeType::kNumericLiteral) {
+            int addrMode = vcpu::AddressMode::Indirect;
+            addrMode |= (vcpu::RelativeAddressMode::AbsRelative) << 2;
+            if (!EmitRegisterLiteralWithAddrMode(relativeRegLiteral->BaseRegister(), addrMode)) {
+                return false;
+            }
+
+            const auto relLiteral = std::dynamic_pointer_cast<ast::NumericLiteral>(relativeRegLiteral->RelativeExpression());
+            if (relLiteral->Value() > 255) {
+                fmt::println(stderr, "Compiler, Absolute relative value {} out range - must be within 0..255", relLiteral->Value());
+                return false;
+            }
+            return EmitByte(relLiteral->Value());
+        }
+
+        // Handle shift values...   (a0+d1<<1)
+        if (relativeRegLiteral->RelativeExpression()->Kind() == ast::NodeType::kRelativeRegisterLiteral) {
+
+            // 1 - output the base register tag as reg-relative
+            // this is the '(a0..+'  part of the expressions
+            int addrMode = vcpu::AddressMode::Indirect;
+            addrMode |= (vcpu::RelativeAddressMode::RegRelative) << 2;
+            // Output base register
+            if (!EmitRegisterLiteralWithAddrMode(relativeRegLiteral->BaseRegister(), addrMode)) {
+                return false;
+            }
+
+            // 2 - calculate and output the relative part with scaling
+            // this is the '(.. + d3<<1)'  part of the expressions
+            const auto relRegShift = std::dynamic_pointer_cast<ast::RelativeRegisterLiteral>(relativeRegLiteral->RelativeExpression());
+
+            // Check the operator - the parser is pretty dumb in this case - as I reuse the normal 'binary' expressions
+            if (relRegShift->Operator() != "<<") {
+                fmt::println(stderr, "Compiler, only '<<' operator is supported for relative register scaling!");
+                return false;
+            }
+
+            // Also check that we have a number; we don't want someone doing '(... + d1 << d2)'
+            if (relRegShift->RelativeExpression()->Kind() != ast::NodeType::kNumericLiteral) {
+                fmt::println(stderr, "Compiler, relative register scaling must be a numerical value!");
+                return false;
+            }
+            auto relRegShiftValue = std::dynamic_pointer_cast<ast::NumericLiteral>(relRegShift->RelativeExpression());
+            auto shiftNum = relRegShiftValue->Value();
+
+            // we only have 4 bits for the shift number - but I guess that range is sufficient for now...
+            // because shift number is the lower 4 bits of the reg-index; 'RRRR | SSSS' in this mode..
+            if (shiftNum > 15) {
+                fmt::println(stderr, "Compiler, relative register scaling too high {}, allowed range is 0..15",shiftNum);
+                return false;
+            }
+
+            addrMode = shiftNum;
+            if (!EmitRegisterLiteralWithAddrMode(relRegShift->BaseRegister(), addrMode)) {
+                return false;
+            }
+
+            return true;
+
+        }
+
+    }
+
+    fmt::println(stderr, "Compiler, Unsupported dereference construct!");
+    return false;
 }
 
 
@@ -448,23 +560,24 @@ bool Compiler::EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src) 
 }
 
 bool Compiler::EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral) {
+    return EmitRegisterLiteralWithAddrMode(regLiteral, vcpu::AddressMode::Register);
+}
+
+bool Compiler::EmitRegisterLiteralWithAddrMode(ast::RegisterLiteral::Ref regLiteral, uint8_t addrMode) {
     if (!regToIdx.contains(regLiteral->Symbol())) {
         fmt::println(stderr, "Illegal register: {}", regLiteral->Symbol());
         return false;
     }
 
-    //
-    // FIXME: Address mode is not obvious..
-    //
-
     auto idxReg = regToIdx[regLiteral->Symbol()];
     // Register|Mode = byte = RRRR | MMMM
     auto regMode = (idxReg << 4) & 0xf0;
-    regMode |= vcpu::AddressMode::Register;
+    regMode |= addrMode;
 
     EmitByte(regMode);
     return true;
 }
+
 
 bool Compiler::EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
     uint8_t regMode = 0; // no register
