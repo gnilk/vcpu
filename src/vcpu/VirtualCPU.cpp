@@ -60,6 +60,9 @@ bool VirtualCPU::Step() {
         case POP :
             ExecutePopInstr(instrDecoder);
             break;
+        case LSR :
+            ExecuteLsrInstr(instrDecoder);
+            break;
         default:
             // raise invaild-instr. exception here!
             fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCode);
@@ -72,6 +75,31 @@ bool VirtualCPU::Step() {
 //
 // Move of these will be small - consider supporting lambda in description code instead...
 //
+void VirtualCPU::ExecuteLsrInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = instrDecoder->GetValue();
+    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+        // raise exception
+        return;
+    }
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+
+    switch(instrDecoder->szOperand) {
+        case OperandSize::Byte :
+            // FIXME: Make sure this works as expected!
+            dstReg.data.byte = dstReg.data.byte >>  v.data.byte;
+            break;
+        case OperandSize::Word :
+            dstReg.data.word = dstReg.data.word >>  v.data.byte;
+            break;
+        case OperandSize::DWord :
+            dstReg.data.dword = dstReg.data.dword >>  v.data.byte;
+            break;
+        case OperandSize::Long :
+            dstReg.data.longword = dstReg.data.longword >> v.data.byte;
+            break;
+    }
+}
+
 void VirtualCPU::ExecuteSysCallInstr(InstructionDecoder::Ref instrDecoder) {
     auto id = registers.dataRegisters[0].data.word;
     if (syscalls.contains(id)) {
