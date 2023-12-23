@@ -26,6 +26,14 @@ static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
                                         OperandDescriptionFlags::Register }},
+{OperandClass::ASL, {.name="asl", .features = OperandDescriptionFlags::OperandSize |
+                                        OperandDescriptionFlags::TwoOperands |
+                                        OperandDescriptionFlags::Immediate |
+                                        OperandDescriptionFlags::Register }},
+{OperandClass::ASR, {.name="asr", .features = OperandDescriptionFlags::OperandSize |
+                                        OperandDescriptionFlags::TwoOperands |
+                                        OperandDescriptionFlags::Immediate |
+                                        OperandDescriptionFlags::Register }},
 {OperandClass::LEA,{.name="lea", .features = OperandDescriptionFlags::OperandSize |
                                             OperandDescriptionFlags::TwoOperands |
                                             OperandDescriptionFlags::Immediate |

@@ -66,6 +66,12 @@ bool VirtualCPU::Step() {
         case LSL :
             ExecuteLslInstr(instrDecoder);
             break;
+        case ASR :
+            ExecuteAsrInstr(instrDecoder);
+            break;
+        case ASL :
+            ExecuteAslInstr(instrDecoder);
+            break;
         default:
             // raise invaild-instr. exception here!
             fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCode);
@@ -75,6 +81,56 @@ bool VirtualCPU::Step() {
     return true;
 }
 
+void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = instrDecoder->GetValue();
+    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+        // raise exception
+        return;
+    }
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+
+    switch(instrDecoder->szOperand) {
+        case OperandSize::Byte :
+            // FIXME: Make sure this works as expected!
+            dstReg.data.byte = dstReg.data.byte <<  v.data.byte;
+            break;
+        case OperandSize::Word :
+            dstReg.data.word = dstReg.data.word <<  v.data.byte;
+            break;
+        case OperandSize::DWord :
+            dstReg.data.dword = dstReg.data.dword <<  v.data.byte;
+            break;
+        case OperandSize::Long :
+            dstReg.data.longword = dstReg.data.longword << v.data.byte;
+            break;
+    }
+}
+void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = instrDecoder->GetValue();
+    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+        // raise exception
+        return;
+    }
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+
+    switch(instrDecoder->szOperand) {
+        case OperandSize::Byte :
+            // FIXME: Make sure this works as expected!
+            dstReg.data.byte = dstReg.data.byte >>  v.data.byte;
+            break;
+        case OperandSize::Word :
+            dstReg.data.word = dstReg.data.word >>  v.data.byte;
+            break;
+        case OperandSize::DWord :
+            dstReg.data.dword = dstReg.data.dword >>  v.data.byte;
+            break;
+        case OperandSize::Long :
+            dstReg.data.longword = dstReg.data.longword >> v.data.byte;
+            break;
+    }
+}
+
+// FIXME: Verify and update CPU Status Flags
 void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
     if (instrDecoder->dstAddrMode != AddressMode::Register) {
@@ -100,6 +156,7 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     }
 }
 
+// FIXME: Verify and CPU Status flags
 void VirtualCPU::ExecuteLsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
     if (instrDecoder->dstAddrMode != AddressMode::Register) {
