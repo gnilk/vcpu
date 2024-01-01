@@ -81,30 +81,6 @@ bool VirtualCPU::Step() {
     return true;
 }
 
-void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
-    auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstAddrMode != AddressMode::Register) {
-        // raise exception
-        return;
-    }
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
-
-    switch(instrDecoder->szOperand) {
-        case OperandSize::Byte :
-            // FIXME: Make sure this works as expected!
-            dstReg.data.byte = dstReg.data.byte <<  v.data.byte;
-            break;
-        case OperandSize::Word :
-            dstReg.data.word = dstReg.data.word <<  v.data.byte;
-            break;
-        case OperandSize::DWord :
-            dstReg.data.dword = dstReg.data.dword <<  v.data.byte;
-            break;
-        case OperandSize::Long :
-            dstReg.data.longword = dstReg.data.longword << v.data.byte;
-            break;
-    }
-}
 // Helpers
 template<typename T>
 static uint64_t MSBForTypeInReg(RegisterValue &v) {
@@ -125,6 +101,77 @@ static uint64_t MSBForOpSize(OperandSize szOperand, RegisterValue &v) {
     // Should never happen
     return 0;
 }
+// Update the CPU flags
+template<typename T>
+static void UpdateCPUFlags(CPUStatusReg &statusReg, uint64_t numRes, uint64_t numDst, uint64_t numSrc) {
+    // Flag computation
+    auto flag_n = (numRes >> (std::numeric_limits<T>::digits-1)) & 1;
+    auto flag_c = numSrc > (std::numeric_limits<T>::max() - numDst);
+    auto flag_x = flag_c;
+    auto flag_z = !(numRes);
+
+    statusReg.flags.carry = flag_c;
+    statusReg.flags.extend = flag_x;
+    statusReg.flags.zero = flag_z;
+    statusReg.flags.negative = flag_n;
+}
+
+void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = instrDecoder->GetValue();
+    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+        // raise exception
+        return;
+    }
+
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+
+    auto signBefore = MSBForOpSize(instrDecoder->szOperand, dstReg);
+
+    uint64_t msb = 0;
+    bool isZero = false;
+    int nBits = dstReg.data.byte;
+    while(nBits > 0) {
+        // Will we shift out something??
+        msb = MSBForOpSize(instrDecoder->szOperand, dstReg);
+        switch(instrDecoder->szOperand) {
+            case OperandSize::Byte :
+                dstReg.data.byte = dstReg.data.byte <<  1;
+                if (!dstReg.data.byte) isZero = true;
+                break;
+            case OperandSize::Word :
+                dstReg.data.word = dstReg.data.word <<  1;
+                if (!dstReg.data.word) isZero = true;
+                break;
+            case OperandSize::DWord :
+                dstReg.data.dword = dstReg.data.dword <<  1;
+                if (!dstReg.data.dword) isZero = true;
+                break;
+            case OperandSize::Long :
+                dstReg.data.longword = dstReg.data.longword << 1;
+                if (!dstReg.data.longword) isZero = true;
+                break;
+        }
+        nBits--;
+    }
+    // Only update these in case of non-zero shifts
+    if (msb) {
+        statusReg.flags.carry = true;
+        statusReg.flags.extend = true;
+    } else {
+        statusReg.flags.carry = false;
+        statusReg.flags.carry = false;
+    }
+    statusReg.flags.zero = isZero;
+    statusReg.flags.negative = (msb)?true:false;
+    // Overflow - IF the MSB is toggled during anypoint...
+    if (signBefore != MSBForOpSize(instrDecoder->szOperand, dstReg)) {
+        statusReg.flags.overflow = true;
+    } else {
+        statusReg.flags.overflow = false;
+    }
+
+
+}
 
 void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
@@ -137,29 +184,48 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     // Fetch the sign-bit..
     uint64_t msb = MSBForOpSize(instrDecoder->szOperand, dstReg);
 
+    bool carryExtFlag = false;
+    bool isZero = false;
     // Loop is needed since we propagate the MSB
     // All this is done 'unsigned' during emulating since signed shift is UB..
-    while(v.data.byte) {
+    int nBits = v.data.byte;
+    while(nBits) {
+        carryExtFlag = (dstReg.data.longword & 1)?true:false;
         switch(instrDecoder->szOperand) {
             case OperandSize::Byte :
                 dstReg.data.byte = dstReg.data.byte >>  1;
+                if (!dstReg.data.byte) isZero = true;
                 break;
             case OperandSize::Word :
                 dstReg.data.word = dstReg.data.word >>  1;
+                if (!dstReg.data.word) isZero = true;
                 break;
             case OperandSize::DWord :
                 dstReg.data.dword = dstReg.data.dword >>  1;
+                if (!dstReg.data.dword) isZero = true;
                 break;
             case OperandSize::Long :
                 dstReg.data.longword = dstReg.data.longword >>  1;
+                if (!dstReg.data.longword) isZero = true;
                 break;
         }
         // Mask in the 'sign'-bit (MSB) for the correct type
         dstReg.data.longword |= msb;
-        v.data.byte--;
+        nBits--;
     }
-    // FIXME: Update CPU Flags here
-
+    // Only update these in case of non-zero shifts
+    if (v.data.byte > 0) {
+        statusReg.flags.carry = carryExtFlag;
+        statusReg.flags.extend = carryExtFlag;
+    } else {
+        statusReg.flags.carry = false;
+    }
+    statusReg.flags.zero = isZero;
+    statusReg.flags.negative = (msb)?true:false;
+    // Overflow flag - is a bit odd - might not apply to ASR but rather to ASL...
+    // see m68000prm.pdf - page. 4-22
+    // V — Set if the most significant bit is changed at any time during the shift operation;
+    // cleared otherwise.
 }
 
 // FIXME: Verify and update CPU Status Flags
@@ -252,20 +318,6 @@ void VirtualCPU::ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder) {
 //
 //
 
-// Update the CPU flags
-template<typename T>
-static void UpdateCPUFlags(CPUStatusReg &statusReg, uint64_t numRes, uint64_t numDst, uint64_t numSrc) {
-    // Flag computation
-    auto flag_n = (numRes >> (std::numeric_limits<T>::digits-1)) & 1;
-    auto flag_c = numSrc > (std::numeric_limits<T>::max() - numDst);
-    auto flag_x = flag_c;
-    auto flag_z = !(numRes);
-
-    statusReg.flags.carry = flag_c;
-    statusReg.flags.extend = flag_x;
-    statusReg.flags.zero = flag_z;
-    statusReg.flags.negative = flag_n;
-}
 
 //
 // Overflow logic taken from Musashi (https://github.com/kstenerud/Musashi/)
