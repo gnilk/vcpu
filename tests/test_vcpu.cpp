@@ -530,23 +530,30 @@ DLL_EXPORT int test_vcpu_instr_lsl(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_instr_asr(ITesting *t) {
     uint8_t program[]= {
-        // 0xB3 - opcode, LSR
+        // 0xE4 - opcode, ASR
         // 0x00 - OP Size, 0 = byte
         // 0x03 - DstRegMode, RRRR|MMMM = 0000 | 0011 => d0 | 3 => 3 = register
         // 0x01 - SrcRegMode, 0000|MMMM = 0000 | 0001 => xx | 1 => Immediate
         // 0x01 - Immediate value (0x01)
 
-        0xE4,0x00,0x03,0x01,0x01    // lsr.b d0, #1
+        0xE4,0x00,0x03,0x01,0x01,    // asr.b d0, #1
+        0xE4,0x00,0x03,0x01,0x03    // asr.b d0, #3
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
 
     vcpu.Begin(program, 1024);
-    regs.dataRegisters[0].data.byte = 0x40;
+    regs.dataRegisters[0].data.byte = 0x82;
     auto res = vcpu.Step();
     TR_ASSERT(t, res);
+    // MSB should be set on arithmetic shift...
+    TR_ASSERT(t, (regs.dataRegisters[0].data.byte & 0x80) != 0);
 
-    TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0x20);
+    regs.dataRegisters[0].data.byte = 0xf0;
+    res = vcpu.Step();
+    TR_ASSERT(t, res);
+    // MSB should be set on arithmetic shift...
+    TR_ASSERT(t, (regs.dataRegisters[0].data.byte & 0x80) != 0);
 
     return kTR_Pass;
 

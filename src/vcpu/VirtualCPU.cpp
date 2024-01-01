@@ -105,6 +105,27 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
             break;
     }
 }
+// Helpers
+template<typename T>
+static uint64_t MSBForTypeInReg(RegisterValue &v) {
+    // Return the MSB depending on the op.size we are dealing with...
+    return (v.data.longword & (uint64_t(1) << (std::numeric_limits<T>::digits - 1)));
+}
+static uint64_t MSBForOpSize(OperandSize szOperand, RegisterValue &v) {
+    switch(szOperand) {
+        case OperandSize::Byte :
+            return  MSBForTypeInReg<uint8_t>(v);
+        case OperandSize::Word :
+            return MSBForTypeInReg<uint16_t>(v);
+        case OperandSize::DWord :
+            return MSBForTypeInReg<uint32_t>(v);
+        case OperandSize::Long :
+            return MSBForTypeInReg<uint64_t>(v);
+    }
+    // Should never happen
+    return 0;
+}
+
 void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
     if (instrDecoder->dstAddrMode != AddressMode::Register) {
@@ -113,21 +134,32 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     }
     auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
 
-    switch(instrDecoder->szOperand) {
-        case OperandSize::Byte :
-            // FIXME: Make sure this works as expected!
-            dstReg.data.byte = dstReg.data.byte >>  v.data.byte;
-            break;
-        case OperandSize::Word :
-            dstReg.data.word = dstReg.data.word >>  v.data.byte;
-            break;
-        case OperandSize::DWord :
-            dstReg.data.dword = dstReg.data.dword >>  v.data.byte;
-            break;
-        case OperandSize::Long :
-            dstReg.data.longword = dstReg.data.longword >> v.data.byte;
-            break;
+    // Fetch the sign-bit..
+    uint64_t msb = MSBForOpSize(instrDecoder->szOperand, dstReg);
+
+    // Loop is needed since we propagate the MSB
+    // All this is done 'unsigned' during emulating since signed shift is UB..
+    while(v.data.byte) {
+        switch(instrDecoder->szOperand) {
+            case OperandSize::Byte :
+                dstReg.data.byte = dstReg.data.byte >>  1;
+                break;
+            case OperandSize::Word :
+                dstReg.data.word = dstReg.data.word >>  1;
+                break;
+            case OperandSize::DWord :
+                dstReg.data.dword = dstReg.data.dword >>  1;
+                break;
+            case OperandSize::Long :
+                dstReg.data.longword = dstReg.data.longword >>  1;
+                break;
+        }
+        // Mask in the 'sign'-bit (MSB) for the correct type
+        dstReg.data.longword |= msb;
+        v.data.byte--;
     }
+    // FIXME: Update CPU Flags here
+
 }
 
 // FIXME: Verify and update CPU Status Flags
