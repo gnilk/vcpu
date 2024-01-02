@@ -262,7 +262,9 @@ void SetRegVal(RegisterValue &reg, uint64_t value) {
 
 template<OperandSize szOp, OperandClass opCode>
 void Shift(int cnt, RegisterValue &regValue) {
+    // FIXME: handle all shift operations here (ASR/LSR/ASL/LSL/ROL/ROR)
     if (opCode == OperandClass::LSL) {
+        // Flags here!
         auto v = GetRegVal<szOp>(regValue);
         for(int i=0;i<cnt;i++) {
             v = v << 1;
