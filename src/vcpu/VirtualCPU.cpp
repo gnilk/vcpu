@@ -169,10 +169,10 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
     } else {
         statusReg.flags.overflow = false;
     }
-
-
 }
 
+// This can be simplified...
+// See: MoiraALU_cpp.h - could take a few impl. ideas from there..
 void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
     if (instrDecoder->dstAddrMode != AddressMode::Register) {
@@ -228,6 +228,51 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     // cleared otherwise.
 }
 
+
+template<OperandSize szOp>
+uint64_t GetRegVal(RegisterValue &regValue) {
+    switch(szOp) {
+        case OperandSize::Byte :
+            return regValue.data.byte;
+        case OperandSize::Word :
+            return regValue.data.word;
+        case OperandSize::DWord :
+            return regValue.data.dword;
+        case OperandSize::Long :
+            return regValue.data.longword;
+    }
+}
+template<OperandSize szOp>
+void SetRegVal(RegisterValue &reg, uint64_t value) {
+    switch(szOp) {
+        case OperandSize::Byte :
+            reg.data.byte = (uint8_t)value;
+            break;
+        case OperandSize::Word :
+            reg.data.word = (uint16_t)value;
+            break;
+        case OperandSize::DWord :
+            reg.data.dword = (uint32_t)value;
+            break;
+        case OperandSize::Long :
+            reg.data.longword = (uint64_t)value;
+            break;
+    }
+}
+
+template<OperandSize szOp, OperandClass opCode>
+void Shift(int cnt, RegisterValue &regValue) {
+    if (opCode == OperandClass::LSL) {
+        auto v = GetRegVal<szOp>(regValue);
+        for(int i=0;i<cnt;i++) {
+            v = v << 1;
+        }
+        // Update flags
+        SetRegVal<szOp>(regValue, v);
+    }
+}
+
+
 // FIXME: Verify and update CPU Status Flags
 void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
@@ -237,19 +282,19 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     }
     auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
 
+    // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder->szOperand) {
         case OperandSize::Byte :
-            // FIXME: Make sure this works as expected!
-            dstReg.data.byte = dstReg.data.byte <<  v.data.byte;
+            Shift<OperandSize::Byte, OperandClass::LSL>(v.data.byte, dstReg);
             break;
         case OperandSize::Word :
-            dstReg.data.word = dstReg.data.word <<  v.data.byte;
+            Shift<OperandSize::Word, OperandClass::LSL>(v.data.byte, dstReg);
             break;
         case OperandSize::DWord :
-            dstReg.data.dword = dstReg.data.dword <<  v.data.byte;
+            Shift<OperandSize::DWord, OperandClass::LSL>(v.data.byte, dstReg);
             break;
         case OperandSize::Long :
-            dstReg.data.longword = dstReg.data.longword << v.data.byte;
+            Shift<OperandSize::Long, OperandClass::LSL>(v.data.byte, dstReg);
             break;
     }
 }
