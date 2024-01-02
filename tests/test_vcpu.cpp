@@ -541,6 +541,7 @@ DLL_EXPORT int test_vcpu_instr_asr(ITesting *t) {
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
+    auto &status = vcpu.GetStatusReg();
 
     vcpu.Begin(program, 1024);
     regs.dataRegisters[0].data.byte = 0x82;
@@ -548,12 +549,20 @@ DLL_EXPORT int test_vcpu_instr_asr(ITesting *t) {
     TR_ASSERT(t, res);
     // MSB should be set on arithmetic shift...
     TR_ASSERT(t, (regs.dataRegisters[0].data.byte & 0x80) != 0);
+    TR_ASSERT(t, status.flags.negative);
+    TR_ASSERT(t, !status.flags.carry);
+    TR_ASSERT(t, !status.flags.extend);
+    TR_ASSERT(t, !status.flags.zero);
 
-    regs.dataRegisters[0].data.byte = 0xf0;
-    res = vcpu.Step();
+    regs.dataRegisters[0].data.byte = 0x67;
+    res = vcpu.Step();      // asr.b d0,3
     TR_ASSERT(t, res);
     // MSB should be set on arithmetic shift...
     TR_ASSERT(t, (regs.dataRegisters[0].data.byte & 0x80) != 0);
+    TR_ASSERT(t, !status.flags.negative);
+    TR_ASSERT(t, status.flags.carry);
+    TR_ASSERT(t, status.flags.extend);
+    TR_ASSERT(t, !status.flags.zero);
 
     return kTR_Pass;
 
