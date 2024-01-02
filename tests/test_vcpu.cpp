@@ -518,6 +518,8 @@ DLL_EXPORT int test_vcpu_instr_lsl(ITesting *t) {
     auto &regs = vcpu.GetRegisters();
 
     vcpu.Begin(program, 1024);
+    // we are shifting the byte - this should not affect other parts of the register...
+    regs.dataRegisters[0].data.longword = 0xaabbaabbaa;
     regs.dataRegisters[0].data.byte = 0x20;
     auto res = vcpu.Step();
     TR_ASSERT(t, res);
