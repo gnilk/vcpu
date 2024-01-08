@@ -261,16 +261,15 @@ void SetRegVal(RegisterValue &reg, uint64_t value) {
 }
 
 template<OperandSize szOp, OperandClass opCode>
-void Shift(int cnt, RegisterValue &regValue) {
+void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
     // FIXME: handle all shift operations here (ASR/LSR/ASL/LSL/ROL/ROR)
     if (opCode == OperandClass::LSL) {
-        // Flags here!
         auto v = GetRegVal<szOp>(regValue);
         for(int i=0;i<cnt;i++) {
             v = v << 1;
         }
-        // Update flags
         SetRegVal<szOp>(regValue, v);
+        // FIXME: Update flags
     }
 }
 
@@ -287,16 +286,16 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder->szOperand) {
         case OperandSize::Byte :
-            Shift<OperandSize::Byte, OperandClass::LSL>(v.data.byte, dstReg);
+            Shift<OperandSize::Byte, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Word :
-            Shift<OperandSize::Word, OperandClass::LSL>(v.data.byte, dstReg);
+            Shift<OperandSize::Word, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::DWord :
-            Shift<OperandSize::DWord, OperandClass::LSL>(v.data.byte, dstReg);
+            Shift<OperandSize::DWord, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Long :
-            Shift<OperandSize::Long, OperandClass::LSL>(v.data.byte, dstReg);
+            Shift<OperandSize::Long, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
             break;
     }
 }
