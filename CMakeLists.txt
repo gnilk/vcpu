@@ -15,6 +15,7 @@ target_include_directories(log_fmt PUBLIC src/ext)
 list(APPEND vcpusrc src/vcpu/CPUBase.cpp src/vcpu/CPUBase.h)
 list(APPEND vcpusrc src/vcpu/InstructionDecoder.cpp src/vcpu/InstructionDecoder.h)
 list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
+list(APPEND vcpusrc src/vcpu/MemoryUnit.cpp src/vcpu/MemoryUnit.h)
 list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 #
 # Virtual CPU unit test sources
