@@ -106,25 +106,25 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
 
     // This should be performed by instr. decoder...
     if (addrMode == AddressMode::Immediate) {
-        v = cpuBase.ReadFromMemory(szOperand, memoryOffset);
+        v = cpuBase.ReadFromMemoryUnit(szOperand, memoryOffset);
         memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Register) {
         auto &reg = cpuBase.GetRegisterValue(idxRegister);
         v.data = reg.data;
     } else if (addrMode == AddressMode::Absolute) {
-        v = cpuBase.ReadFromMemory(szOperand, memoryOffset);
+        v = cpuBase.ReadFromMemoryUnit(szOperand, memoryOffset);
         memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
         auto &reg = cpuBase.GetRegisterValue(idxRegister);
         // TODO: take relative addressing into account..
-        v = cpuBase.ReadFromMemory(szOperand, reg.data.longword);
+        v = cpuBase.ReadFromMemoryUnit(szOperand, reg.data.longword);
     }
     return v;
 }
 
 uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
     // Note: FetchFromRam will modifiy the address!!!!
-    auto nextByte = cpu.FetchFromRam<uint8_t>(memoryOffset);
+    auto nextByte = cpu.FetchFromPhysicalRam<uint8_t>(memoryOffset);
     return nextByte;
 }
 

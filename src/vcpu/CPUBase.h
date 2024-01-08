@@ -12,6 +12,7 @@
 
 #include "fmt/format.h"
 #include "InstructionSet.h"
+#include "MemoryUnit.h"
 
 namespace gnilk {
     namespace vcpu {
@@ -221,21 +222,24 @@ namespace gnilk {
                 return v;
             }
 
-            // Move this to base class
-            RegisterValue ReadFromMemory(OperandSize szOperand, uint64_t address) {
+            // Read with address translation
+            RegisterValue ReadFromMemoryUnit(OperandSize szOperand, uint64_t address) {
                 RegisterValue v = {};
+
+                address = memoryUnit.TranslateAddress(address);
+
                 switch(szOperand) {
                     case OperandSize::Byte :
-                        v.data.byte = FetchFromRam<uint8_t>(address);
+                        v.data.byte = FetchFromPhysicalRam<uint8_t>(address);
                     break;
                     case OperandSize::Word :
-                        v.data.word = FetchFromRam<uint16_t>(address);
+                        v.data.word = FetchFromPhysicalRam<uint16_t>(address);
                     break;
                     case OperandSize::DWord :
-                        v.data.dword = FetchFromRam<uint32_t>(address);
+                        v.data.dword = FetchFromPhysicalRam<uint32_t>(address);
                     break;
                     case OperandSize::Long :
-                        v.data.longword = FetchFromRam<uint64_t>(address);
+                        v.data.longword = FetchFromPhysicalRam<uint64_t>(address);
                     break;
                 }
                 return v;
@@ -247,14 +251,14 @@ namespace gnilk {
             template<typename T>
             T FetchFromInstrPtr() {
                 auto address = registers.instrPointer.data.longword;
-                T value = FetchFromRam<T>(address);
+                T value = FetchFromPhysicalRam<T>(address);
                 registers.instrPointer.data.longword = address;
                 return value;
             }
 
-            // WILL UPDATE ADDRESS!!!
+            // Read from physical memory..
             template<typename T>
-            T FetchFromRam(uint64_t &address) {
+            T FetchFromPhysicalRam(uint64_t &address) {
                 if (address > szRam) {
                     fmt::println(stderr, "FetchFromRam - Invalid address {}", address);
                     exit(1);
@@ -304,6 +308,8 @@ namespace gnilk {
             size_t szRam = 0;
             Registers registers = {};
             CPUStatusReg statusReg = {};
+            MemoryUnit memoryUnit;
+
             std::stack<RegisterValue> stack;
 
             std::unordered_map<uint32_t, SysCall::Ref> syscalls;

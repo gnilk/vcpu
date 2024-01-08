@@ -12,6 +12,7 @@
 #include "CPUBase.h"
 #include "InstructionDecoder.h"
 #include "InstructionSet.h"
+#include "MemoryUnit.h"
 
 namespace gnilk {
 
