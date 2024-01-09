@@ -22,6 +22,7 @@ list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 #
 list(APPEND vcputestsrc tests/test_vcpu.cpp)
 list(APPEND vcputestsrc tests/test_integration.cpp)
+list(APPEND vcputestsrc tests/test_mmu.cpp)
 
 
 #
