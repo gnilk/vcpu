@@ -48,8 +48,6 @@ namespace gnilk {
                 uint32_t bytes = 0;             // 32 bit, page size - max 4gb continous memory
                 uint32_t flags = 0;  // TBD     // 32 bit
             };
-#pragma pack(pop)
-
             struct PageDescriptor {
                 size_t nPages = 0;
                 Page pages[VCPU_MMU_MAX_PAGES_PER_DESC];
@@ -58,6 +56,7 @@ namespace gnilk {
                 size_t nDescriptors = 0;
                 PageDescriptor descriptor[VCPU_MMU_MAX_DESCRIPTORS];
             };
+#pragma pack(pop)
 
         public:
             MemoryUnit() = default;
@@ -66,15 +65,33 @@ namespace gnilk {
             bool IsAddressValid(uint64_t virtualAddress);
             uint64_t TranslateAddress(uint64_t virtualAddress);
             uint64_t AllocatePage();
-            uint64_t AllocateLargePage(size_t szPage);
+            bool FreePage(uint64_t virtualAddress);
+            // debugging / unit-test functionality
             const Page *GetPageForAddress(uint64_t virtualAddress);
+            const uint8_t *GetPhyBitmapTable() {
+                return phyBitMap;
+            }
+            size_t GetPhyBitmapTableSize() {
+                return szBitmapBytes;
+            }
         protected:
-            void *AllocatePhysicalPage(size_t szPage);
+            void *AllocatePhysicalPage(uint64_t virtualAddress);
+            void FreePhysicalPage(uint64_t virtualAddress);
             void InitializeRootTables();
 
             int64_t FindFreeRootTable();
             int64_t FindFreePageDescriptor(uint64_t idxRootTable);
             int64_t FindFreePage(uint64_t idxRootTable, uint64_t idxDescriptor);
+
+            inline uint64_t IdxRootTableFromVA(uint64_t virtualAddress) {
+                return (virtualAddress >> (12 + VCPU_MMU_DESCRIPTORS_NBITS + VCPU_MMU_PAGES_NBITS)) & (VCPU_MMU_MAX_ROOT_TABLES-1);
+            }
+            inline uint64_t IdxDescriptorFromVA(uint64_t virtualAddress) {
+                return (virtualAddress >> (12 + VCPU_MMU_PAGES_NBITS)) & (VCPU_MMU_MAX_DESCRIPTORS - 1);
+            }
+            inline uint64_t IdxPageFromVA(uint64_t virtualAddress) {
+                return (virtualAddress >> 12) & (VCPU_MMU_MAX_PAGES_PER_DESC-1);
+            }
         private:
             void *ptrPhysicalRamStart = nullptr;
             size_t szPhysicalRam = 0;
@@ -82,6 +99,8 @@ namespace gnilk {
             uint8_t *ptrCurrentPage = nullptr;
             size_t idxCurrentPhysicalPage = 0;
 
+            uint8_t *phyBitMap = nullptr;
+            size_t szBitmapBytes = 0;
             PageTable *rootTables;
         };
     }
