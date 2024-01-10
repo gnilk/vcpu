@@ -24,3 +24,10 @@ bool CPUBase::RegisterSysCall(uint16_t id, const std::string &name, SysCallDeleg
     syscalls[id] = inst;
     return true;
 }
+void CPUBase::UpdateMMU() {
+    // FIXME: implement this
+    auto cr0 = registers.cntrlRegisters[0].data.longword;
+    auto cr1 = registers.cntrlRegisters[1].data.longword;
+//    memoryUnit.SetControl(cr0);
+//    memoryUnit.SetPageTranslationVAddr(cr1);
+}

@@ -120,6 +120,8 @@ namespace gnilk {
             RegisterValue stackPointer;
 
             // Control registers - if the instr. has the 'OperandFamily == Control' set you can access these...
+            // cr0 - mmu control register
+            // cr1 - mmu page table address
             RegisterValue cntrlRegisters[8];
 
             // Instruction pointer can't be modified
@@ -313,7 +315,7 @@ namespace gnilk {
             uint64_t FetchLongFromInstrPtr() {
                 return FetchFromInstrPtr<uint64_t>();
             }
-
+            void UpdateMMU();
         protected:
             uint8_t *ram = nullptr;
             size_t szRam = 0;
