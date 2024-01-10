@@ -25,9 +25,14 @@ extern "C" {
 // Number of pages currently supported with current page-table defines
 static uint8_t ram[MMU_MAX_MEM] = {};
 
-static void DumpBitmapTable(MemoryUnit &mmu) {
+static void DumpBitmapTable(MemoryUnit &mmu, size_t szMax) {
     auto ptrBitmap = mmu.GetPhyBitmapTable();
     auto szBitmapTable = mmu.GetPhyBitmapTableSize();
+    // Trunc if > 0
+    if (szMax > 0) {
+        szBitmapTable = szMax;
+    }
+    printf("MMU U-Test, PhyBitmap Table, dumping: %zu bytes\n", szBitmapTable);
     for(int i=0;i<szBitmapTable;i++) {
         printf("0x%.2x ", ptrBitmap[i]);
         if ((i & 7) == 7) {
@@ -79,6 +84,9 @@ DLL_EXPORT int test_mmu_allocate_many(ITesting *t) {
         TR_ASSERT(t, pagePtr != nullptr);
     }
     // The first 8 physical pages should be marked as allocated
+    if (mmu.GetPhyBitmapTable()[0] != 0xff) {
+        DumpBitmapTable(mmu,16);
+    }
     TR_ASSERT(t, mmu.GetPhyBitmapTable()[0] == 0xff);
 
     // Allocate another 8...
@@ -105,7 +113,7 @@ DLL_EXPORT int test_mmu_allocate_many(ITesting *t) {
         TR_ASSERT(t, pagePtr != nullptr);
     }
     // Dump for inspection..
-    DumpBitmapTable(mmu);
+    DumpBitmapTable(mmu,16);
 
     return kTR_Pass;
 }
