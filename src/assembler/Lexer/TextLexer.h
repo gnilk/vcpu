@@ -26,6 +26,7 @@ namespace gnilk {
         // Registers
         DataReg,
         AddressReg,
+        ControlReg,
         // special registers
         sp,ip,
 

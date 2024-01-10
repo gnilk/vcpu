@@ -347,6 +347,13 @@ ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &symbol) {
     auto dst = ParseExpression();
     instrStatment->SetDst(dst);
 
+    if (dst->Kind() == ast::NodeType::kRegisterLiteral) {
+        auto dstReg = std::dynamic_pointer_cast<ast::RegisterLiteral>(dst);
+        if (strutil::startsWith(dstReg->Symbol(), "cr")) {
+            instrStatment->SetOpFamily(gnilk::vcpu::OperandFamily::Control);
+        }
+    }
+
     // literal must be separated by ','
     Expect(TokenType::Comma, "Operand requires two arguments!");
 
@@ -354,6 +361,13 @@ ast::Statement::Ref Parser::ParseTwoOpInstruction(const std::string &symbol) {
     // Fixme: replace with: src = ParseExpression();
     auto src = ParseExpression();
     instrStatment->SetSrc(src);
+    if (src->Kind() == ast::NodeType::kRegisterLiteral) {
+        auto srcReg = std::dynamic_pointer_cast<ast::RegisterLiteral>(src);
+        if (strutil::startsWith(srcReg->Symbol(), "cr")) {
+            instrStatment->SetOpFamily(gnilk::vcpu::OperandFamily::Control);
+        }
+    }
+
 
     // Expressions are a little different, like:
     //   move d0, a0             <- move reg to reg
@@ -413,6 +427,8 @@ ast::Expression::Ref Parser::ParsePrimaryExpression() {
         case TokenType::DataReg :
             return ast::RegisterLiteral::Create(Eat().value);
         case TokenType::AddressReg :
+            return ast::RegisterLiteral::Create(Eat().value);
+        case TokenType::ControlReg :
             return ast::RegisterLiteral::Create(Eat().value);
         case TokenType::Number :
             return ast::NumericLiteral::Create(Eat().value);

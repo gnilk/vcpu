@@ -87,6 +87,15 @@ const Context &gnilk::GetLexerContext() {
         {"a5", TokenType::AddressReg},
         {"a6", TokenType::AddressReg},
         {"a7", TokenType::AddressReg},
+        // Control Registers
+        {"cr0", TokenType::ControlReg},
+        {"cr1", TokenType::ControlReg},
+        {"cr2", TokenType::ControlReg},
+        {"cr3", TokenType::ControlReg},
+        {"cr4", TokenType::ControlReg},
+        {"cr5", TokenType::ControlReg},
+        {"cr6", TokenType::ControlReg},
+        {"cr7", TokenType::ControlReg},
     };
 
     static std::unordered_map<std::string, TokenType> operators = {

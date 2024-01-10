@@ -312,7 +312,9 @@ bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
         return false;
     }
     auto opSize = twoOpInstr->OpSize();
-    if (!EmitByte(static_cast<uint8_t>(opSize))) {
+    uint8_t opSizeAndFamilyCode = static_cast<uint8_t>(opSize);
+    opSizeAndFamilyCode |= static_cast<uint8_t>(twoOpInstr->OpFamily()) << 4;
+    if (!EmitByte(opSizeAndFamilyCode)) {
         return false;
     }
     // FIXME: Cache this in the parser stage(?)
@@ -414,6 +416,14 @@ static std::unordered_map<std::string, uint8_t> regToIdx = {
     {"a5",13},
     {"a6",14},
     {"a7",15},
+    {"cr0",8},
+    {"cr1",9},
+    {"cr2",10},
+    {"cr3",11},
+    {"cr4",12},
+    {"cr5",13},
+    {"cr6",14},
+    {"cr7",15},
 };
 
 
