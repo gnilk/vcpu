@@ -58,6 +58,7 @@ namespace gnilk {
             void ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder);
             void ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder);
+            void ExecuteBneInstr(InstructionDecoder::Ref instrDecoder);
 
 
             void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);

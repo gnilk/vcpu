@@ -78,6 +78,9 @@ bool VirtualCPU::Step() {
         case BEQ :
             ExecuteBeqInstr(instrDecoder);
             break;
+        case BNE :
+            ExecuteBneInstr(instrDecoder);
+            break;
         default:
             // raise invaild-instr. exception here!
             fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCodeByte);
@@ -131,12 +134,49 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
     statusReg.flags.overflow = (ovflow >> (std::numeric_limits<T>::digits-1)) & 1;
 }
 
+void VirtualCPU::ExecuteBneInstr(InstructionDecoder::Ref instrDecoder) {
+    if (instrDecoder->dstAddrMode != AddressMode::Immediate) {
+        // raise exception
+        return;
+    }
+    // zero must not be set in order to jump
+    if (statusReg.flags.zero == 1) {
+        return;
+    }
+
+    // FIXME: This is same as for BEQ - we could keep these..
+
+    auto v = instrDecoder->GetValue();
+    int64_t relativeOffset = 0;
+
+    switch(instrDecoder->opSize) {
+        case OperandSize::Byte :
+            relativeOffset = (int8_t)(v.data.byte);
+        break;
+        case OperandSize::Word :
+            relativeOffset = (int16_t)(v.data.word);
+        break;
+        case OperandSize::DWord :
+            relativeOffset = (int32_t)(v.data.dword);
+        break;
+        case OperandSize::Long :    // in case of long - this is an absolute address...
+            registers.instrPointer.data.longword = v.data.longword;
+        return;
+    }
+    registers.instrPointer.data.longword += relativeOffset;
+
+}
 void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
     if (instrDecoder->dstAddrMode != AddressMode::Immediate) {
         // raise exception
         return;
     }
+    // zero must be in order to jump
+    if (statusReg.flags.zero == 0) {
+        return;
+    }
+
     int64_t relativeOffset = 0;
 
     switch(instrDecoder->opSize) {
