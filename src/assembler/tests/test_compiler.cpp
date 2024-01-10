@@ -33,6 +33,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_array_worddecl(ITesting *t);
     DLL_EXPORT int test_compiler_var_bytedecl(ITesting *t);
     DLL_EXPORT int test_compiler_const_literal(ITesting *t);
+    DLL_EXPORT int test_compiler_const_string(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -588,5 +589,28 @@ DLL_EXPORT int test_compiler_const_literal(ITesting *t) {
     TR_ASSERT(t, binary == expectedBinary);
 
     return kTR_Pass;
+
+}
+DLL_EXPORT int test_compiler_const_string(ITesting *t) {
+    return kTR_Pass;
+
+    // This is not yet supported!
+    // std::vector<uint8_t> expectedBinary = {
+    // };
+    //
+    // const char srcCode[]= {
+    //     "const CONSTANT \"this is a string\"\n"\
+    //     "lea a0, CONSTANT\n"\
+    //     ""
+    // };
+    // Parser parser;
+    // Compiler compiler;
+    // auto ast = parser.ProduceAST(srcCode);
+    // TR_ASSERT(t, ast != nullptr);
+    // auto res = compiler.CompileAndLink(ast);
+    // TR_ASSERT(t, res);
+    // auto bin = compiler.Data();
+    //
+    // return kTR_Pass;
 
 }
