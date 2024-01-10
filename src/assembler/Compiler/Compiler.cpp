@@ -103,6 +103,7 @@ bool Compiler::Link() {
 
             int offset = 0;
             if (identifierAddr.address > placeHolder.ofsRelative) {
+                // FIXME: This is a bit odd - but if we jump forward I need to add 1 to the offset..
                 offset = identifierAddr.address - placeHolder.ofsRelative + 1;
             } else {
                 offset = identifierAddr.address - placeHolder.ofsRelative;
