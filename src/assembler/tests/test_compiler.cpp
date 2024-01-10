@@ -23,8 +23,10 @@ extern "C" {
     DLL_EXPORT int test_compiler_nop(ITesting *t);
     DLL_EXPORT int test_compiler_push(ITesting *t);
     DLL_EXPORT int test_compiler_pop(ITesting *t);
-    DLL_EXPORT int test_compiler_callrelative(ITesting *t);
-    DLL_EXPORT int test_compiler_calllabel(ITesting *t);
+    DLL_EXPORT int test_compiler_call_relative(ITesting *t);
+    DLL_EXPORT int test_compiler_call_label(ITesting *t);
+    DLL_EXPORT int test_compiler_call_relative_label(ITesting *t);
+    DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t);
     DLL_EXPORT int test_compiler_lea_label(ITesting *t);
     DLL_EXPORT int test_compiler_move_indirect(ITesting *t);
     DLL_EXPORT int test_compiler_array_bytedecl(ITesting *t);
@@ -309,7 +311,7 @@ DLL_EXPORT int test_compiler_pop(ITesting *t) {
     return kTR_Pass;
 }
 
-DLL_EXPORT int test_compiler_callrelative(ITesting *t) {
+DLL_EXPORT int test_compiler_call_relative(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
         0xc0,0x00,0x01,0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
         0xf1,                       // 4
@@ -341,7 +343,68 @@ DLL_EXPORT int test_compiler_callrelative(ITesting *t) {
     return kTR_Pass;
 }
 
-DLL_EXPORT int test_compiler_calllabel(ITesting *t) {
+// Test of forward relative
+DLL_EXPORT int test_compiler_call_relative_label(ITesting *t) {
+    std::vector<uint8_t> expectedBinary= {
+        0xc0,0x00,0x01,0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        0xf1,                       // 4
+        0x00,                       // 5 WHALT!
+        0xf1,                       // 6 <- call should go here
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
+    };
+    std::vector<std::string> codes={
+        {
+            "call.b    label\n "\
+            "nop      \n"\
+            "brk        \n"\
+            "label:\n"\
+            "nop \n"\
+            "nop \n"\
+            "ret"
+        }
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(codes[0]);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.CompileAndLink(ast);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+}
+
+// Test of forward relative
+DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t) {
+    std::vector<uint8_t> expectedBinary= {
+        0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
+        0xd0,0x00,0x01,0xf7,            // beq.b -9
+        0x00,
+    };
+    std::vector<std::string> codes={
+        {
+            "label:\n"\
+            "cmp.b d0, 0x33\n"\
+            "beq.b label\n"\
+            "brk"
+        }
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(codes[0]);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.CompileAndLink(ast);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+}
+
+
+DLL_EXPORT int test_compiler_call_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
         0xc0,0x03,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0d,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
         0xf1,                       // 4
