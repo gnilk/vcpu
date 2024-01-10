@@ -36,8 +36,9 @@ bool MemoryUnit::Initialize(void *physicalRam, size_t sizeInBytes) {
     ptrCurrentPage = static_cast<uint8_t *>(ptrPhysicalRamStart);
 
     phyBitMap = static_cast<uint8_t *>(ptrPhysicalRamStart);
-    ptrCurrentPage += szBitmapBytes;
+    szBitmapBytes = (VCPU_MMU_MAX_ROOT_TABLES * VCPU_MMU_MAX_DESCRIPTORS * VCPU_MMU_MAX_PAGES_PER_DESC) >> 3;
 
+    ptrCurrentPage += szBitmapBytes;
 
     // Allocate one page table for the mmu on initialization
     rootTables = (PageTable *)ptrCurrentPage;
