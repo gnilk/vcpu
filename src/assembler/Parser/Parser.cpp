@@ -55,8 +55,24 @@ ast::Statement::Ref Parser::ParseStatement() {
             return ParseLineComment();
         case TokenType::Struct :
             return ParseStruct();
+        case TokenType::Const :
+            return ParseConst();
+        default:
+            break;
     }
     return nullptr;
+}
+
+ast::Statement::Ref Parser::ParseConst() {
+    Eat();
+    if (At().type != TokenType::Identifier) {
+        fmt::println(stderr, "Parser, Identifier expected after const; const <id>, got: {}", At().value);
+        return nullptr;
+    }
+    auto ident = Eat().value;
+    auto expression = ParseExpression();
+
+    return std::make_shared<ast::ConstLiteral>(ident, expression);
 }
 
 ast::Statement::Ref Parser::ParseStruct() {
@@ -440,10 +456,14 @@ ast::Expression::Ref Parser::ParsePrimaryExpression() {
             return ast::Identifier::Create(Eat().value);
         case TokenType::OpenParen :
             // This is a deference-expression...
-            Eat();
-            auto value = ParseExpression();
-            Expect(TokenType::CloseParen, "Expression should end with ')'");
-            return ast::DeReferenceExpression::Create(value);
+            {
+                Eat();
+                auto value = ParseExpression();
+                Expect(TokenType::CloseParen, "Expression should end with ')'");
+                return ast::DeReferenceExpression::Create(value);
+            }
+        default:
+            break;
     }
     fmt::println(stderr, "Unexpected token found: {}",At().value.c_str());
     return nullptr;

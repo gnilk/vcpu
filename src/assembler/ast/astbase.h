@@ -42,6 +42,7 @@ namespace gnilk {
 
             kProperty,
             kObjectLiteral,
+            kConstLiteral,
             kNumericLiteral,
             kStringLiteral,
             kNullLiteral,

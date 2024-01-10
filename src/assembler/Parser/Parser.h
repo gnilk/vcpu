@@ -41,6 +41,7 @@ namespace gnilk {
 
             ast::Statement::Ref ParseStatement();
 
+            ast::Statement::Ref ParseConst();
             ast::Statement::Ref ParseStruct();
             ast::Statement::Ref ParseReservationStatement();
             ast::Statement::Ref ParseMetaStatement();

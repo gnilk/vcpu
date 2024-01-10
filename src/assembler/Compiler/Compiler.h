@@ -36,6 +36,7 @@ namespace gnilk {
 
             bool ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt);
             bool ProcessStructLiteral(ast::StructLiteral::Ref stmt);
+            bool ProcessConstLiteral(ast::ConstLiteral::Ref stmt);
 
             bool ProcessMetaStatement(ast::MetaStatement::Ref stmt);
             bool ProcessStructStatement(ast::StructStatement::Ref stmt);
@@ -92,7 +93,7 @@ namespace gnilk {
             std::vector<StructDefinition> structDefinitions;
             std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
             std::unordered_map<std::string, IdentifierAddress> identifierAddresses;
-
+            std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
 
             std::vector<uint8_t> linkdata;
         };

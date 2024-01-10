@@ -150,6 +150,8 @@ bool Compiler::ProcessStmt(ast::Statement::Ref stmt) {
             return ProcessStructStatement(std::dynamic_pointer_cast<ast::StructStatement>(stmt));
         case ast::NodeType::kStructLiteral :
             return ProcessStructLiteral(std::dynamic_pointer_cast<ast::StructLiteral>(stmt));
+        case ast::NodeType::kConstLiteral :
+            return ProcessConstLiteral(std::dynamic_pointer_cast<ast::ConstLiteral>(stmt));
         default :
             fmt::println(stderr, "Compiler, unknown statment");
     }
@@ -249,6 +251,16 @@ bool Compiler::ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt) {
     }
     return true;
 }
+
+bool Compiler::ProcessConstLiteral(ast::ConstLiteral::Ref stmt) {
+    if (constants.contains(stmt->Ident())) {
+        fmt::println(stderr, "Compiler, const with name '{}' already defined", stmt->Ident());
+        return false;
+    }
+    constants[stmt->Ident()] = stmt;
+    return true;
+}
+
 
 bool Compiler::ProcessStructLiteral(ast::StructLiteral::Ref stmt) {
 
@@ -363,20 +375,22 @@ ast::Literal::Ref Compiler::EvaluateConstantExpression(ast::Expression::Ref expr
             return std::dynamic_pointer_cast<ast::Literal>(expression);
         case ast::NodeType::kBinaryExpression :
             return EvaluateBinaryExpression(std::dynamic_pointer_cast<ast::BinaryExpression>(expression));
+        case ast::NodeType::kDeRefExpression : {
+                // If the expression starts with '(' this will be marked as a de-reference expression
+                // let's just forward the internal expression in that case and hope for the best...
+                auto deRefExp = std::dynamic_pointer_cast<ast::DeReferenceExpression>(expression);
+                return EvaluateConstantExpression(deRefExp->GetDeRefExp());
+            }
         case ast::NodeType::kRegisterLiteral :
             return std::dynamic_pointer_cast<ast::Literal>(expression);
-/*
-        case ast::NodeType::kIdentifier :
-            return EvaluateIdentifier(std::dynamic_pointer_cast<ast::Identifier>(node));
-        case ast::NodeType::kCompareExpression :
-            return EvaluateCompareExpression(std::dynamic_pointer_cast<ast::CompareExpression>(node));
-        case ast::NodeType::kBinaryExpression :
-            return EvaluateBinaryExpression(std::dynamic_pointer_cast<ast::BinaryExpression>(node));
-        case ast::NodeType::kObjectLiteral :
-            return EvaluateObjectLiteral(std::dynamic_pointer_cast<ast::ObjectLiteral>(node));
-        case ast::NodeType::kMemberExpression :
-            return EvaluateMemberExpression(std::dynamic_pointer_cast<ast::MemberExpression>(node), {});
-*/
+        case ast::NodeType::kIdentifier : {
+            auto identifier = std::dynamic_pointer_cast<ast::Identifier>(expression);
+            if (constants.contains(identifier->Symbol())) {
+                auto constLiteral = constants[identifier->Symbol()];
+                return EvaluateConstantExpression(constLiteral->Expression());
+            }
+            return nullptr;
+        }
         default :
             fmt::println(stderr, "Compiler, Unsupported AST node type: {}", ast::NodeTypeToString(expression->Kind()));
             exit(1);
@@ -416,6 +430,29 @@ ast::Literal::Ref Compiler::EvaluateBinaryExpression(ast::BinaryExpression::Ref 
         return literal;
     }
 
+    // Is this a constant expression???
+    if ((lhs->Kind() == ast::NodeType::kNumericLiteral) && (rhs->Kind() == ast::NodeType::kNumericLiteral)) {
+        auto leftLValue = std::dynamic_pointer_cast<ast::NumericLiteral>(lhs);
+        auto rightLValue = std::dynamic_pointer_cast<ast::NumericLiteral>(rhs);
+        auto oper = expression->Operator();
+        if (oper == "+") {
+            return std::make_shared<ast::NumericLiteral>(leftLValue->Value() + rightLValue->Value());
+        }
+        if (oper == "-") {
+            return std::make_shared<ast::NumericLiteral>(leftLValue->Value() - rightLValue->Value());
+        }
+        if (oper == "*") {
+            return std::make_shared<ast::NumericLiteral>(leftLValue->Value() * rightLValue->Value());
+        }
+        if (oper == "/") {
+            return std::make_shared<ast::NumericLiteral>(leftLValue->Value() / rightLValue->Value());
+        }
+
+    }
+
+
+    fmt::println(stderr, "Compiler, EvaluateBinaryExpression, lhs/rhs combination not supported");
+
     return nullptr;
 }
 
@@ -451,6 +488,17 @@ static std::unordered_map<std::string, uint8_t> regToIdx = {
 
 
 bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
+
+    // If this is an identifier - check if it is actually a constant and work out the actual value - recursively
+    if (operandExp->Kind() == ast::NodeType::kIdentifier) {
+        auto identifier = std::dynamic_pointer_cast<ast::Identifier>(operandExp);
+        if (constants.contains(identifier->Symbol())) {
+            auto constLiteral = constants[identifier->Symbol()];
+            auto constExpression = EvaluateConstantExpression(constLiteral->Expression());
+            return EmitInstrOperand(desc, opSize, constExpression);
+        }
+    }
+
     switch(operandExp->Kind()) {
         case ast::NodeType::kNumericLiteral :
             if (desc.features & vcpu::OperandDescriptionFlags::Immediate) {

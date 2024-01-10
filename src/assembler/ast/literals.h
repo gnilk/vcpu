@@ -20,6 +20,35 @@ namespace gnilk {
 
         };
 
+        class ConstLiteral : public Literal {
+        public:
+            using Ref = std::shared_ptr<ConstLiteral>;
+        public:
+            ConstLiteral() : Literal(NodeType::kConstLiteral) {
+
+            }
+            explicit ConstLiteral(const std::string &symbol, ast::Expression::Ref exp) :
+                Literal(NodeType::kConstLiteral), ident(symbol), constExpression(exp) {
+
+            }
+            const std::string &Ident() {
+                return ident;
+            }
+            const ast::Expression::Ref Expression() {
+                return constExpression;
+            }
+            void Dump() override {
+                WriteLine("ConstExpression");
+                Indent();
+                WriteLine("Ident: {}", ident);
+                constExpression->Dump();
+                Unindent();
+            }
+        private:
+            std::string ident;
+            ast::Expression::Ref constExpression = nullptr;
+        };
+
         class NumericLiteral : public Literal {
         public:
             using Ref = std::shared_ptr<NumericLiteral>;
