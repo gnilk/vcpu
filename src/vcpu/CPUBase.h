@@ -200,11 +200,17 @@ namespace gnilk {
                 return statusReg;
             }
 
-            __inline const RegisterValue &GetRegisterValue(int idxRegister) const {
+            __inline const RegisterValue &GetRegisterValue(int idxRegister, OperandFamily family) const {
+                if (family == OperandFamily::Control) {
+                    return idxRegister>7?registers.cntrlRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
+                }
                 return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
             }
-            __inline RegisterValue &GetRegisterValue(int idxRegister) {
-                return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
+            __inline RegisterValue &GetRegisterValue(int idxRegister, OperandFamily family) {
+                if (family == OperandFamily::Control) {
+                    return idxRegister>7?registers.cntrlRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
+                }
+               return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
             }
 
             // Move this to base class
