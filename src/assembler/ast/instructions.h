@@ -42,6 +42,9 @@ namespace gnilk {
             void SetOpSize(gnilk::vcpu::OperandSize newOpSize) {
                 opSize = newOpSize;
             }
+            void SetOpFamily(gnilk::vcpu::OperandFamily newOpFamily) {
+                opFamily = newOpFamily;
+            }
             void SetAddrMode(gnilk::vcpu::AddressMode newAddrMode) {
                 addrMode = newAddrMode;
             }
@@ -58,6 +61,9 @@ namespace gnilk {
             }
             gnilk::vcpu::OperandSize OpSize() {
                 return opSize;
+            }
+            gnilk::vcpu::OperandFamily OpFamily() {
+                return opFamily;
             }
             gnilk::vcpu::AddressMode AddrMode() {
                 return addrMode;
@@ -93,6 +99,7 @@ namespace gnilk {
             std::string symbol = {};
             gnilk::vcpu::AddressMode addrMode = {};
             gnilk::vcpu::OperandSize opSize = gnilk::vcpu::OperandSize::Long;
+            gnilk::vcpu::OperandFamily opFamily = gnilk::vcpu::OperandFamily::Integer;
             ast::Expression::Ref dst;
             ast::Expression::Ref src;
 
