@@ -27,11 +27,13 @@ namespace gnilk {
         //  byte | What
         //  ----------------------------
         //    0  | Op Code
-        //    1  | Addressing size; bit 0,1 (0,1,2,3) -> 6 bits spare!
+        //    1  | OpSizeAndFamily (rrFF | rrSS)
+        //           SS, Size bits 0,1 (0,1,2,3)
+        //           FF, Family bits
         //    2  | Dst Register and Flags: RRRR | FFFF => upper 4 bits 16 bit register index (0..7 => D0..D7, 8..15 => A0..A7)
-        //       |  Flags: AddressMode flags (Immediate, Absolute, Register) - we have 2 bits spare!
+        //       |  Flags: AddressMode flags (Indirect, Immediate, Absolute, Register) - we have 2 bits spare!
         //    3  | Src Register and Flags: RRRR | FFFF => upper 4 bits 16 bit register index (0..7 => D0..D7, 8..15 => A0..A7)
-        //       |  Flags: AddressMode flags (Immediate, Absolute, Register) - we have 2 bits spare!
+        //       |  Flags: AddressMode flags (Indirect, Immediate, Absolute, Register) - we have 2 bits spare!
         // ---------------------------------------------------------------------------
         // Note: Destination Address Mode 'Immediate' is invalid
         //
