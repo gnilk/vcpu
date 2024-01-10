@@ -119,8 +119,13 @@ namespace gnilk {
             RegisterValue addressRegisters[7];
             RegisterValue stackPointer;
 
+            // Control registers - if the instr. has the 'OperandFamily == Control' set you can access these...
+            RegisterValue cntrlRegisters[8];
+
             // Instruction pointer can't be modified
             RegisterValue instrPointer;
+        };
+        struct Control {
         };
 
 
