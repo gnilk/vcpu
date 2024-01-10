@@ -19,6 +19,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_move_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_reg2reg(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_move_cntrl(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t);
@@ -169,6 +170,30 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
 
     return kTR_Pass;
 }
+DLL_EXPORT int test_vcpu_instr_move_cntrl(ITesting *t) {
+    uint8_t program[]= {
+        0x20,0x13,0x83,0x03,    // move.l cr0, d0
+        0x20,0x13,0x03,0x83,    // move.l d0, cr0
+    };
+    VirtualCPU vcpu;
+    vcpu.Begin(program, 1024);
+    auto &regs = vcpu.GetRegisters();
+    // preload reg d0 with 0x477
+    regs.dataRegisters[0].data.longword = 0x4711;
+
+    // Verify intermediate mode reading works for 8,16,32,64 bit sizes
+    vcpu.Step();
+    TR_ASSERT(t, regs.cntrlRegisters[0].data.longword == regs.dataRegisters[0].data.longword);
+    // Reset and read back..
+    regs.dataRegisters[0].data.longword = 0x0;
+    vcpu.Step();
+    TR_ASSERT(t, regs.cntrlRegisters[0].data.longword == regs.dataRegisters[0].data.longword);
+
+    fmt::println("{}", vcpu.GetLastDecodedInstr()->ToString());
+
+    return kTR_Pass;
+}
+
 
 
 DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t) {
