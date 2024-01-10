@@ -63,16 +63,21 @@ namespace gnilk {
             // Perhaps move to base class
             RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, RelativeAddressing relAddr, int idxRegister);
 
-
+            void DecodeDstReg(CPUBase &cpu);
+            void DecodeSrcReg(CPUBase &cpu);
 
         public:
 
             // Used during by decoder...
-            uint8_t opCodeByte;
+            uint8_t opCodeByte;     // raw opCodeByte
             OperandCode opCode;
             OperandDescription description;
 
-            OperandSize szOperand; // Only if 'description.features & OperandSize' == true
+
+            uint8_t opSizeAndFamilyCode;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
+            OperandSize opSize; // Only if 'description.features & OperandSize' == true
+            OperandFamily opFamily;
+
             uint8_t dstRegAndFlags; // Always set
             uint8_t srcRegAndFlags; // Only if 'description.features & TwoOperands' == true
 

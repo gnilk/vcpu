@@ -28,6 +28,7 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
         return false;
     }
 
+    // Decode the op-code
     opCode =  static_cast<OperandCode>(opCodeByte);
     // check if we have this instruction defined
     if (!gnilk::vcpu::GetInstructionSet().contains(opCode)) {
@@ -37,61 +38,29 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     description = gnilk::vcpu::GetInstructionSet().at(opCode);
 
     //
-    // Setup addressing
+    // Decode addressing
     //
-    uint8_t szAddressing = 0;   // FIXME: default!!!
+    opSizeAndFamilyCode = 0;
     if (description.features & OperandDescriptionFlags::OperandSize) {
-        szAddressing = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-        szOperand = static_cast<OperandSize>(szAddressing);
+        opSizeAndFamilyCode = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
+        opSize = static_cast<OperandSize>(opSizeAndFamilyCode & 0x03);
+        opFamily = static_cast<OperandFamily>((opSizeAndFamilyCode >> 4) & 0x03);
     }
 
     //
-    // Setup src/dst handling
+    // Decode src/dst handling
     //
     dstRegAndFlags = 0;
     srcRegAndFlags = 0;
 
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
     if (description.features & OperandDescriptionFlags::OneOperand) {
-        dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-
-        // Same as below..
-        dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
-        dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
-        if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
-            dstRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
-        }
-        dstRegIndex = (dstRegAndFlags>>4) & 15;
-
-
-        value = ReadFrom(cpu, szOperand, dstAddrMode, dstRelAddrMode, dstRegIndex);
+        DecodeDstReg(cpu);
+        value = ReadFrom(cpu, opSize, dstAddrMode, dstRelAddrMode, dstRegIndex);
     } else if (description.features & OperandDescriptionFlags::TwoOperands) {
-        // decode dst flags and register index
-        dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-        // decode dst operand details
-        // This can be put in a specific function
-        // perhaps merge the 'dstAddrMode' 'dstRelAddrMode' and 'dstRegIndex' to a struct - they are the same for both src/dst
-        dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
-        dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
-        if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
-            dstRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
-        }
-        dstRegIndex = (dstRegAndFlags>>4) & 15;
-
-
-        // Decode source flags and register index and source operand
-        srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-        // decode source operand details
-        srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x03);
-        srcRelAddrMode.mode  = static_cast<RelativeAddressMode>((srcRegAndFlags & 0x0c)>>2);
-        if ((srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (srcRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
-            srcRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
-        }
-        srcRegIndex = (srcRegAndFlags>>4) & 15;
-
-        value = ReadFrom(cpu, szOperand, srcAddrMode, srcRelAddrMode, srcRegIndex);
-//        dstValue = ReadFrom(cpu, szOperand, dstAddrMode, dstRegIndex);
-
+        DecodeDstReg(cpu);
+        DecodeSrcReg(cpu);
+        value = ReadFrom(cpu, opSize, srcAddrMode, srcRelAddrMode, srcRegIndex);
     } else {
         // No operands
     }
@@ -100,6 +69,32 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     ofsEndInstr = memoryOffset;
     return true;
 }
+
+void InstructionDecoder::DecodeDstReg(CPUBase &cpu) {
+    dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
+
+    // Same as below..
+    dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
+    dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
+    if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        dstRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
+    }
+    dstRegIndex = (dstRegAndFlags>>4) & 15;
+
+}
+
+void InstructionDecoder::DecodeSrcReg(CPUBase &cpu) {
+    // Decode source flags and register index and source operand
+    srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
+    // decode source operand details
+    srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x03);
+    srcRelAddrMode.mode  = static_cast<RelativeAddressMode>((srcRegAndFlags & 0x0c)>>2);
+    if ((srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (srcRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        srcRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
+    }
+    srcRegIndex = (srcRegAndFlags>>4) & 15;
+}
+
 
 RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, RelativeAddressing relAddrMode, int idxRegister) {
     RegisterValue v = {};
@@ -138,7 +133,7 @@ std::string InstructionDecoder::ToString() const {
 
     opString = desc.name;
     if (desc.features & OperandDescriptionFlags::OperandSize) {
-        switch(szOperand) {
+        switch(opSize) {
             case OperandSize::Byte :
                 opString += ".b";
                 break;
@@ -178,7 +173,7 @@ std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint8_t regI
             opString += "d" + fmt::format("{}", regIndex);
         }
     } else if (addrMode == AddressMode::Immediate) {
-        switch(szOperand) {
+        switch(opSize) {
             case OperandSize::Byte :
                 opString += fmt::format("{:#x}",value.data.byte);
                 break;
