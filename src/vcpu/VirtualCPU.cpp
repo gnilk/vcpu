@@ -125,15 +125,15 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
 
     auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
 
-    auto signBefore = MSBForOpSize(instrDecoder->szOperand, dstReg);
+    auto signBefore = MSBForOpSize(instrDecoder->opSize, dstReg);
 
     uint64_t msb = 0;
     bool isZero = false;
-    int nBits = dstReg.data.byte;
+    int nBits = v.data.byte;
     while(nBits > 0) {
         // Will we shift out something??
-        msb = MSBForOpSize(instrDecoder->szOperand, dstReg);
-        switch(instrDecoder->szOperand) {
+        msb = MSBForOpSize(instrDecoder->opSize, dstReg);
+        switch(instrDecoder->opSize) {
             case OperandSize::Byte :
                 dstReg.data.byte = dstReg.data.byte <<  1;
                 if (!dstReg.data.byte) isZero = true;
@@ -164,7 +164,7 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
     statusReg.flags.zero = isZero;
     statusReg.flags.negative = (msb)?true:false;
     // Overflow - IF the MSB is toggled during anypoint...
-    if (signBefore != MSBForOpSize(instrDecoder->szOperand, dstReg)) {
+    if (signBefore != MSBForOpSize(instrDecoder->opSize, dstReg)) {
         statusReg.flags.overflow = true;
     } else {
         statusReg.flags.overflow = false;
@@ -182,7 +182,7 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
 
     // Fetch the sign-bit..
-    uint64_t msb = MSBForOpSize(instrDecoder->szOperand, dstReg);
+    uint64_t msb = MSBForOpSize(instrDecoder->opSize, dstReg);
 
     bool carryExtFlag = false;
     bool isZero = false;
@@ -191,7 +191,7 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     int nBits = v.data.byte;
     while(nBits) {
         carryExtFlag = (dstReg.data.longword & 1)?true:false;
-        switch(instrDecoder->szOperand) {
+        switch(instrDecoder->opSize) {
             case OperandSize::Byte :
                 dstReg.data.byte = dstReg.data.byte >>  1;
                 if (!dstReg.data.byte) isZero = true;
@@ -284,7 +284,7 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
 
     // I would like to get rid of this switch, but I can't without having an encapsulation class
-    switch(instrDecoder->szOperand) {
+    switch(instrDecoder->opSize) {
         case OperandSize::Byte :
             Shift<OperandSize::Byte, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
             break;
@@ -309,7 +309,7 @@ void VirtualCPU::ExecuteLsrInstr(InstructionDecoder::Ref instrDecoder) {
     }
     auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
 
-    switch(instrDecoder->szOperand) {
+    switch(instrDecoder->opSize) {
         case OperandSize::Byte :
             // FIXME: Make sure this works as expected!
             dstReg.data.byte = dstReg.data.byte >>  v.data.byte;
@@ -428,7 +428,7 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
 
-        switch(instrDecoder->szOperand) {
+        switch(instrDecoder->opSize) {
             case OperandSize::Byte :
                 AddValues<uint8_t>(statusReg, dstReg, v);
                 break;
@@ -450,7 +450,7 @@ void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
-        switch(instrDecoder->szOperand) {
+        switch(instrDecoder->opSize) {
             case OperandSize::Byte :
                 SubtractValues<uint8_t>(statusReg, dstReg, v);
                 break;
@@ -481,7 +481,7 @@ void VirtualCPU::ExecuteCallInstr(InstructionDecoder::Ref instrDecoder) {
     // push on stack...
     stack.push(retAddr);
 
-    switch(instrDecoder->szOperand) {
+    switch(instrDecoder->opSize) {
         case OperandSize::Byte :
             registers.instrPointer.data.longword += v.data.byte;
             break;
