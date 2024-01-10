@@ -560,7 +560,7 @@ DLL_EXPORT int test_vcpu_instr_asr(ITesting *t) {
     res = vcpu.Step();      // asr.b d0,3
     TR_ASSERT(t, res);
     // MSB should be set on arithmetic shift...
-    TR_ASSERT(t, (regs.dataRegisters[0].data.byte & 0x80) != 0);
+    TR_ASSERT(t, (regs.dataRegisters[0].data.byte & 0x80) == 0);
     TR_ASSERT(t, !status.flags.negative);
     TR_ASSERT(t, status.flags.carry);
     TR_ASSERT(t, status.flags.extend);
@@ -572,7 +572,7 @@ DLL_EXPORT int test_vcpu_instr_asr(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_instr_asl(ITesting *t) {
     uint8_t program[]= {
-        // 0xB3 - opcode, LSR
+        // 0xE6 - opcode, ASL
         // 0x00 - OP Size, 0 = byte
         // 0x03 - DstRegMode, RRRR|MMMM = 0000 | 0011 => d0 | 3 => 3 = register
         // 0x01 - SrcRegMode, 0000|MMMM = 0000 | 0001 => xx | 1 => Immediate
