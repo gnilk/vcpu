@@ -32,6 +32,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_array_bytedecl(ITesting *t);
     DLL_EXPORT int test_compiler_array_worddecl(ITesting *t);
     DLL_EXPORT int test_compiler_var_bytedecl(ITesting *t);
+    DLL_EXPORT int test_compiler_const_literal(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -563,3 +564,29 @@ DLL_EXPORT int test_compiler_var_bytedecl(ITesting *t) {
 
 }
 
+DLL_EXPORT int test_compiler_const_literal(ITesting *t) {
+    std::vector<uint8_t> expectedBinary = {
+        0x20,0x00,0x03,0x01, 0x44,
+        0x20,0x00,0x13,0x01, 0x44,
+    };
+
+    const char srcCode[]= {
+        "const CONSTANT (0x24+32)\n"\
+        "const NEXT  CONSTANT\n"\
+        "move.b d0, CONSTANT\n"\
+        "move.b d1, NEXT\n"\
+        ""
+    };
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res);
+
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+
+}
