@@ -13,72 +13,72 @@ using namespace gnilk::vcpu;
 // This holds the full instruction set definition
 // I probably want the features to specifify valid SRC/DST combos
 //
-static std::unordered_map<OperandClass, OperandDescription> instructionSet = {
-    {OperandClass::SYS,{.name="syscall", .features = {} }},
-    {OperandClass::NOP,{.name="nop", .features = {} }},
-    {OperandClass::BRK,{.name="brk", .features = {} }},
-    {OperandClass::RET,{.name="ret", .features = {} }},
-{OperandClass::LSL, {.name="lsl", .features = OperandDescriptionFlags::OperandSize |
+static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
+    {OperandCode::SYS,{.name="syscall", .features = {} }},
+    {OperandCode::NOP,{.name="nop", .features = {} }},
+    {OperandCode::BRK,{.name="brk", .features = {} }},
+    {OperandCode::RET,{.name="ret", .features = {} }},
+{OperandCode::LSL, {.name="lsl", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
                                         OperandDescriptionFlags::Register }},
-{OperandClass::LSR, {.name="lsr", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::LSR, {.name="lsr", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
                                         OperandDescriptionFlags::Register }},
-{OperandClass::ASL, {.name="asl", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::ASL, {.name="asl", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
                                         OperandDescriptionFlags::Register }},
-{OperandClass::ASR, {.name="asr", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::ASR, {.name="asr", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
                                         OperandDescriptionFlags::Register }},
-{OperandClass::LEA,{.name="lea", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::LEA,{.name="lea", .features = OperandDescriptionFlags::OperandSize |
                                             OperandDescriptionFlags::TwoOperands |
                                             OperandDescriptionFlags::Immediate |
                                             OperandDescriptionFlags::Register |
                                             OperandDescriptionFlags::Addressing}},
-{OperandClass::MOV,{.name="move", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::MOV,{.name="move", .features = OperandDescriptionFlags::OperandSize |
                                                 OperandDescriptionFlags::TwoOperands |
                                                 OperandDescriptionFlags::Immediate |
                                                 OperandDescriptionFlags::Register |
                                                 OperandDescriptionFlags::Addressing}},
-{OperandClass::ADD,{.name="add", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::ADD,{.name="add", .features = OperandDescriptionFlags::OperandSize |
                                               OperandDescriptionFlags::TwoOperands |
                                               OperandDescriptionFlags::Immediate |
                                               OperandDescriptionFlags::Register |
                                               OperandDescriptionFlags::Addressing}},
-{OperandClass::SUB,{.name="sub", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::SUB,{.name="sub", .features = OperandDescriptionFlags::OperandSize |
                                               OperandDescriptionFlags::TwoOperands |
                                               OperandDescriptionFlags::Immediate |
                                               OperandDescriptionFlags::Register |
                                               OperandDescriptionFlags::Addressing}},
-{OperandClass::MUL,{.name="mul", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::MUL,{.name="mul", .features = OperandDescriptionFlags::OperandSize |
                                               OperandDescriptionFlags::TwoOperands |
                                               OperandDescriptionFlags::Immediate |
                                               OperandDescriptionFlags::Register |
                                               OperandDescriptionFlags::Addressing}},
-{OperandClass::DIV,{.name="div", .features = OperandDescriptionFlags::OperandSize |
+{OperandCode::DIV,{.name="div", .features = OperandDescriptionFlags::OperandSize |
                                               OperandDescriptionFlags::TwoOperands |
                                               OperandDescriptionFlags::Immediate |
                                               OperandDescriptionFlags::Register |
                                               OperandDescriptionFlags::Addressing}},
 
     // Push can be from many sources
-  {OperandClass::PUSH,{.name="push", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Addressing}},
+  {OperandCode::PUSH,{.name="push", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Addressing}},
     // Pop can only be to register...
-  {OperandClass::POP,{.name="pop", .features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register}},
+  {OperandCode::POP,{.name="pop", .features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register}},
 
-    {OperandClass::CALL, {.name="call", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Register  | OperandDescriptionFlags::Addressing}},
+    {OperandCode::CALL, {.name="call", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Register  | OperandDescriptionFlags::Addressing}},
 };
 
-const std::unordered_map<OperandClass, OperandDescription> &gnilk::vcpu::GetInstructionSet() {
+const std::unordered_map<OperandCode, OperandDescription> &gnilk::vcpu::GetInstructionSet() {
     return instructionSet;
 }
 
 
-std::optional<OperandDescription> gnilk::vcpu::GetOpDescFromClass(OperandClass opClass) {
+std::optional<OperandDescription> gnilk::vcpu::GetOpDescFromClass(OperandCode opClass) {
     if (!instructionSet.contains(opClass)) {
         return{};
     }
@@ -86,9 +86,9 @@ std::optional<OperandDescription> gnilk::vcpu::GetOpDescFromClass(OperandClass o
 }
 
 // Look up table is built when an operand from str is first called
-static std::unordered_map<std::string, OperandClass> strToOpClassMap;
+static std::unordered_map<std::string, OperandCode> strToOpClassMap;
 
-std::optional<OperandClass> gnilk::vcpu::GetOperandFromStr(const std::string &str) {
+std::optional<OperandCode> gnilk::vcpu::GetOperandFromStr(const std::string &str) {
     // Lazy create on first request
     static bool haveNameOpClassTable = false;
     if (!haveNameOpClassTable) {

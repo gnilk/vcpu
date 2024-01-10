@@ -68,8 +68,8 @@ namespace gnilk {
         public:
 
             // Used during by decoder...
-            uint8_t opCode;
-            OperandClass opClass;
+            uint8_t opCodeByte;
+            OperandCode opCode;
             OperandDescription description;
 
             OperandSize szOperand; // Only if 'description.features & OperandSize' == true

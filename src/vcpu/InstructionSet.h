@@ -85,13 +85,15 @@ namespace gnilk {
         // that value will occupy 32 bits (as src/dst operands must have same size)
         // However, I want the decoder to as simple as possible and without look-up tables..
         // So best would be to reserve a range:
-        enum class OperandSize : uint8_t {
-            Byte,   // 8 bit
-            Word,   // 16 bit
-            DWord,  // 32 bit
-            Long,   // 64 bit
+        typedef enum : uint8_t {
+            Byte  = 0,   // 8 bit
+            Word  = 1,   // 16 bit
+            DWord = 2,  // 32 bit
+            Long  = 3,   // 64 bit
+        } OperandSize;
 
-        };
+        //typedef enum : uint8_t {
+        //} OperandC;
 
         static constexpr size_t ByteSizeOfOperandSize(OperandSize opSize) {
             switch(opSize) {
@@ -161,7 +163,7 @@ namespace gnilk {
             NOP = 0xF1,
             EOC = 0xff,
             // End of code
-        } OperandClass;
+        } OperandCode;
 
 
         //
@@ -199,9 +201,9 @@ namespace gnilk {
             OperandDescriptionFlags features;
         };
 
-        const std::unordered_map<OperandClass, OperandDescription> &GetInstructionSet();
-        std::optional<OperandDescription> GetOpDescFromClass(OperandClass opClass);
-        std::optional<OperandClass> GetOperandFromStr(const std::string &str);
+        const std::unordered_map<OperandCode, OperandDescription> &GetInstructionSet();
+        std::optional<OperandDescription> GetOpDescFromClass(OperandCode opClass);
+        std::optional<OperandCode> GetOperandFromStr(const std::string &str);
 
     }
 }

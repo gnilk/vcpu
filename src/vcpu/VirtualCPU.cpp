@@ -30,7 +30,7 @@ bool VirtualCPU::Step() {
     // Also, we should put enough information in the first 2-3 bytes to understand the fully decoded size
     // This way we can basically have multiple threads decoding instructions -> super scalar emulation
     //
-    switch(instrDecoder->opClass) {
+    switch(instrDecoder->opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
             // raise halt exception
@@ -74,7 +74,7 @@ bool VirtualCPU::Step() {
             break;
         default:
             // raise invaild-instr. exception here!
-            fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCode);
+            fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCodeByte);
             return false;
     }
     lastDecodedInstruction = instrDecoder;
@@ -260,10 +260,10 @@ void SetRegVal(RegisterValue &reg, uint64_t value) {
     }
 }
 
-template<OperandSize szOp, OperandClass opCode>
+template<OperandSize szOp, OperandCode opCode>
 void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
     // FIXME: handle all shift operations here (ASR/LSR/ASL/LSL/ROL/ROR)
-    if (opCode == OperandClass::LSL) {
+    if (opCode == OperandCode::LSL) {
         auto v = GetRegVal<szOp>(regValue);
         for(int i=0;i<cnt;i++) {
             v = v << 1;
@@ -286,16 +286,16 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder->szOperand) {
         case OperandSize::Byte :
-            Shift<OperandSize::Byte, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Byte, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Word :
-            Shift<OperandSize::Word, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Word, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::DWord :
-            Shift<OperandSize::DWord, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::DWord, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Long :
-            Shift<OperandSize::Long, OperandClass::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Long, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
             break;
     }
 }

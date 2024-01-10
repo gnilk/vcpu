@@ -23,18 +23,18 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     // Save the start offset
     ofsStartInstr = memoryOffset;
 
-    opCode = NextByte(cpu);
-    if (opCode == 0xff) {
+    opCodeByte = NextByte(cpu);
+    if (opCodeByte == 0xff) {
         return false;
     }
 
-    opClass =  static_cast<OperandClass>(opCode);
+    opCode =  static_cast<OperandCode>(opCodeByte);
     // check if we have this instruction defined
-    if (!gnilk::vcpu::GetInstructionSet().contains(opClass)) {
+    if (!gnilk::vcpu::GetInstructionSet().contains(opCode)) {
         return false;
     }
 
-    description = gnilk::vcpu::GetInstructionSet().at(opClass);
+    description = gnilk::vcpu::GetInstructionSet().at(opCode);
 
     //
     // Setup addressing
@@ -130,10 +130,10 @@ uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
 
 
 std::string InstructionDecoder::ToString() const {
-    if (!GetInstructionSet().contains(opClass)) {
+    if (!GetInstructionSet().contains(opCode)) {
         return ("invalid instruction");
     }
-    auto desc = *GetOpDescFromClass(opClass);
+    auto desc = *GetOpDescFromClass(opCode);
     std::string opString;
 
     opString = desc.name;
