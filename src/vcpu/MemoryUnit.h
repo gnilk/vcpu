@@ -63,6 +63,7 @@ namespace gnilk {
             virtual ~MemoryUnit() = default;
             bool Initialize(void *physicalRam, size_t sizeInBytes);
             bool IsAddressValid(uint64_t virtualAddress);
+
             uint64_t TranslateAddress(uint64_t virtualAddress);
             uint64_t AllocatePage();
             bool FreePage(uint64_t virtualAddress);

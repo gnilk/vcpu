@@ -51,12 +51,19 @@ bool MemoryUnit::Initialize(void *physicalRam, size_t sizeInBytes) {
 
 // Internal, initialize the root tables in the current physical RAM
 void MemoryUnit::InitializeRootTables() {
-    for(int i=0;i<szBitmapBytes;i++) {
-        phyBitMap[i] = 0;
-    }
+    // for(int i=0;i<szBitmapBytes;i++) {
+    //     phyBitMap[i] = 0;
+    // }
+    memset(phyBitMap,0, szBitmapBytes);
+    // This replaces the whole loop stuff
+    memset(rootTables, 0, sizeof(PageTable));
 
+
+/*
+ * leaving this for the time beeing..
     for(int i=0;i<VCPU_MMU_MAX_ROOT_TABLES;i++) {
         rootTables[i].nDescriptors = 0;
+
         for(int idxDesc=0;idxDesc<VCPU_MMU_MAX_DESCRIPTORS;idxDesc++) {
             rootTables[i].descriptor[idxDesc].nPages = 0;
             for(int idxPage=0; idxPage<VCPU_MMU_MAX_PAGES_PER_DESC; idxPage++) {
@@ -66,6 +73,7 @@ void MemoryUnit::InitializeRootTables() {
             }
         }
     }
+*/
 }
 
 // Allocates a page from physical RAM
