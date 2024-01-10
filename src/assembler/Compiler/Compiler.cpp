@@ -287,7 +287,7 @@ bool Compiler::ProcessStructLiteral(ast::StructLiteral::Ref stmt) {
 
     // This is no error as such or is it??
     if (nBytesGenerated > szExpected) {
-        fmt::println(stderr, "Compiler, to many elements in struct declaration");
+        fmt::println(stderr, "Compiler, too many elements in struct declaration");
         return true;
     }
 
@@ -391,8 +391,11 @@ ast::Literal::Ref Compiler::EvaluateConstantExpression(ast::Expression::Ref expr
             }
             return nullptr;
         }
+        case ast::NodeType::kStringLiteral :
+            fmt::println(stderr, "Compiler, string literals as constants are not yet supported!");
+            exit(1);
         default :
-            fmt::println(stderr, "Compiler, Unsupported AST node type: {}", ast::NodeTypeToString(expression->Kind()));
+            fmt::println(stderr, "Compiler, Unsupported node type: {} in constant expression", ast::NodeTypeToString(expression->Kind()));
             exit(1);
     }
     return {};
