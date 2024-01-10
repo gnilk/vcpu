@@ -123,7 +123,7 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
         return;
     }
 
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
 
     auto signBefore = MSBForOpSize(instrDecoder->opSize, dstReg);
 
@@ -179,7 +179,7 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
         // raise exception
         return;
     }
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
 
     // Fetch the sign-bit..
     uint64_t msb = MSBForOpSize(instrDecoder->opSize, dstReg);
@@ -281,7 +281,7 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
         // raise exception
         return;
     }
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
 
     // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder->opSize) {
@@ -307,7 +307,7 @@ void VirtualCPU::ExecuteLsrInstr(InstructionDecoder::Ref instrDecoder) {
         // raise exception
         return;
     }
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
 
     switch(instrDecoder->opSize) {
         case OperandSize::Byte :
@@ -426,7 +426,7 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+        auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
 
         switch(instrDecoder->opSize) {
             case OperandSize::Byte :
@@ -449,7 +449,7 @@ void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
 
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex);
+        auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
         switch(instrDecoder->opSize) {
             case OperandSize::Byte :
                 SubtractValues<uint8_t>(statusReg, dstReg, v);
@@ -514,7 +514,7 @@ void VirtualCPU::ExecuteRetInstr(InstructionDecoder::Ref instrDecoder) {
 void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v) {
     // Support more address mode
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(instrDecoder->dstRegIndex);
+        auto &reg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
         reg.data = v.data;
         // FIXME: Update CPU flags here
     }
