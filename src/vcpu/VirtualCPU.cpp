@@ -145,13 +145,13 @@ void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
             break;
         case OperandSize::Word :
             relativeOffset = (int16_t)(v.data.word);
-        break;
+            break;
         case OperandSize::DWord :
             relativeOffset = (int32_t)(v.data.dword);
-        break;
-        case OperandSize::Long :
-            relativeOffset = (int64_t)(v.data.longword);
-        break;
+            break;
+        case OperandSize::Long :    // in case of long - this is an absolute address...
+            registers.instrPointer.data.longword = v.data.longword;
+            return;
     }
     registers.instrPointer.data.longword += relativeOffset;
 }
