@@ -59,6 +59,7 @@ const Context &gnilk::GetLexerContext() {
         {"rs", TokenType::Unknown},
 */
         {"struct", TokenType::Struct},
+        {"const", TokenType::Const},
 
         // Size operands
         {"b", TokenType::OpSize},

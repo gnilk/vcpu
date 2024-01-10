@@ -19,6 +19,7 @@ namespace gnilk {
         NumberBinary,
 
         Struct,         // Struct declaration
+        Const,          // Const declaration
         Reservation,    // Data Reservation 'rs.<op size>'
         Declaration,    // Data Declaration 'dc.<op size>'
         String,
