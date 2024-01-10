@@ -72,6 +72,9 @@ bool VirtualCPU::Step() {
         case ASL :
             ExecuteAslInstr(instrDecoder);
             break;
+        case CMP :
+            ExecuteCmpInstr(instrDecoder);
+            break;
         default:
             // raise invaild-instr. exception here!
             fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCodeByte);
@@ -115,6 +118,38 @@ static void UpdateCPUFlags(CPUStatusReg &statusReg, uint64_t numRes, uint64_t nu
     statusReg.flags.extend = flag_x;
     statusReg.flags.zero = flag_z;
     statusReg.flags.negative = flag_n;
+}
+
+template<typename T>
+static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t numDst, uint64_t numSrc) {
+    UpdateCPUFlags<T>(statusReg, numRes, numDst, numSrc);
+    // Overflow
+    auto ovflow =((numDst ^ numSrc) & (numDst ^ numRes));
+    statusReg.flags.overflow = (ovflow >> (std::numeric_limits<T>::digits-1)) & 1;
+}
+
+void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = instrDecoder->GetValue();
+    if (instrDecoder->dstAddrMode == AddressMode::Immediate) {
+        // raise exception
+        return;
+    }
+
+    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
+    switch(instrDecoder->opSize) {
+        case OperandSize::Byte :
+            UpdateCPUFlagsCMP<uint8_t>(statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
+            break;
+        case OperandSize::Word:
+            UpdateCPUFlagsCMP<uint16_t>(statusReg, dstReg.data.word - v.data.word, dstReg.data.word, v.data.word);
+            break;
+        case OperandSize::DWord :
+            UpdateCPUFlagsCMP<uint32_t>(statusReg, dstReg.data.dword - v.data.dword, dstReg.data.dword, v.data.dword);
+            break;
+        case OperandSize::Long :
+            UpdateCPUFlagsCMP<uint64_t>(statusReg, dstReg.data.longword - v.data.longword, dstReg.data.longword, v.data.longword);
+            break;
+    }
 }
 
 void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {

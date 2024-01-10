@@ -45,7 +45,12 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
                                                 OperandDescriptionFlags::Control |
                                                 OperandDescriptionFlags::Register |
                                                 OperandDescriptionFlags::Addressing}},
-{OperandCode::ADD,{.name="add", .features = OperandDescriptionFlags::OperandSize |
+    {OperandCode::CMP, {.name="cmp", .features = OperandDescriptionFlags::OperandSize |
+                                                        OperandDescriptionFlags::TwoOperands |
+                                                        OperandDescriptionFlags::Immediate |
+                                                        OperandDescriptionFlags::Register |
+                                                        OperandDescriptionFlags::Addressing}},
+    {OperandCode::ADD,{.name="add", .features = OperandDescriptionFlags::OperandSize |
                                               OperandDescriptionFlags::TwoOperands |
                                               OperandDescriptionFlags::Immediate |
                                               OperandDescriptionFlags::Register |
