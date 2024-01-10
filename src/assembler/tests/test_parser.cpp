@@ -21,9 +21,15 @@ DLL_EXPORT int test_parser(ITesting *t) {
 DLL_EXPORT int test_parser_instruction(ITesting *t) {
     Parser parser;
 
-    auto ast = parser.ProduceAST("move.l d0,0x45");
+    auto ast = parser.ProduceAST("move.l cr0, d0");
     TR_ASSERT(t, ast != nullptr);
     ast->Dump();
+
+    ast = parser.ProduceAST("move.l d0,0x45");
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+
+
     return kTR_Pass;
 }
 

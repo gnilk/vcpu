@@ -17,6 +17,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_move_immediate(ITesting *t);
     DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t);
     DLL_EXPORT int test_compiler_move_relative(ITesting *t);
+    DLL_EXPORT int test_compiler_move_control(ITesting *t);
     DLL_EXPORT int test_compiler_add_immediate(ITesting *t);
     DLL_EXPORT int test_compiler_add_reg2reg(ITesting *t);
     DLL_EXPORT int test_compiler_nop(ITesting *t);
@@ -166,6 +167,32 @@ DLL_EXPORT int test_compiler_move_relative(ITesting *t) {
 
     return kTR_Pass;
 }
+DLL_EXPORT int test_compiler_move_control(ITesting *t) {
+    // The following test-cases are taken from the test_vcpu.cpp
+    std::vector<uint8_t> binaries[]= {
+        {0x20,0x13,0x83,0x03},    // move.l cr0, d0
+        {0x20,0x13,0x03,0x83},    // move.l d0, cr0
+    };
+
+    std::vector<std::string> code={
+        {"move.l cr0, d0"},
+        {"move.l d0, cr0"},
+    };
+
+    Parser parser;
+    Compiler compiler;
+
+    for(int i=0;i<code.size();i++) {
+        auto ast = parser.ProduceAST(code[i]);
+        TR_ASSERT(t, ast != nullptr);
+        TR_ASSERT(t, compiler.CompileAndLink(ast));
+        auto binary = compiler.Data();
+        TR_ASSERT(t, binary == binaries[i]);
+    }
+
+    return kTR_Pass;
+}
+
 
 
 DLL_EXPORT int test_compiler_add_immediate(ITesting *t) {
