@@ -13,9 +13,16 @@ struct table {
     some_dword   rs.d    1
 }
 
+const   A_CONSTANT 0x01
+
+
     ; .org 0x2000
     .code
 ; BASE EQU 45
+    move.b  d0, 0x01
+    cmp.b   d0, 0x02
+    bne.b   funcA       ;; Should perhaps rename the short jump relative op.size
+
     lea     a0, funcA
     call    a0          ;; call the value 'a0' points at, assume you have jump-table you could do call (a0)
 
