@@ -104,13 +104,13 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
         v = cpuBase.ReadFromMemoryUnit(szOperand, memoryOffset);
         memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Register) {
-        auto &reg = cpuBase.GetRegisterValue(idxRegister);
+        auto &reg = cpuBase.GetRegisterValue(idxRegister, opFamily);
         v.data = reg.data;
     } else if (addrMode == AddressMode::Absolute) {
         v = cpuBase.ReadFromMemoryUnit(szOperand, memoryOffset);
         memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
-        auto &reg = cpuBase.GetRegisterValue(idxRegister);
+        auto &reg = cpuBase.GetRegisterValue(idxRegister, opFamily);
         // TODO: take relative addressing into account..
         v = cpuBase.ReadFromMemoryUnit(szOperand, reg.data.longword);
     }
@@ -168,7 +168,11 @@ std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint8_t regI
     std::string opString = "";
     if (addrMode == AddressMode::Register) {
         if (regIndex > 7) {
-            opString += "a" + fmt::format("{}", regIndex-8);
+            if (opFamily == OperandFamily::Control) {
+                opString += "cr" + fmt::format("{}", regIndex-8);
+            } else {
+                opString += "a" + fmt::format("{}", regIndex-8);
+            }
         } else {
             opString += "d" + fmt::format("{}", regIndex);
         }
