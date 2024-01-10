@@ -69,6 +69,7 @@ emulated CPU...  Good riddance!
 ! stack handling in CPU (needed for call routines)
 ! call/ret instructions
 ! global labels and variables in assembler
+! const declarations
 - local labels/variables (like asmone; .var)?    
 ! add call/ret routines 
 - add jmp    
@@ -99,9 +100,9 @@ Support for the following directives:
 ! disassembling (i.e. reconstructing an instruction from op-codes)     
 + Separate linker step in compiler (refactor it away from the compiler)
 + refactor segments and their handling...
-- compare instructions
-- branching
-- bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
++ compare instructions
++ branching
++ bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
     - output elf files
@@ -109,6 +110,7 @@ Support for the following directives:
     - Ability to output a proper memory layout
 - VCPU
     - Properly define the memory layout
+      + MMU (emulate an MMU)
     - ROM/RAM area, Int-Vector table, etc...
     - Raise exceptions
         - Within the CPU using the Int-Vector table
