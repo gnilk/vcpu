@@ -75,6 +75,9 @@ bool VirtualCPU::Step() {
         case CMP :
             ExecuteCmpInstr(instrDecoder);
             break;
+        case BEQ :
+            ExecuteBeqInstr(instrDecoder);
+            break;
         default:
             // raise invaild-instr. exception here!
             fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCodeByte);
@@ -126,6 +129,31 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
     // Overflow
     auto ovflow =((numDst ^ numSrc) & (numDst ^ numRes));
     statusReg.flags.overflow = (ovflow >> (std::numeric_limits<T>::digits-1)) & 1;
+}
+
+void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
+    auto v = instrDecoder->GetValue();
+    if (instrDecoder->dstAddrMode != AddressMode::Immediate) {
+        // raise exception
+        return;
+    }
+    int64_t relativeOffset = 0;
+
+    switch(instrDecoder->opSize) {
+        case OperandSize::Byte :
+            relativeOffset = (int8_t)(v.data.byte);
+            break;
+        case OperandSize::Word :
+            relativeOffset = (int16_t)(v.data.word);
+        break;
+        case OperandSize::DWord :
+            relativeOffset = (int32_t)(v.data.dword);
+        break;
+        case OperandSize::Long :
+            relativeOffset = (int64_t)(v.data.longword);
+        break;
+    }
+    registers.instrPointer.data.longword += relativeOffset;
 }
 
 void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {

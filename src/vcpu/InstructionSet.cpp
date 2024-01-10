@@ -18,6 +18,9 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
     {OperandCode::NOP,{.name="nop", .features = {} }},
     {OperandCode::BRK,{.name="brk", .features = {} }},
     {OperandCode::RET,{.name="ret", .features = {} }},
+{OperandCode::BEQ,{.name="beq", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate }},
+{OperandCode::BNE,{.name="bne", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate }},
+
 {OperandCode::LSL, {.name="lsl", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
                                         OperandDescriptionFlags::Immediate |
