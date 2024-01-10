@@ -42,6 +42,7 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
 {OperandCode::MOV,{.name="move", .features = OperandDescriptionFlags::OperandSize |
                                                 OperandDescriptionFlags::TwoOperands |
                                                 OperandDescriptionFlags::Immediate |
+                                                OperandDescriptionFlags::Control |
                                                 OperandDescriptionFlags::Register |
                                                 OperandDescriptionFlags::Addressing}},
 {OperandCode::ADD,{.name="add", .features = OperandDescriptionFlags::OperandSize |
