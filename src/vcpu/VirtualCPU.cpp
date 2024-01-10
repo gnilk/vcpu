@@ -77,6 +77,7 @@ bool VirtualCPU::Step() {
             fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCodeByte);
             return false;
     }
+    UpdateMMU();
     lastDecodedInstruction = instrDecoder;
     return true;
 }
