@@ -5,6 +5,7 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#include "InstructionSet.h"
 #include "ast/ast.h"
 #include "Linker/CompiledUnit.h"
 
@@ -56,6 +57,7 @@ namespace gnilk {
             bool EmitStringLiteral(vcpu::OperandSize opSize, ast::StringLiteral::Ref strLiteral);
             bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitLabelAddress(ast::Identifier::Ref identifier);
+            bool EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
             bool EmitDereference(ast::DeReferenceExpression::Ref expression);
 
 
@@ -78,6 +80,10 @@ namespace gnilk {
                 std::string ident;
                 Segment::Ref segment;
                 uint64_t address;
+                // For relative jump
+                bool isRelative;
+                vcpu::OperandSize opSize;
+                uint64_t ofsRelative;   // Offset to compute from..
             };
             struct IdentifierAddress {
                 Segment::Ref segment;

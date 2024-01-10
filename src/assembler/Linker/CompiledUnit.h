@@ -9,6 +9,7 @@
 #include <vector>
 #include <stdint.h>
 
+#include "InstructionSet.h"
 #include "Segment.h"
 
 namespace gnilk {
@@ -33,6 +34,8 @@ namespace gnilk {
             size_t GetSegmentSize(const std::string &name);
             bool WriteByte(uint8_t byte);
             void ReplaceAt(uint64_t offset, uint64_t newValue);
+            void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
+
             void SetBaseAddress(uint64_t address);
             uint64_t GetBaseAddress();
             uint64_t GetCurrentWritePtr();

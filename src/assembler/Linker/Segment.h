@@ -62,6 +62,32 @@ namespace gnilk {
                 data[offset++] = (newValue>>8 & 0xff);
                 data[offset++] = (newValue & 0xff);
             }
+            void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
+                if (data.size() < vcpu::ByteSizeOfOperandSize(opSize)) {
+                    return;
+                }
+                if (offset > (data.size() - vcpu::ByteSizeOfOperandSize(opSize))) {
+                    return;
+                }
+                switch(opSize) {
+                    case vcpu::OperandSize::Byte :
+                        data[offset++] = (newValue & 0xff);
+                        break;
+                    case vcpu::OperandSize::Word :
+                        data[offset++] = (newValue>>8 & 0xff);
+                        data[offset++] = (newValue & 0xff);
+                        break;
+                    case vcpu::OperandSize::DWord :
+                        data[offset++] = (newValue>>24 & 0xff);
+                        data[offset++] = (newValue>>16 & 0xff);
+                        data[offset++] = (newValue>>8 & 0xff);
+                        data[offset++] = (newValue & 0xff);
+                        break;
+                    default:
+                        return;
+                }
+            }
+
 
             uint64_t GetCurrentWritePtr() {
                 return data.size();

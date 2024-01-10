@@ -11,6 +11,7 @@
 #include <unordered_map>
 
 #include "InstructionSet.h"
+#include "InstructionSet.h"
 #include "Linker/CompiledUnit.h"
 
 using namespace gnilk;
@@ -89,17 +90,38 @@ bool Compiler::Link() {
         // This address is in a specific segment, we need to store that as well for the placeholder
         auto identifierAddr = identifierAddresses[placeHolder.ident];
 
-        fmt::println("  {}@{:#x} = {}@{:#x}",
-            placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
-            identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
+        if (placeHolder.isRelative) {
+            if (placeHolder.segment != identifierAddr.segment) {
+                fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder.ident);
+                return false;
+            }
+            fmt::println("  from:{}, to:{}", placeHolder.ofsRelative, identifierAddr.address);
 
-        // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
-        if (identifierAddr.segment == nullptr) {
-            fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder.ident);
-            exit(1);
+            fmt::println("  REL: {}@{:#x} = {}@{:#x}",
+                placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
+                identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
+
+            int offset = 0;
+            if (identifierAddr.address > placeHolder.ofsRelative) {
+                offset = identifierAddr.address - placeHolder.ofsRelative + 1;
+            } else {
+                offset = identifierAddr.address - placeHolder.ofsRelative;
+            }
+            unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), offset, placeHolder.opSize);
+        } else {
+            fmt::println("  {}@{:#x} = {}@{:#x}",
+                placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
+                identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
+
+
+            // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
+            if (identifierAddr.segment == nullptr) {
+                fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder.ident);
+                exit(1);
+            }
+
+            unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
         }
-
-        unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
     }
     return true;
 }
@@ -443,14 +465,19 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
             break;
         case ast::NodeType::kIdentifier :
             // After statement parsing is complete we will change all place-holders
-            if (desc.features & vcpu::OperandDescriptionFlags::Addressing) {
+            if ((desc.features & vcpu::OperandDescriptionFlags::Addressing) && (opSize == vcpu::OperandSize::Long)) {
                 return EmitLabelAddress(std::dynamic_pointer_cast<ast::Identifier>(operandExp));
+            } else {
+                return EmitRelativeLabelAddress(std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             }
             break;
         case ast::NodeType::kDeRefExpression :
             if (desc.features & vcpu::OperandDescriptionFlags::Addressing) {
                 return EmitDereference(std::dynamic_pointer_cast<ast::DeReferenceExpression>(operandExp));
             }
+            break;
+        default :
+            fmt::println(stderr, "Unsupported instr. operand type in AST");
             break;
     }
     return false;
@@ -565,6 +592,9 @@ bool Compiler::EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src) 
             return EmitNumericLiteralForInstr(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(src));
         case ast::NodeType::kRegisterLiteral :
             return EmitRegisterLiteral(std::dynamic_pointer_cast<ast::RegisterLiteral>(src));
+        default :
+            fmt::println(stderr, "Unsupported instr. src type in AST");
+            break;
     }
     return false;
 }
@@ -623,11 +653,10 @@ bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral:
     return false;
 }
 
-
 bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
     uint8_t regMode = 0; // no register
 
-    // FIXME: Should this be absolute???  - in principle Absolute and Immediate is the same..
+    // This is an absolute jump
     regMode |= vcpu::AddressMode::Absolute;
 
     // Register|Mode = byte = RRRR | MMMM
@@ -637,11 +666,53 @@ bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
     addressPlaceholder.segment = unit.GetActiveSegment();
     addressPlaceholder.address = static_cast<uint64_t>(unit.GetCurrentWritePtr());
     addressPlaceholder.ident = identifier->Symbol();
+    addressPlaceholder.isRelative = false;
     addressPlaceholders.push_back(addressPlaceholder);
 
     EmitLWord(0);   // placeholder
     return true;
 }
+
+bool Compiler::EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
+    uint8_t regMode = 0; // no register
+
+    // This a relative jump
+    regMode |= vcpu::AddressMode::Immediate;
+
+    // Register|Mode = byte = RRRR | MMMM
+    EmitByte(regMode);
+
+    IdentifierAddressPlaceholder addressPlaceholder;
+    addressPlaceholder.segment = unit.GetActiveSegment();
+
+    addressPlaceholder.address = static_cast<uint64_t>(unit.GetCurrentWritePtr());
+    addressPlaceholder.ident = identifier->Symbol();
+    addressPlaceholder.isRelative = true;
+    addressPlaceholder.opSize = opSize;
+    // We are always relative to the complete instruction
+    // Note: could have been relative to the start of the instr. but that would require a state (or caching of the IP) in the cpu
+    addressPlaceholder.ofsRelative = static_cast<uint64_t>(unit.GetCurrentWritePtr()) + vcpu::ByteSizeOfOperandSize(opSize);
+
+    addressPlaceholders.push_back(addressPlaceholder);
+
+    switch(opSize) {
+        case vcpu::OperandSize::Byte :
+            EmitByte(0);
+            break;
+        case vcpu::OperandSize::Word :
+            EmitWord(0);
+            break;
+        case vcpu::OperandSize::DWord :
+            EmitDWord(0);
+            break;
+        default :
+            return false;
+    }
+
+    return true;
+
+}
+
 
 bool Compiler::EmitOpCodeForSymbol(const std::string &symbol) {
     auto opcode = gnilk::vcpu::GetOperandFromStr(symbol);

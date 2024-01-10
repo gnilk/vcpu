@@ -79,6 +79,13 @@ void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue) {
     }
     activeSegment->ReplaceAt(offset, newValue);
 }
+void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
+    if (!activeSegment) {
+        return;
+    }
+    activeSegment->ReplaceAt(offset, newValue, opSize);
+}
+
 
 
 uint64_t CompiledUnit::GetCurrentWritePtr() {
