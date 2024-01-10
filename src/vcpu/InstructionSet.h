@@ -150,8 +150,8 @@ namespace gnilk {
 
 
             // CMP/ADD/SUB/MUL/DIV/MOV - will update zero
-            BZC = 0xD0, // Branch Zero Clear
-            BZS = 0xD1, // Branch Zero Set
+            BEQ = 0xD0, // Branch Equal - Zero Set
+            BNE = 0xD1, // Branch Not Equal - Zero Clear
             // ADD/SUB/MUL/DIV - will update carry
             BCC = 0xD2, // Branch Carry Clear
             BCS = 0xD3, // Branch Carry Set
