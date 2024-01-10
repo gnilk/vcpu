@@ -76,8 +76,13 @@ namespace gnilk {
             Unused = 3,             // ?? move.b d0, (a0 + d0<<1) ??
         } RelativeAddressMode;
 
-        // Operand Size has 1 byte and we only use the two lowest bits
-        //  OpSize: xxxx | xxss
+        // Operand Size has 1 byte and the following layout
+        //  OpSize: rrff | rrss
+        // where:
+        //    rr - reserved, 2 bits
+        //    ff - operand family or class
+        //    rr - reserved, 2 bits
+        //    ss - size
         // Perhaps: Add one bit for 'zero extend'?
         //  OpSize: xxxx | xZSS  ?
         // Perhaps add a family of instructions which always have <byte> size operand
@@ -92,8 +97,12 @@ namespace gnilk {
             Long  = 3,   // 64 bit
         } OperandSize;
 
-        //typedef enum : uint8_t {
-        //} OperandC;
+        // Class/Target of operand
+        typedef enum : uint8_t {
+            Integer = 0,
+            Control = 1,
+            Float = 2,
+        } OperandFamily;
 
         static constexpr size_t ByteSizeOfOperandSize(OperandSize opSize) {
             switch(opSize) {
@@ -170,7 +179,7 @@ namespace gnilk {
         // This feature description and table should be made visible across all CPU tools..
         // Put it in a a separate place so it can be reused...
         //
-        enum class OperandDescriptionFlags : uint8_t {
+        enum class OperandDescriptionFlags : uint16_t {
             // Has operand size distinction
             OperandSize = 1,
             // Two operand bits, allows for 0..3 operands
@@ -182,8 +191,10 @@ namespace gnilk {
             Register = 16,
             // Support addressing move d0, (a0)
             Addressing = 32,        // Is this not just 'register'??
-
-            Branching = 64
+            // Branching instruction
+            Branching = 64,
+            // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
+            Control = 128,
         };
 
         inline constexpr OperandDescriptionFlags operator |(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
