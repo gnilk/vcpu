@@ -32,6 +32,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_lsl(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_asr(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_asl(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t);
     DLL_EXPORT int test_vcpu_move_indirect(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
     DLL_EXPORT int test_vcpu_disasm(ITesting *t);
@@ -617,6 +618,34 @@ DLL_EXPORT int test_vcpu_instr_asl(ITesting *t) {
 
     return kTR_Pass;
 
+}
+
+DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t) {
+    uint8_t program[]={
+        0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
+        0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
+    };
+    VirtualCPU vcpu;
+    auto &regs = vcpu.GetRegisters();
+    auto &status = vcpu.GetStatusReg();
+
+    vcpu.Begin(program, 1024);
+
+    // Set d0 = 0x20 and execute
+    regs.dataRegisters[0].data.byte = 0x20;
+    auto res = vcpu.Step();
+    TR_ASSERT(t, res);
+    TR_ASSERT(t, status.flags.zero == 0);
+    TR_ASSERT(t, status.flags.negative == 1);
+
+    // Set d0 = 0x33 and execute same again
+    regs.dataRegisters[0].data.byte = 0x33;
+    res = vcpu.Step();
+    TR_ASSERT(t, res);
+    TR_ASSERT(t, status.flags.zero == 1);
+    TR_ASSERT(t, status.flags.negative == 0);
+
+    return kTR_Pass;
 }
 
 
