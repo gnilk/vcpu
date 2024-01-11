@@ -79,6 +79,7 @@ list(APPEND asmsrc apps/assembler/assembler.cpp)
 add_executable(emu ${emusrc} ${vcpusrc} ${commonsrc})
 target_include_directories(emu PUBLIC src/vcpu)
 target_include_directories(emu PUBLIC src/common)
+target_include_directories(emu PUBLIC src/ext/ELFIO)
 
 add_executable(asm ${asmsrc} ${vcpusrc} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
