@@ -9,16 +9,25 @@
 #include "fmt/format.h"
 #include "StrUtil.h"
 #include "VirtualCPU.h"
+#include "elfio/elfio.hpp"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+using namespace ELFIO;
+
 static uint64_t loadToAddress = 0;
 static uint64_t startAddress = 0;
+
+// 1024 pages is more than enough for simple testing...
+static uint8_t cpu_ram_memory[1024*VCPU_MMU_PAGE_SIZE] = {};    // 512kb of RAM for my CPU...
+
 
 std::optional<uint64_t> ParseNumber(const std::string_view &line);
 
 bool ProcessFile(std::filesystem::path &pathToBinary);
+bool ProcessElf(std::filesystem::path &pathToBinary);
+bool ProcessRaw(std::filesystem::path &pathToBinary);
 
 int main(int argc, char **argv)  {
     std::vector<std::string> filesToRun;
@@ -67,29 +76,97 @@ int main(int argc, char **argv)  {
     }
 }
 
-bool ExecuteData(const uint8_t *rawData, size_t szData);
+bool ExecuteData(uint64_t startAddress, size_t szCode);
+
+
+enum class kEmuFileType {
+    Unknown,
+    RawBinary,
+    ElfBinary,
+};
+static const uint8_t signatureElf[]={0x7f,0x45,0x4c,0x46};
+
+static kEmuFileType FileType(std::filesystem::path &pathToBinary) {
+    size_t szFile = file_size(pathToBinary);
+    if (szFile < 4) {
+        return kEmuFileType::Unknown;
+    }
+    char signature[8] = {};
+    FILE *f = fopen(pathToBinary.c_str(), "r+");
+    fread(signature, 1, 4, f);
+    fclose(f);
+
+    if (!memcmp(signature,signatureElf, sizeof(signatureElf))) {
+        return kEmuFileType::ElfBinary;
+    }
+    // Should probably add a signature here as well...
+    return kEmuFileType::RawBinary;
+}
 
 bool ProcessFile(std::filesystem::path &pathToBinary) {
-    size_t szFile = file_size(pathToBinary);
-    uint8_t *data = (uint8_t *)malloc(szFile + 10);
-    if (data == nullptr) {
+
+    auto sig = FileType(pathToBinary);
+    switch(sig) {
+        case kEmuFileType::ElfBinary :
+            fmt::println("ELF binary detected");
+            return ProcessElf(pathToBinary);
+        case kEmuFileType::RawBinary :
+            return ProcessRaw(pathToBinary);
+        default:
+            fmt::println("Unknown file type");
+            break;
+    }
+    return false;
+
+}
+bool ProcessElf(std::filesystem::path &pathToBinary) {
+    elfio reader;
+
+    if (!reader.load(pathToBinary.c_str())) {
         return false;
     }
-    memset(data, 0, szFile + 10);
+
+    size_t szExec = 0;
+
+    auto nSections = reader.sections.size();
+    fmt::println("Mapping sections");
+    for(size_t idxSection = 0; idxSection < nSections; idxSection++) {
+        auto section = reader.sections[idxSection];
+        auto address = section->get_address();
+        auto data = section->get_data();
+        auto szData = section->get_size();
+        auto name = section->get_name();
+        fmt::println("  Name={}  Address={}  Size={}", name, address, szData);
+        if (section->get_type() == PT_LOAD) {
+            fmt::println("    -> Mapping to CPU RAM");
+            memcpy(&cpu_ram_memory[address], data, szData);
+        }
+
+        // FIXME: this is not correct..  =)
+        // Note - doesn't matter much - the 'szExec' is only used for disassembling the code before executing
+        if (name == ".text") {
+            szExec = szData;
+        }
+    }
+
+    auto entryAddress = reader.get_entry();
+    ExecuteData(entryAddress, szExec);
+
+    return true;
+}
+bool ProcessRaw(std::filesystem::path &pathToBinary) {
+    size_t szFile = file_size(pathToBinary);
     // Read file
     FILE *f = fopen(pathToBinary.c_str(), "r+");
     if (f == nullptr) {
-        free(data);
         return false;
     }
-    auto nRead = fread(data, 1, szFile, f);
+    auto nRead = fread(&cpu_ram_memory[loadToAddress], 1, szFile, f);
     fclose(f);
 
-    auto res = ExecuteData(data, szFile);
-    free(data);
+    auto res = ExecuteData(startAddress, szFile);
     return res;
 }
-
 
 static void DumpStatus(const VirtualCPU &cpu) {
     auto &status = cpu.GetStatusReg();
@@ -100,6 +177,7 @@ static void DumpStatus(const VirtualCPU &cpu) {
         status.flags.negative?"N":"-",
         status.flags.extend?"E":"-");
 }
+
 static void DumpRegs(const VirtualCPU &cpu) {
     auto &regs = cpu.GetRegisters();
     for(int i=0;i<8;i++) {
@@ -116,9 +194,7 @@ static void DumpRegs(const VirtualCPU &cpu) {
     }
 }
 
-static uint8_t cpu_ram_memory[1024*512];    // 512kb of RAM for my CPU...
-
-bool ExecuteData(const uint8_t *rawData, size_t szData) {
+bool ExecuteData(uint64_t startAddress, size_t szCode) {
     VirtualCPU vcpu;
 
     // Test syscall dispatch...
@@ -129,15 +205,13 @@ bool ExecuteData(const uint8_t *rawData, size_t szData) {
     });
 
 
-    fmt::println("Copy firmware to address: {:#x}", loadToAddress);
-    memcpy(&cpu_ram_memory[loadToAddress], rawData, szData);
-    vcpu.Begin(cpu_ram_memory, 1024 * 512);
+    vcpu.Begin(cpu_ram_memory, 1024 * VCPU_MMU_PAGE_SIZE);
 
     // --> Break out to own function
     fmt::println("Disasm firmware from address: {:#x}", loadToAddress);
     // This is pretty lousy, as we have no clue where code/data ends...
     uint64_t disasmPtr = loadToAddress;
-    while(disasmPtr < (loadToAddress + szData)) {
+    while(disasmPtr < (loadToAddress + szCode)) {
         auto instrDec = InstructionDecoder::Create(disasmPtr);
         if (!instrDec->Decode(vcpu)) {
             break;
