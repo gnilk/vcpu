@@ -204,7 +204,6 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
         fmt::println("syscall - writeline - a0 = {}",(char *)ptrString);
     });
 
-
     vcpu.Begin(cpu_ram_memory, 1024 * VCPU_MMU_PAGE_SIZE);
 
     // --> Break out to own function
