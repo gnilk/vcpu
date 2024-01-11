@@ -48,7 +48,7 @@ static bool RunAndExecute(const char *code, VirtualCPU &cpu) {
 
     memcpy(ram, firmware.data(), firmware.size());
 
-    cpu.Begin(ram, 1024*512);
+    cpu.QuickStart(ram, 1024*512);
     while(cpu.Step()) {
 
     }

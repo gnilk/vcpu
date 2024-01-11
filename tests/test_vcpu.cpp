@@ -88,7 +88,7 @@ DLL_EXPORT int test_vcpu_instr_move_immediate(ITesting *t) {
 
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     // Verify intermediate mode reading works for 8,16,32,64 bit sizes
     vcpu.Step();
@@ -121,7 +121,7 @@ DLL_EXPORT int test_vcpu_instr_move_reg2reg(ITesting *t) {
         0x20,0x00,0x23,0x53,    // move.b d2, d5
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.word = 0x4711;
@@ -160,7 +160,7 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
         0x00                                // brk
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.word = 0x4711;
@@ -179,7 +179,7 @@ DLL_EXPORT int test_vcpu_instr_move_cntrl(ITesting *t) {
         0x20,0x13,0x03,0x83,    // move.l d0, cr0
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.longword = 0x4711;
@@ -213,12 +213,12 @@ DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t) {
     // Test 'add-value-to-zeroed-out-register'
     regs.dataRegisters[0].data.longword = 0;
 
-    vcpu.Begin(byteAdd, 1024);
+    vcpu.QuickStart(byteAdd, 1024);
     vcpu.Step();
     TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0x44);
 
-    vcpu.Reset();
-    vcpu.Begin(wordAdd, 1024);
+    vcpu.SetInstrPtr(0);
+    vcpu.QuickStart(wordAdd, 1024);
     vcpu.Step();
     TR_ASSERT(t, regs.dataRegisters[0].data.word == 0x4433);
 
@@ -233,7 +233,7 @@ DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t) {
         0x30,0x00,0x23,0x01, 0x01,  // add.b d2, 0x01 // d2 = 0x12
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.word = 0x4711;
@@ -262,7 +262,7 @@ DLL_EXPORT int test_vcpu_instr_push(ITesting *t) {
         0x70,0x02,0x23,                            // push.d d2
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     regs.dataRegisters[0].data.byte = 0x89;
     regs.dataRegisters[1].data.word = 0x4711;
@@ -304,7 +304,7 @@ DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
         0x80,0x00,0x23,                            // pop.b d2
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     auto &stack = vcpu.GetStack();
 
@@ -361,7 +361,7 @@ DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
         0xf0,                       // 8 <- return, should be ip+1 => 5
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &instrPtr = vcpu.GetInstrPtr();
     vcpu.Step();
     TR_ASSERT(t, instrPtr.data.longword == 7);
@@ -380,7 +380,7 @@ DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
         0xf1,0xf1,0xf1,0xf1,        // 4 nop
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
 
     auto &instrPtr = vcpu.GetInstrPtr();
     TR_ASSERT(t, instrPtr.data.longword == 0);
@@ -404,7 +404,7 @@ DLL_EXPORT int test_vcpu_instr_lea(ITesting *t) {
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto res = vcpu.Step();
     TR_ASSERT(t, res);
 
@@ -426,7 +426,7 @@ DLL_EXPORT int test_vcpu_move_indirect(ITesting *t) {
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     TR_ASSERT(t, vcpu.Step());
     TR_ASSERT(t, regs.addressRegisters[0].data.longword == 0x11);
 
@@ -470,7 +470,7 @@ DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t) {
         0x30,0x00,0x13,0x03,    // add.b d1, d0     // d1 = ?? + 0x70
     };
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     auto &statusReg = vcpu.GetStatusReg();
 
@@ -521,7 +521,7 @@ DLL_EXPORT int test_vcpu_instr_lsr(ITesting *t) {
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     regs.dataRegisters[0].data.byte = 0x40;
     auto res = vcpu.Step();
     TR_ASSERT(t, res);
@@ -545,7 +545,7 @@ DLL_EXPORT int test_vcpu_instr_lsl(ITesting *t) {
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     // we are shifting the byte - this should not affect other parts of the register...
     regs.dataRegisters[0].data.longword = 0xaabbaabbaa;
     regs.dataRegisters[0].data.byte = 0x20;
@@ -573,7 +573,7 @@ DLL_EXPORT int test_vcpu_instr_asr(ITesting *t) {
     auto &regs = vcpu.GetRegisters();
     auto &status = vcpu.GetStatusReg();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     regs.dataRegisters[0].data.byte = 0x82;
     auto res = vcpu.Step();
     TR_ASSERT(t, res);
@@ -611,7 +611,7 @@ DLL_EXPORT int test_vcpu_instr_asl(ITesting *t) {
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     regs.dataRegisters[0].data.byte = 0x20;
     auto res = vcpu.Step();
     TR_ASSERT(t, res);
@@ -631,7 +631,7 @@ DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t) {
     auto &regs = vcpu.GetRegisters();
     auto &status = vcpu.GetStatusReg();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
 
     // Set d0 = 0x20 and execute
     regs.dataRegisters[0].data.byte = 0x20;
@@ -659,7 +659,7 @@ DLL_EXPORT int test_vcpu_instr_beq(ITesting *t) {
     auto &regs = vcpu.GetRegisters();
     auto &status = vcpu.GetStatusReg();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
 
     // Set d0 = 0x20 and execute
     auto instrPtrLoopPoint = vcpu.GetInstrPtr().data.longword;
@@ -684,7 +684,7 @@ DLL_EXPORT int test_vcpu_instr_bne(ITesting *t) {
     auto &regs = vcpu.GetRegisters();
     auto &status = vcpu.GetStatusReg();
 
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
 
     // Set d0 = 0x20 and execute
     auto instrPtrLoopPoint = vcpu.GetInstrPtr().data.longword;
@@ -720,7 +720,7 @@ DLL_EXPORT int test_vcpu_disasm(ITesting *t) {
     };
 
     VirtualCPU vcpu;
-    vcpu.Begin(program, 1024);
+    vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
     while(vcpu.Step()) {
         auto lastInstr = vcpu.GetLastDecodedInstr();
