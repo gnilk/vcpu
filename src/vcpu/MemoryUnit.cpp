@@ -23,7 +23,7 @@ bool MemoryUnit::Initialize(void *physicalRam, size_t sizeInBytes) {
     // Minimum memory required to hold our data..
     // for a 16x16x16 config this is about 1kb (1041 bytes)...
     // This the amount of RAM we steal to hold our meta-data
-    size_t minMemRequired = sizeof(PageTable) + (VCPU_MMU_MAX_ROOT_TABLES * VCPU_MMU_MAX_DESCRIPTORS * VCPU_MMU_MAX_PAGES_PER_DESC) >> 3;
+    size_t minMemRequired = sizeof(PageTable) + ((VCPU_MMU_MAX_ROOT_TABLES * VCPU_MMU_MAX_DESCRIPTORS * VCPU_MMU_MAX_PAGES_PER_DESC) >> 3);
 
     if (sizeInBytes < minMemRequired) {
         // FIXME: Raise low-memory exception - we need AT LEAST some bytes
