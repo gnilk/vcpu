@@ -41,6 +41,7 @@ list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLex
 list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h)
 
 
+list(APPEND asmsrc src/assembler/Linker/BaseLinker.cpp src/assembler/Linker/BaseLinker.h)
 list(APPEND asmsrc src/assembler/Linker/CompiledUnit.cpp src/assembler/Linker/CompiledUnit.h)
 list(APPEND asmsrc src/assembler/Linker/DummyLinker.cpp src/assembler/Linker/DummyLinker.h)
 list(APPEND asmsrc src/assembler/Linker/ElfLinker.cpp src/assembler/Linker/ElfLinker.h)
