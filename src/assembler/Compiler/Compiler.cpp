@@ -16,6 +16,7 @@
 
 #include "elfio/elfio.hpp"
 #include "Linker/DummyLinker.h"
+#include "Linker/ElfLinker.h"
 
 using namespace gnilk;
 using namespace gnilk::assembler;
@@ -44,7 +45,8 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 // We should split this to it's own structure
 //
 bool Compiler::Link() {
-    DummyLinker linker;
+    //DummyLinker linker;
+    ElfLinker linker;
     return linker.Link(unit, identifierAddresses, addressPlaceholders);
 }
 
