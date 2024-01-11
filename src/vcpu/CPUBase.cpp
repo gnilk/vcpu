@@ -8,6 +8,27 @@
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
+
+void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
+    ram = static_cast<uint8_t *>(ptrRam);
+    szRam = sizeOfRam;
+
+    Reset();
+}
+
+void CPUBase::Reset() {
+    // Everything is zero upon reset...
+    memset(&registers, 0, sizeof(registers));
+    memset(ram, 0, szRam);
+
+    isrVectorTable = (ISR_VECTOR_TABLE*)ram;
+
+    isrVectorTable->initial_sp = szRam-1;
+    isrVectorTable->initial_pc = VCPU_INITIAL_PC;
+
+}
+
+
 void *CPUBase::GetRawPtrToRAM(uint64_t addr) {
     if (addr > szRam) {
         return nullptr;

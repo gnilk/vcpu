@@ -17,6 +17,33 @@
 namespace gnilk {
     namespace vcpu {
 
+        // These are part of the CPU emulation and NOT callbacks to the emulator...
+        typedef uint64_t ISR_FUNC;
+        // All except initial_sp/pc are set to 0 during startup
+        // initial_sp = last byte in RAM
+        // initial_pc = VCPU_INITIAL_PC (which is default to 0x2000)
+#pragma pack(push,1)
+        struct ISR_VECTOR_TABLE {
+            uint64_t initial_sp;        // 0
+            uint64_t initial_pc;        // 1
+            ISR_FUNC isr_illegal_instr; // 2
+            ISR_FUNC isr_hard_fault;    // 3
+            ISR_FUNC isr_div_zero;      // 4
+            ISR_FUNC isr_debug_trap;    // 5
+            ISR_FUNC isr_mmu_fault;     // 6
+            ISR_FUNC isr_fpu_fault;     // 7
+            ISR_FUNC isr_ext_l1;        // 8
+            ISR_FUNC isr_ext_l2;        // 9
+            ISR_FUNC isr_ext_l3;        // 10
+            ISR_FUNC isr_ext_l4;        // 11
+            ISR_FUNC isr_ext_l5;        // 12
+            ISR_FUNC isr_ext_l6;        // 13
+            ISR_FUNC isr_ext_l7;        // 14
+            ISR_FUNC isr_ext_l8;        // 15
+            uint64_t reserved[16];
+        };
+#pragma pack(pop)
+
         struct RegisterValue {
             union {
                 uint8_t byte;
@@ -131,6 +158,8 @@ namespace gnilk {
         };
 
 
+        static const uint64_t VCPU_INITIAL_PC = 0x2000;
+
         class CPUBase;
 
         using SysCallDelegate = std::function<void(Registers &regs, CPUBase *cpu)>;
@@ -163,7 +192,8 @@ namespace gnilk {
             CPUBase() = default;
             virtual ~CPUBase() = default;
 
-
+            virtual void Begin(void *ptrRam, size_t sizeOfRam);
+            virtual void Reset();
             bool RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler);
 
             const Registers &GetRegisters() const {
@@ -323,6 +353,9 @@ namespace gnilk {
             CPUStatusReg statusReg = {};
             MemoryUnit memoryUnit;
 
+            ISR_VECTOR_TABLE *isrVectorTable = nullptr;
+
+            // FIXME: Remove this and let the supplied RAM hold the stack...
             std::stack<RegisterValue> stack;
 
             std::unordered_map<uint32_t, SysCall::Ref> syscalls;

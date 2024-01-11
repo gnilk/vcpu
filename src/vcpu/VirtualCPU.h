@@ -22,15 +22,9 @@ namespace gnilk {
         public:
             VirtualCPU() = default;
             virtual ~VirtualCPU() = default;
-            void Begin(void *ptrRam, size_t sizeofRam) {
-                ram = static_cast<uint8_t *>(ptrRam);
-                szRam = sizeofRam;
-                // Everything is zero upon reset...
-                memset(&registers, 0, sizeof(registers));
-            }
-            void Reset() {
-                registers.instrPointer.data.longword = 0;
-            }
+            void Begin(void *ptrRam, size_t sizeofRam) override;
+            void Reset() override;
+
             bool Step();
 
             const InstructionDecoder::Ref GetLastDecodedInstr() const {
