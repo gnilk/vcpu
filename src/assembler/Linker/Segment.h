@@ -28,6 +28,10 @@ namespace gnilk {
                 return data;
             }
 
+            const void *DataPtr() const {
+                return data.data();
+            }
+
             size_t Size() const {
                 return data.size();
             }
