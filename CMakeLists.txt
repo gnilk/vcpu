@@ -63,6 +63,7 @@ add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${comm
 target_include_directories(test PUBLIC src/vcpu)
 target_include_directories(test PUBLIC src/assembler)
 target_include_directories(test PUBLIC src/common)
+target_include_directories(test PUBLIC src/ext/ELFIO)
 
 if (APPLE)
     target_include_directories(test PUBLIC /usr/local/include)
