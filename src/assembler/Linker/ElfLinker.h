@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "BaseLinker.h"
 #include "CompiledUnit.h"
 
 // FIXME: This should not be here
@@ -16,12 +17,12 @@
 
 namespace gnilk {
     namespace assembler {
-        class ElfLinker {
+        class ElfLinker : public BaseLinker {
         public:
             ElfLinker() = default;
             virtual ~ElfLinker() = default;
 
-            bool Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders);
+            bool Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) override;
         protected:
             bool WriteElf(CompiledUnit &unit);
 
