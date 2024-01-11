@@ -22,7 +22,8 @@ namespace gnilk {
         public:
             VirtualCPU() = default;
             virtual ~VirtualCPU() = default;
-            void Begin(void *ptrRam, size_t sizeofRam) override;
+            void QuickStart(void *ptrRam, size_t sizeOfRam) override;
+            void Begin(void *ptrRam, size_t sizeOfRam) override;
             void Reset() override;
 
             bool Step();

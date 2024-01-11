@@ -9,10 +9,17 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
+// QuickStart won't initialize the ISR Table and reserve stuff - it will just assign the RAM ptr
+void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
     ram = static_cast<uint8_t *>(ptrRam);
     szRam = sizeOfRam;
 
+    memset(&registers, 0, sizeof(registers));
+}
+
+void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
+    ram = static_cast<uint8_t *>(ptrRam);
+    szRam = sizeOfRam;
     Reset();
 }
 

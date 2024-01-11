@@ -192,6 +192,8 @@ namespace gnilk {
             CPUBase() = default;
             virtual ~CPUBase() = default;
 
+            virtual void QuickStart(void *ptrRam, size_t sizeOfRam);
+
             virtual void Begin(void *ptrRam, size_t sizeOfRam);
             virtual void Reset();
             bool RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler);
