@@ -16,8 +16,8 @@ using namespace gnilk::vcpu;
 
 using namespace ELFIO;
 
-static uint64_t loadToAddress = 0;
-static uint64_t startAddress = 0;
+static uint64_t rawLoadToAddress = 0;
+static uint64_t rawStartAddress = 0;
 
 // 1024 pages is more than enough for simple testing...
 static uint8_t cpu_ram_memory[1024*VCPU_MMU_PAGE_SIZE] = {};    // 512kb of RAM for my CPU...
@@ -40,8 +40,8 @@ int main(int argc, char **argv)  {
                             fmt::println(stderr, "Invalid number {} as argument, use: -d <number>", argv[i]);
                             return 1;
                         }
-                        loadToAddress = *tmp;
-                        startAddress = *tmp;
+                        rawLoadToAddress = *tmp;
+                        rawStartAddress = *tmp;
                     }
                     break;
             }
@@ -161,10 +161,10 @@ bool ProcessRaw(std::filesystem::path &pathToBinary) {
     if (f == nullptr) {
         return false;
     }
-    auto nRead = fread(&cpu_ram_memory[loadToAddress], 1, szFile, f);
+    auto nRead = fread(&cpu_ram_memory[rawLoadToAddress], 1, szFile, f);
     fclose(f);
 
-    auto res = ExecuteData(startAddress, szFile);
+    auto res = ExecuteData(rawStartAddress, szFile);
     return res;
 }
 
@@ -208,10 +208,10 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
     vcpu.Begin(cpu_ram_memory, 1024 * VCPU_MMU_PAGE_SIZE);
 
     // --> Break out to own function
-    fmt::println("Disasm firmware from address: {:#x}", loadToAddress);
+    fmt::println("Disasm firmware from address: {:#x}", startAddress);
     // This is pretty lousy, as we have no clue where code/data ends...
-    uint64_t disasmPtr = loadToAddress;
-    while(disasmPtr < (loadToAddress + szCode)) {
+    uint64_t disasmPtr = startAddress;
+    while(disasmPtr < (startAddress + szCode)) {
         auto instrDec = InstructionDecoder::Create(disasmPtr);
         if (!instrDec->Decode(vcpu)) {
             break;
