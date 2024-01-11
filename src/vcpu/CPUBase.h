@@ -158,6 +158,7 @@ namespace gnilk {
         };
 
 
+        static const uint64_t VCPU_RESERVED_RAM = 0x2000;
         static const uint64_t VCPU_INITIAL_PC = 0x2000;
 
         class CPUBase;

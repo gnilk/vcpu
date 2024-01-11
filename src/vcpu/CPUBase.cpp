@@ -26,7 +26,11 @@ void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
 void CPUBase::Reset() {
     // Everything is zero upon reset...
     memset(&registers, 0, sizeof(registers));
-    memset(ram, 0, szRam);
+    auto szToReset = szRam;
+    if (szToReset > VCPU_RESERVED_RAM) {
+        szToReset = VCPU_RESERVED_RAM;
+    }
+    memset(ram, 0, szToReset);
 
     isrVectorTable = (ISR_VECTOR_TABLE*)ram;
 
