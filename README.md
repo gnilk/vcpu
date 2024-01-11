@@ -37,7 +37,7 @@ This is to support `.org <offset>` type of statements..
 # Dependencies
 * libfmt - part of source tree.
 * testrunner - https://github.com/gnilk/testrunner - for unit testing
-* elfio - https://github.com/serge1/ELFIO (not yet)
+* elfio - https://github.com/serge1/ELFIO - clone this into src/ext/ELFIO
 
 # Details
 * Instruction set is documented in the file `InstructionSet.cpp` and `InstructionSet.h`
@@ -98,15 +98,15 @@ Support for the following directives:
 
 ! syscall, through sys instruction
 ! disassembling (i.e. reconstructing an instruction from op-codes)     
-+ Separate linker step in compiler (refactor it away from the compiler)
+! Separate linker step in compiler (refactor it away from the compiler)
 + refactor segments and their handling...
 + compare instructions
 + branching
 + bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
-    - output elf files
-    - make a linker step
+    ! output elf files
+    ! make a linker step
     - Ability to output a proper memory layout
 - VCPU
     - Properly define the memory layout
@@ -117,9 +117,9 @@ Support for the following directives:
         - To the emulator
         
 - emulator
-    - accept elf files as executables
+    ! accept elf files as executables
         
-- consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
+! consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
 - write an OS
 + have fun...       <- don't forget...
 ```
