@@ -76,7 +76,8 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
     } else {
         offset = identifierAddr.address - placeHolder.ofsRelative;
     }
-    unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), offset, placeHolder.opSize);
+
+    placeHolder.segment->ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), offset, placeHolder.opSize);
 
     return true;
 }
@@ -91,8 +92,12 @@ bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifi
         fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder.ident);
         return false;
     }
+    if (placeHolder.segment == nullptr) {
+        fmt::println(stderr, "Linker, placehold has no segment - can't replace!");
+        return false;
+    }
 
-    unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
+    placeHolder.segment->ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
     return true;
 }
