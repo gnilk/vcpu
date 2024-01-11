@@ -50,13 +50,8 @@ const Context &gnilk::GetLexerContext() {
     static std::unordered_map<std::string, TokenType> keywords = {
         // New stuff (not done yet)
 /*
-        {"dcb", TokenType::Unknown},
-        {"struct", TokenType::Unknown},
-        {"endstruct", TokenType::Unknown},
         {"include", TokenType::Unknown},
         {"incbin", TokenType::Unknown},
-        {"section", TokenType::Unknown},
-        {"rs", TokenType::Unknown},
 */
         {"struct", TokenType::Struct},
         {"const", TokenType::Const},
