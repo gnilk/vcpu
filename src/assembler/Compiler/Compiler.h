@@ -8,6 +8,7 @@
 #include "InstructionSet.h"
 #include "ast/ast.h"
 #include "Linker/CompiledUnit.h"
+#include "IdentifierRelocatation.h"
 
 namespace gnilk {
     namespace assembler {
@@ -77,19 +78,6 @@ namespace gnilk {
                 size_t byteSize;
             };
 
-            struct IdentifierAddressPlaceholder {
-                std::string ident;
-                Segment::Ref segment;
-                uint64_t address;
-                // For relative jump
-                bool isRelative;
-                vcpu::OperandSize opSize;
-                uint64_t ofsRelative;   // Offset to compute from..
-            };
-            struct IdentifierAddress {
-                Segment::Ref segment;
-                uint64_t address;
-            };
             std::vector<StructDefinition> structDefinitions;
             std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
             std::unordered_map<std::string, IdentifierAddress> identifierAddresses;

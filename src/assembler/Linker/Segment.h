@@ -10,6 +10,8 @@
 #include <vector>
 #include <string>
 
+#include "InstructionSet.h"
+
 namespace gnilk {
     namespace assembler {
         class CompiledUnit;

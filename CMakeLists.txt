@@ -36,10 +36,14 @@ list(APPEND asmsrc src/assembler/ast/statements.h)
 list(APPEND asmsrc src/assembler/ast/expressions.h)
 
 list(APPEND asmsrc src/assembler/Compiler/Compiler.cpp src/assembler/Compiler/Compiler.h)
+list(APPEND asmsrc src/assembler/Compiler/IdentifierRelocatation.h)
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)
 list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h)
 
+
 list(APPEND asmsrc src/assembler/Linker/CompiledUnit.cpp src/assembler/Linker/CompiledUnit.h)
+list(APPEND asmsrc src/assembler/Linker/DummyLinker.cpp src/assembler/Linker/DummyLinker.h)
+list(APPEND asmsrc src/assembler/Linker/ElfLinker.cpp src/assembler/Linker/ElfLinker.h)
 list(APPEND asmsrc src/assembler/Linker/Segment.h)
 
 list(APPEND commonsrc src/common/ConvertUTF.cpp src/common/ConvertUTF.h)
@@ -80,6 +84,7 @@ add_executable(asm ${asmsrc} ${vcpusrc} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
 target_include_directories(asm PUBLIC src/common)
 target_include_directories(asm PUBLIC src/vcpu)
+target_include_directories(asm PUBLIC src/ext/ELFIO)
 
 #
 # link targets
