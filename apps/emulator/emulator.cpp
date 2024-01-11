@@ -136,7 +136,7 @@ bool ProcessElf(std::filesystem::path &pathToBinary) {
         auto data = section->get_data();
         auto szData = section->get_size();
         auto name = section->get_name();
-        fmt::println("  Name={}  Address={}  Size={}", name, address, szData);
+        fmt::println("  Name={}  Address={:#x}  Size={:#x}", name, address, szData);
         if (section->get_type() == PT_LOAD) {
             fmt::println("    -> Mapping to CPU RAM");
             memcpy(&cpu_ram_memory[address], data, szData);
