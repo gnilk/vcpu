@@ -2,6 +2,7 @@
 // Created by gnilk on 11.01.2024.
 //
     .code
+    .org 0x2000
 _start:
     lea     a0, string
     move.l  d0, 0x01
