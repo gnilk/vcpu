@@ -45,9 +45,13 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 // We should split this to it's own structure
 //
 bool Compiler::Link() {
+    if (linker == nullptr) {
+        static DummyLinker dummyLinker;
+        linker = &dummyLinker;
+    }
     //DummyLinker linker;
-    ElfLinker linker;
-    return linker.Link(unit, identifierAddresses, addressPlaceholders);
+    //ElfLinker linker;
+    return linker->Link(unit, identifierAddresses, addressPlaceholders);
 }
 
 

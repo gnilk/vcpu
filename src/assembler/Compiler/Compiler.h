@@ -9,6 +9,7 @@
 #include "ast/ast.h"
 #include "Linker/CompiledUnit.h"
 #include "IdentifierRelocatation.h"
+#include "Linker/BaseLinker.h"
 
 namespace gnilk {
     namespace assembler {
@@ -18,9 +19,15 @@ namespace gnilk {
             Compiler() = default;
             virtual ~Compiler() = default;
 
+
             bool CompileAndLink(gnilk::ast::Program::Ref program);
             bool Compile(gnilk::ast::Program::Ref program);
             bool Link();
+
+            void SetLinker(BaseLinker *newLinker) {
+                linker = newLinker;
+            }
+
 
             // TEMP TEMP
             const std::vector<uint8_t> &Data() {
@@ -69,6 +76,7 @@ namespace gnilk {
             bool EmitLWord(uint64_t lword);
         private:
             CompiledUnit unit;
+            BaseLinker *linker = nullptr;
 
             // FIXME: replace this...
             //std::vector<uint8_t> outStream;
