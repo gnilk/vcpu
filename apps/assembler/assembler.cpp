@@ -10,6 +10,12 @@
 #include "fmt/format.h"
 #include "Parser/Parser.h"
 
+#include "Linker/DummyLinker.h"
+#include "Linker/ElfLinker.h"
+
+static gnilk::assembler::DummyLinker dummyLinker;
+static gnilk::assembler::ElfLinker elfLinker;
+
 bool ProcessFile(const std::string &outFilename, std::filesystem::path &pathToSrcFile);
 
 int main(int argc, const char **argv) {
@@ -86,6 +92,9 @@ bool CompileData(const std::string &outFilename, const std::string_view &srcData
 
     gnilk::assembler::Parser parser;
     gnilk::assembler::Compiler compiler;
+
+    // Use the elf-linker by default...
+    compiler.SetLinker(&elfLinker);
 
     auto ast = parser.ProduceAST(srcData);
     if (ast == nullptr) {
