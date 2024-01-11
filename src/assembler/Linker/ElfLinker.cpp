@@ -16,20 +16,27 @@ bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Identif
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
 
+    auto textSeg = unit.GetSegment(".text");
+    if (textSeg == nullptr) {
+        fmt::println(stderr, "Linker, no '.text' segment found - i.e. no code");
+        return false;
+    }
+
     auto dataSeg = unit.GetSegment(".data");
     if (dataSeg == nullptr) {
         fmt::println(stderr, "Linker, no data segment?");
     } else {
-        dataSeg->SetLoadAddress(0x1000);    // This should be set to 'next available page address'
+        auto ofsDataSeg = textSeg->LoadAddress() + textSeg->Size();
+        // put the data segment at the next MMU page after the text segment
+        ofsDataSeg = (ofsDataSeg & (~(vcpu::VCPU_MMU_PAGE_SIZE - 1)));
+        ofsDataSeg +=  + vcpu::VCPU_MMU_PAGE_SIZE;
+        dataSeg->SetLoadAddress(ofsDataSeg);
     }
 
     fmt::println("Segments:");
     for(auto &s : segments) {
-        fmt::println("  Name={}  LoadAddress={}  Size={}",s->Name(), s->LoadAddress(), s->Size());
+        fmt::println("  Name={}  LoadAddress={:#x}  Size={:#x}",s->Name(), s->LoadAddress(), s->Size());
     }
-
-
-    auto textSeg = unit.GetSegment(".text");
 
     fmt::println("Linking");
     if (!RelocateIdentifiers(unit, identifierAddresses, addressPlaceholders)) {
@@ -66,7 +73,7 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
     fmt::println("  from:{}, to:{}", placeHolder.ofsRelative, identifierAddr.address);
 
     fmt::println("  REL: {}@{:#x} = {}@{:#x}",
-        placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
+        placeHolder.ident, placeHolder.segment->LoadAddress() + placeHolder.address,
         identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
     int offset = 0;
@@ -77,14 +84,14 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
         offset = identifierAddr.address - placeHolder.ofsRelative;
     }
 
-    placeHolder.segment->ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), offset, placeHolder.opSize);
+    placeHolder.segment->ReplaceAt(placeHolder.address, offset, placeHolder.opSize);
 
     return true;
 }
 
 bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder &placeHolder) {
     fmt::println("  {}@{:#x} = {}@{:#x}",
-        placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
+        placeHolder.ident, placeHolder.segment->LoadAddress() + placeHolder.address,
         identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
     // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
@@ -97,7 +104,7 @@ bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifi
         return false;
     }
 
-    placeHolder.segment->ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
+    placeHolder.segment->ReplaceAt(placeHolder.address, identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
     return true;
 }
