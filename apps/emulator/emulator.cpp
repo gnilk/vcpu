@@ -16,6 +16,8 @@ using namespace gnilk::vcpu;
 
 using namespace ELFIO;
 
+static gnilk::vcpu::VirtualCPU cpuemu;
+
 static uint64_t rawLoadToAddress = 0;
 static uint64_t rawStartAddress = 0;
 
@@ -54,6 +56,10 @@ int main(int argc, char **argv)  {
         fmt::println("no files - bailing");
         return 1;
     }
+
+    // Now, initialize the CPU
+    cpuemu.Begin(cpu_ram_memory, 1024 * VCPU_MMU_PAGE_SIZE);
+
     for(auto &fToRun : filesToRun) {
         std::filesystem::path pathToFile(fToRun);
         if (!exists(pathToFile)) {
@@ -139,7 +145,7 @@ bool ProcessElf(std::filesystem::path &pathToBinary) {
         fmt::println("  Name={}  Address={:#x}  Size={:#x}", name, address, szData);
         if (section->get_type() == PT_LOAD) {
             fmt::println("    -> Mapping to CPU RAM");
-            memcpy(&cpu_ram_memory[address], data, szData);
+            cpuemu.LoadDataToRam(address, data, szData);
         }
 
         // FIXME: this is not correct..  =)
@@ -161,7 +167,11 @@ bool ProcessRaw(std::filesystem::path &pathToBinary) {
     if (f == nullptr) {
         return false;
     }
-    auto nRead = fread(&cpu_ram_memory[rawLoadToAddress], 1, szFile, f);
+    auto nRead = fread(&cpuemu.GetRamPtr()[rawLoadToAddress], 1, szFile, f);
+    if ((nRead == 0) & !feof(f)) {
+        fmt::println(stderr, "ERR: ProcessRaw failed to read file '{}'", pathToBinary.c_str());
+        return false;
+    }
     fclose(f);
 
     auto res = ExecuteData(rawStartAddress, szFile);
@@ -195,16 +205,13 @@ static void DumpRegs(const VirtualCPU &cpu) {
 }
 
 bool ExecuteData(uint64_t startAddress, size_t szCode) {
-    VirtualCPU vcpu;
 
     // Test syscall dispatch...
-    vcpu.RegisterSysCall(0x01, "writeline",[](Registers &regs, CPUBase *cpu) {
+    cpuemu.RegisterSysCall(0x01, "writeline",[](Registers &regs, CPUBase *cpu) {
         auto addrString = regs.addressRegisters[0].data.longword;
         auto ptrString = cpu->GetRawPtrToRAM(addrString);
         fmt::println("syscall - writeline - a0 = {}",(char *)ptrString);
     });
-
-    vcpu.Begin(cpu_ram_memory, 1024 * VCPU_MMU_PAGE_SIZE);
 
     // --> Break out to own function
     fmt::println("Disasm firmware from address: {:#x}", startAddress);
@@ -212,7 +219,7 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
     uint64_t disasmPtr = startAddress;
     while(disasmPtr < (startAddress + szCode)) {
         auto instrDec = InstructionDecoder::Create(disasmPtr);
-        if (!instrDec->Decode(vcpu)) {
+        if (!instrDec->Decode(cpuemu)) {
             break;
         }
         std::string strOpCodes = "";
@@ -227,33 +234,33 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
 
 
     fmt::println("Set Initial IP to: {:#x}", startAddress);
-    vcpu.SetInstrPtr(startAddress);
+    cpuemu.SetInstrPtr(startAddress);
 
     // Save ip before we step...
-    RegisterValue ip = vcpu.GetInstrPtr();
+    RegisterValue ip = cpuemu.GetInstrPtr();
 
     fmt::println("------->> Begin Execution <<--------------");
-    while(vcpu.Step()) {
+    while(cpuemu.Step()) {
         // generate op-codes for this instruction...
         std::string strOpCodes = "";
 
-        auto &lastDecoded = vcpu.GetLastDecodedInstr();
+        auto &lastDecoded = cpuemu.GetLastDecodedInstr();
 
         for(auto ofs = lastDecoded->GetInstrStartOfs(); ofs < lastDecoded->GetInstrEndOfs(); ofs++) {
             strOpCodes += fmt::format("0x{:02x}, ",cpu_ram_memory[ofs]);
         }
         // Retrieve the last decoded instruction and transform to string
-        auto lastInstr = vcpu.GetLastDecodedInstr();
+        auto lastInstr = cpuemu.GetLastDecodedInstr();
         auto str = lastInstr->ToString();
 
         // now output address (16 bit), instruction and opcodes
         fmt::println("0x{:04x}\t\t{}\t\t; {}", ip.data.word,str, strOpCodes);
         // Dump stats and register changes caused by this operation
-        DumpStatus(vcpu);
-        DumpRegs(vcpu);
+        DumpStatus(cpuemu);
+        DumpRegs(cpuemu);
 
         // save current ip (this is for op-code)
-        ip = vcpu.GetInstrPtr();
+        ip = cpuemu.GetInstrPtr();
         fmt::println("");
     }
     fmt::println("------->> Execution Complete <<--------------");
