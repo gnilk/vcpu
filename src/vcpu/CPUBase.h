@@ -234,6 +234,19 @@ namespace gnilk {
             const CPUStatusReg &GetStatusReg() const {
                 return statusReg;
             }
+            uint8_t *GetRamPtr() {
+                return ram;
+            }
+            size_t GetRamSize() {
+                return szRam;
+            }
+            bool LoadDataToRam(uint64_t ramAddress, const void *ptrData, size_t szData) {
+                if ((ramAddress + szData) > szRam) {
+                    return false;
+                }
+                memcpy(&ram[ramAddress], ptrData, szData);
+                return true;
+            }
 
             __inline const RegisterValue &GetRegisterValue(int idxRegister, OperandFamily family) const {
                 if (family == OperandFamily::Control) {
