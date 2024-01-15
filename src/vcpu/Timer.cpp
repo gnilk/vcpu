@@ -26,7 +26,8 @@ bool Timer::Update() {
     auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(dur).count();
     auto microsPerTick =  1000 * 1000 * (double)(1.0 / freqSec);
     if (microSeconds > microsPerTick) {
-        // raise tick..
+        // raise timer interrupt..
+        RaiseInterrupt();
         res = true;
         tLast = tNow;
     }
