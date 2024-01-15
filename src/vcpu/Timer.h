@@ -15,12 +15,17 @@ namespace gnilk {
         public:
             using clock = std::chrono::high_resolution_clock;
         public:
-            Timer() = default;
+            Timer(uint64_t freqHz) : freqSec(freqHz) {
+
+            }
             virtual ~Timer() = default;
 
-            void Update() override;
+            static Ref Create(uint64_t freqHz);
+
+            void Initialize() override;
+            bool Update() override;
         private:
-            int freq = 32000;   // 32khz is the default.
+            uint64_t freqSec = 1;   // 32khz is the default.
             bool bHaveFirstTime = false;
             clock::time_point tLast;
         };
