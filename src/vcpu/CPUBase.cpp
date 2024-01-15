@@ -60,17 +60,27 @@ void CPUBase::UpdateMMU() {
 //    memoryUnit.SetPageTranslationVAddr(cr1);
 }
 
-void CPUBase::AddPeripheral(Peripheral::Ref peripheral) {
-    peripherals.push_back(peripheral);
+void CPUBase::AddPeripheral(CPUISRType isrType, Peripheral::Ref peripheral) {
+    ISRPeripheralInstance instance = {
+        .isrType = isrType,
+        .peripheral =  peripheral
+    };
+    peripheral->SetInterruptController(this);
+    peripherals.push_back(instance);
 }
 void CPUBase::ResetPeripherals() {
     for(auto &p : peripherals) {
-        p->Initialize();
+        p.peripheral->Initialize();
     }
 }
 
 void CPUBase::UpdatePeripherals() {
     for(auto &p : peripherals) {
-        p->Update();
+        p.peripheral->Update();
     }
+}
+
+void CPUBase::RaiseInterrupt(CPUISRType isrType) {
+    int breakme = 1;
+
 }

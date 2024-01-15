@@ -14,36 +14,10 @@
 #include "InstructionSet.h"
 #include "MemoryUnit.h"
 #include "Peripheral.h"
+#include "Interrupt.h"
 
 namespace gnilk {
     namespace vcpu {
-
-        // These are part of the CPU emulation and NOT callbacks to the emulator...
-        typedef uint64_t ISR_FUNC;
-        // All except initial_sp/pc are set to 0 during startup
-        // initial_sp = last byte in RAM
-        // initial_pc = VCPU_INITIAL_PC (which is default to 0x2000)
-#pragma pack(push,1)
-        struct ISR_VECTOR_TABLE {
-            uint64_t initial_sp;        // 0
-            uint64_t initial_pc;        // 1
-            ISR_FUNC isr_illegal_instr; // 2
-            ISR_FUNC isr_hard_fault;    // 3
-            ISR_FUNC isr_div_zero;      // 4
-            ISR_FUNC isr_debug_trap;    // 5
-            ISR_FUNC isr_mmu_fault;     // 6
-            ISR_FUNC isr_fpu_fault;     // 7
-            ISR_FUNC isr_ext_l1;        // 8
-            ISR_FUNC isr_ext_l2;        // 9
-            ISR_FUNC isr_ext_l3;        // 10
-            ISR_FUNC isr_ext_l4;        // 11
-            ISR_FUNC isr_ext_l5;        // 12
-            ISR_FUNC isr_ext_l6;        // 13
-            ISR_FUNC isr_ext_l7;        // 14
-            ISR_FUNC isr_ext_l8;        // 15
-            uint64_t reserved[16];
-        };
-#pragma pack(pop)
 
         struct RegisterValue {
             union {
@@ -193,7 +167,7 @@ namespace gnilk {
 
 
         class InstructionDecoder;
-        class CPUBase {
+        class CPUBase : public InterruptController {
             friend InstructionDecoder;
         public:
             CPUBase() = default;
@@ -310,9 +284,11 @@ namespace gnilk {
                 return v;
             }
 
-            void AddPeripheral(Peripheral::Ref peripheral);
+            void AddPeripheral(CPUISRType isrType, Peripheral::Ref peripheral);
             void ResetPeripherals();
             virtual void UpdatePeripherals();
+        // Interrupt Controller Interface
+            void RaiseInterrupt(CPUISRType isrType) override;
 
         protected:
             template<typename T>
@@ -371,6 +347,11 @@ namespace gnilk {
             }
             void UpdateMMU();
         protected:
+            struct ISRPeripheralInstance {
+                CPUISRType isrType;
+                Peripheral::Ref peripheral;
+            };
+        protected:
             uint8_t *ram = nullptr;
             size_t szRam = 0;
             Registers registers = {};
@@ -379,7 +360,7 @@ namespace gnilk {
 
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
 
-            std::vector<Peripheral::Ref> peripherals;
+            std::vector<ISRPeripheralInstance> peripherals;
 
             // FIXME: Remove this and let the supplied RAM hold the stack...
             std::stack<RegisterValue> stack;
