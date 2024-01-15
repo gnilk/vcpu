@@ -45,12 +45,12 @@ using namespace gnilk::vcpu;
 
 void VirtualCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
-    AddPeripheral(Timer::Create(1));
+    AddPeripheral(CPUISRType::ISRTimer0, Timer::Create(1));
 }
 
 void VirtualCPU::Begin(void *ptrRam, size_t sizeOfRam) {
     CPUBase::Begin(ptrRam, sizeOfRam);
-    AddPeripheral(Timer::Create(1));
+    AddPeripheral(CPUISRType::ISRTimer0, Timer::Create(1000));
 }
 
 
@@ -58,6 +58,7 @@ void VirtualCPU::Reset() {
     CPUBase::Reset();
 }
 
+// Use this for debugging and similar..
 bool VirtualCPU::Step() {
 
     // 1) update peripherals
