@@ -13,6 +13,7 @@
 #include "InstructionDecoder.h"
 #include "InstructionSet.h"
 #include "MemoryUnit.h"
+#include "Timer.h"
 
 namespace gnilk {
 
@@ -58,6 +59,7 @@ namespace gnilk {
 
             void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);
         private:
+            Timer *timer0;
             InstructionDecoder::Ref lastDecodedInstruction = nullptr;
         };
     }

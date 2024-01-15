@@ -45,10 +45,12 @@ using namespace gnilk::vcpu;
 
 void VirtualCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
+    AddPeripheral(Timer::Create(1));
 }
 
 void VirtualCPU::Begin(void *ptrRam, size_t sizeOfRam) {
     CPUBase::Begin(ptrRam, sizeOfRam);
+    AddPeripheral(Timer::Create(1));
 }
 
 
