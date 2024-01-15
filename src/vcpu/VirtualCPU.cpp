@@ -58,6 +58,14 @@ void VirtualCPU::Reset() {
 
 bool VirtualCPU::Step() {
 
+    // 1) update peripherals
+    UpdatePeripherals();
+
+    // if CPU is halted, skip this and return...
+    if (statusReg.flags.halt == 1) {
+        return true;
+    }
+
     auto instrDecoder = InstructionDecoder::Create(GetInstrPtr().data.longword);
     // Tell decoder to decode the basics of this instruction
     if (!instrDecoder->Decode(*this)) {
@@ -74,12 +82,15 @@ bool VirtualCPU::Step() {
     switch(instrDecoder->opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
-            // raise halt exception
+            // TODO: raise halt exception
+            // set 'halt' flag
+            statusReg.flags.halt = 1;
             return false;
         case NOP :
             break;
         case SYS :
             ExecuteSysCallInstr(instrDecoder);
+            break;
         case CALL :
             ExecuteCallInstr(instrDecoder);
             break;
