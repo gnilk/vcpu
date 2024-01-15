@@ -59,3 +59,7 @@ void CPUBase::UpdateMMU() {
 //    memoryUnit.SetControl(cr0);
 //    memoryUnit.SetPageTranslationVAddr(cr1);
 }
+
+void CPUBase::UpdatePeripherals() {
+
+}

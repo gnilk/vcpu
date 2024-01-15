@@ -64,17 +64,20 @@ namespace gnilk {
 
         // FIXME: Copy M68k status bits...
         struct CPUStatusBits {
-            uint8_t carry : 1;
-            uint8_t overflow : 1;
-            uint8_t zero : 1;
-            uint8_t negative : 1;
-            uint8_t extend : 1;
-            uint8_t int1 : 1;
-            uint8_t int2 : 1;
-            uint8_t int3 : 1;
+            uint16_t carry : 1;
+            uint16_t overflow : 1;
+            uint16_t zero : 1;
+            uint16_t negative : 1;
+            uint16_t extend : 1;
+            uint16_t int1 : 1;
+            uint16_t int2 : 1;
+            uint16_t int3 : 1;
+            // next 8 bits
+            uint16_t halt : 1;
+            uint16_t reserved : 7;
         };
 
-        enum class CPUStatusFlags : uint8_t {
+        enum class CPUStatusFlags : uint16_t {
             None = 0,
             Carry = 1,
             Overflow = 2,
@@ -83,10 +86,11 @@ namespace gnilk {
             Extend = 16,
             Int1 = 32,
             Int2 = 64,
-            Int3 = 128
+            Int3 = 128,
+            Halt = 256,
         };
 
-        enum class CPUStatusFlagBitPos : uint8_t {
+        enum class CPUStatusFlagBitPos : uint16_t {
             Carry = 0,
             Overflow = 1,
             Zero = 2,
@@ -95,6 +99,7 @@ namespace gnilk {
             Int1 = 5,
             Int2 = 6,
             Int3 = 7,
+            Halt = 8,
         };
 
         union CPUStatusReg {
@@ -303,6 +308,9 @@ namespace gnilk {
                 }
                 return v;
             }
+
+            virtual void UpdatePeripherals();
+
 
 
 
