@@ -115,7 +115,10 @@ Support for the following directives:
     - Raise exceptions
         - Within the CPU using the Int-Vector table
         - To the emulator
-        
+- Interrupt drivers
+  - Consider how this should be done, directly or via an 'external' chip
+  - If external - how to communicate?
+           
 - emulator
     ! accept elf files as executables
         
