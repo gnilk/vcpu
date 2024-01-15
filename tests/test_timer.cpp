@@ -8,7 +8,9 @@
 #include <vector>
 #include <testinterface.h>
 #include <chrono>
+#include <thread>
 
+#include "VirtualCPU.h"
 #include "Timer.h"
 
 using namespace gnilk;
@@ -18,6 +20,7 @@ extern "C" {
     DLL_EXPORT int test_timer(ITesting *t);
     DLL_EXPORT int test_timer_ticks1hz(ITesting *t);
     DLL_EXPORT int test_timer_ticks1000hz(ITesting *t);
+    DLL_EXPORT int test_timer_interrupt(ITesting *t);
 }
 
 DLL_EXPORT int test_timer(ITesting *t) {
@@ -59,3 +62,17 @@ DLL_EXPORT int test_timer_ticks1000hz(ITesting *t) {
     TR_ASSERT(t, (tc > 4900) && (tc < 5100));
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_timer_interrupt(ITesting *t) {
+    uint8_t program[]= {
+        0xf1,0x00,0x00,
+    };
+    VirtualCPU vcpu;
+    vcpu.QuickStart(program, 1024);
+    vcpu.Step();
+    std::this_thread::sleep_for(std::chrono::microseconds(2000));
+    vcpu.Step();    // We should have an interrupt tick here!
+
+    return kTR_Pass;
+}
+
