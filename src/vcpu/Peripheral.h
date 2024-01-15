@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include "Interrupt.h"
+
 namespace gnilk {
     namespace vcpu {
         class Peripheral {
@@ -18,6 +20,23 @@ namespace gnilk {
 
             virtual void Initialize() {}
             virtual bool Update() { return false; }
+
+            void SetInterruptController(InterruptController *newCntrl) {
+                intController = newCntrl;
+            }
+            void MapToInterrupt(CPUISRType isrType) {
+                assignedIsr = isrType;
+            }
+        protected:
+            void RaiseInterrupt() {
+                if (intController == nullptr) {
+                    return;
+                }
+                intController->RaiseInterrupt(assignedIsr);
+            }
+        protected:
+            InterruptController *intController =nullptr;
+            CPUISRType assignedIsr = CPUISRType::ISRNone;
         };
     }
 }
