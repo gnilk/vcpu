@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "InstructionSet.h"
 #include "MemoryUnit.h"
+#include "Peripheral.h"
 
 namespace gnilk {
     namespace vcpu {
@@ -309,10 +310,9 @@ namespace gnilk {
                 return v;
             }
 
+            void AddPeripheral(Peripheral::Ref peripheral);
+            void ResetPeripherals();
             virtual void UpdatePeripherals();
-
-
-
 
         protected:
             template<typename T>
@@ -378,6 +378,8 @@ namespace gnilk {
             MemoryUnit memoryUnit;
 
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
+
+            std::vector<Peripheral::Ref> peripherals;
 
             // FIXME: Remove this and let the supplied RAM hold the stack...
             std::stack<RegisterValue> stack;

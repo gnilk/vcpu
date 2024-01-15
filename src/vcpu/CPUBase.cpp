@@ -60,6 +60,17 @@ void CPUBase::UpdateMMU() {
 //    memoryUnit.SetPageTranslationVAddr(cr1);
 }
 
-void CPUBase::UpdatePeripherals() {
+void CPUBase::AddPeripheral(Peripheral::Ref peripheral) {
+    peripherals.push_back(peripheral);
+}
+void CPUBase::ResetPeripherals() {
+    for(auto &p : peripherals) {
+        p->Initialize();
+    }
+}
 
+void CPUBase::UpdatePeripherals() {
+    for(auto &p : peripherals) {
+        p->Update();
+    }
 }
