@@ -35,6 +35,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_beq(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_bne(ITesting *t);
+    DLL_EXPORT int test_vcpu_halt(ITesting *t);
     DLL_EXPORT int test_vcpu_move_indirect(ITesting *t);
     DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t);
     DLL_EXPORT int test_vcpu_disasm(ITesting *t);
@@ -700,6 +701,28 @@ DLL_EXPORT int test_vcpu_instr_bne(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_vcpu_halt(ITesting *t) {
+    uint8_t program[]={
+        0xf1,   // nop
+        0x00,   // break
+        0xf1,   // nop - should never execute
+        0xf1,   // nop
+        0xf1,   // nop
+        0xf1,   // nop
+    };
+    VirtualCPU vcpu;
+    auto &status = vcpu.GetStatusReg();
+    vcpu.QuickStart(program, 1024);
+    TR_ASSERT(t, status.flags.halt == 0);
+    TR_ASSERT(t, vcpu.Step());
+    TR_ASSERT(t, !vcpu.Step()); // we return 'false' during step
+    auto instrPtr = vcpu.GetInstrPtr();
+    TR_ASSERT(t, status.flags.halt == 1);
+    TR_ASSERT(t, vcpu.Step());
+    TR_ASSERT(t, instrPtr.data.longword == vcpu.GetInstrPtr().data.longword);
+
+    return kTR_Pass;
+}
 
 DLL_EXPORT int test_vcpu_disasm(ITesting *t) {
     uint8_t program[]= {
