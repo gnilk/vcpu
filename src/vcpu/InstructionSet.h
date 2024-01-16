@@ -172,6 +172,7 @@ namespace gnilk {
             RET = 0xF0,
             // pop addr. from stack and jump absolute..
             NOP = 0xF1,
+            RTI = 0xF2, // Return from Interrupt
             EOC = 0xff,
             // End of code
         } OperandCode;
