@@ -64,6 +64,10 @@ bool VirtualCPU::Step() {
     // 1) update peripherals
     UpdatePeripherals();
 
+    // 2) Invoke any Interrupt as a result..
+    //    Note: Can't invoke interrupt if already inside one..
+    InvokeISRHandlers();
+
     // if CPU is halted, skip this and return...
     if (statusReg.flags.halt == 1) {
         return true;
@@ -88,7 +92,7 @@ bool VirtualCPU::Step() {
             // TODO: raise halt exception
             // set 'halt' flag
             statusReg.flags.halt = 1;
-            return false;
+            break;
         case NOP :
             break;
         case SYS :
@@ -102,6 +106,9 @@ bool VirtualCPU::Step() {
             break;
         case RET :
             ExecuteRetInstr(instrDecoder);
+            break;
+        case RTI :
+            ExecuteRtiInstr(instrDecoder);
             break;
         case MOV :
             ExecuteMoveInstr(instrDecoder);
@@ -665,6 +672,23 @@ void VirtualCPU::ExecuteRetInstr(InstructionDecoder::Ref instrDecoder) {
     auto newInstrAddr = stack.top();
     stack.pop();
     registers.instrPointer.data = newInstrAddr.data;
+}
+
+void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
+    if (isrState != CPUIsrState::IsrStateExecuting) {
+        // FIXME: Raise invalid CPU state exception
+        return;
+    }
+    registers.instrPointer = rti;
+
+    // Reset RTI
+    rti.data.longword = 0x00;
+
+    // Clear out the interrupt flags
+    statusReg.flags.int1 = 0;
+    statusReg.flags.int2 = 0;
+    statusReg.flags.int3 = 0;
+    isrState = CPUIsrState::IsrStateWaiting;
 }
 
 //

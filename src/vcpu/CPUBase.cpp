@@ -66,6 +66,7 @@ void CPUBase::AddPeripheral(CPUISRType isrType, Peripheral::Ref peripheral) {
         .peripheral =  peripheral
     };
     peripheral->SetInterruptController(this);
+    peripheral->MapToInterrupt(isrType);
     peripherals.push_back(instance);
 }
 void CPUBase::ResetPeripherals() {
@@ -81,6 +82,33 @@ void CPUBase::UpdatePeripherals() {
 }
 
 void CPUBase::RaiseInterrupt(CPUISRType isrType) {
-    int breakme = 1;
+    if (isrState != CPUIsrState::IsrStateWaiting) {
+        // Already within an ISR - do NOT execute another
+        return;
+    }
 
+    // Need to queue interrupts - as the CPU status register can only hold 1 ISR combo at any given time
+    // ok, depending on ISR type I should now map this to the correct int-level 3 bit thingie
+    switch(isrType) {
+        case CPUISRType::ISRTimer0 :
+            statusReg.flags.int1 = 1;
+            isrState = CPUIsrState::IsrStateFlagged;
+            break;
+        default:
+            break;
+    }
+}
+
+void CPUBase::InvokeISRHandlers() {
+    if (isrVectorTable == nullptr) {
+        return;
+    }
+    // FIXME: this needs more..
+    if ((statusReg.flags.int1) && (isrState ==CPUIsrState::IsrStateFlagged)) {
+        // Save the current instr. pointer
+        rti = registers.instrPointer;
+        // reassign it..
+        registers.instrPointer.data.longword = isrVectorTable->isr_ext_l1;
+        isrState = CPUIsrState::IsrStateExecuting;
+    }
 }

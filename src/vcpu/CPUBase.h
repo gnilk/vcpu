@@ -165,6 +165,11 @@ namespace gnilk {
             SysCallDelegate cbHandler;
         };
 
+        enum class CPUIsrState {
+            IsrStateWaiting = 0,
+            IsrStateFlagged = 1,
+            IsrStateExecuting = 2,
+        };
 
         class InstructionDecoder;
         class CPUBase : public InterruptController {
@@ -289,6 +294,7 @@ namespace gnilk {
             virtual void UpdatePeripherals();
         // Interrupt Controller Interface
             void RaiseInterrupt(CPUISRType isrType) override;
+            void InvokeISRHandlers();
 
         protected:
             template<typename T>
@@ -355,9 +361,11 @@ namespace gnilk {
             uint8_t *ram = nullptr;
             size_t szRam = 0;
             Registers registers = {};
+            RegisterValue rti;  // special register for RTI
             CPUStatusReg statusReg = {};
             MemoryUnit memoryUnit;
 
+            CPUIsrState isrState = CPUIsrState::IsrStateWaiting;
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
 
             std::vector<ISRPeripheralInstance> peripherals;
