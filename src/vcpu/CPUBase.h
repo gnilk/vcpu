@@ -133,6 +133,8 @@ namespace gnilk {
 
             // Instruction pointer can't be modified
             RegisterValue instrPointer;
+
+            CPUStatusReg statusReg = {};
         };
         struct Control {
         };
@@ -217,7 +219,7 @@ namespace gnilk {
             void *GetRawPtrToRAM(uint64_t addr);
 
             const CPUStatusReg &GetStatusReg() const {
-                return statusReg;
+                return registers.statusReg;
             }
             uint8_t *GetRamPtr() {
                 return ram;
@@ -361,10 +363,14 @@ namespace gnilk {
             uint8_t *ram = nullptr;
             size_t szRam = 0;
             Registers registers = {};
+
+            // FIXME: Create special struct 'RTIControl'
+            Registers rtiControlBlock;
             RegisterValue rti;  // special register for RTI
-            CPUStatusReg statusReg = {};
+
             MemoryUnit memoryUnit;
 
+            // FIX: Move this into RTIControl
             CPUIsrState isrState = CPUIsrState::IsrStateWaiting;
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
 

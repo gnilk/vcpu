@@ -69,7 +69,7 @@ bool VirtualCPU::Step() {
     InvokeISRHandlers();
 
     // if CPU is halted, skip this and return...
-    if (statusReg.flags.halt == 1) {
+    if (registers.statusReg.flags.halt == 1) {
         return true;
     }
 
@@ -91,7 +91,7 @@ bool VirtualCPU::Step() {
             fmt::println(stderr, "BRK - CPU Halted!");
             // TODO: raise halt exception
             // set 'halt' flag
-            statusReg.flags.halt = 1;
+            registers.statusReg.flags.halt = 1;
             break;
         case NOP :
             break;
@@ -202,7 +202,7 @@ void VirtualCPU::ExecuteBneInstr(InstructionDecoder::Ref instrDecoder) {
         return;
     }
     // zero must not be set in order to jump
-    if (statusReg.flags.zero == 1) {
+    if (registers.statusReg.flags.zero == 1) {
         return;
     }
 
@@ -235,7 +235,7 @@ void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
         return;
     }
     // zero must be in order to jump
-    if (statusReg.flags.zero == 0) {
+    if (registers.statusReg.flags.zero == 0) {
         return;
     }
 
@@ -268,16 +268,16 @@ void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
     auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
     switch(instrDecoder->opSize) {
         case OperandSize::Byte :
-            UpdateCPUFlagsCMP<uint8_t>(statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
+            UpdateCPUFlagsCMP<uint8_t>(registers.statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
             break;
         case OperandSize::Word:
-            UpdateCPUFlagsCMP<uint16_t>(statusReg, dstReg.data.word - v.data.word, dstReg.data.word, v.data.word);
+            UpdateCPUFlagsCMP<uint16_t>(registers.statusReg, dstReg.data.word - v.data.word, dstReg.data.word, v.data.word);
             break;
         case OperandSize::DWord :
-            UpdateCPUFlagsCMP<uint32_t>(statusReg, dstReg.data.dword - v.data.dword, dstReg.data.dword, v.data.dword);
+            UpdateCPUFlagsCMP<uint32_t>(registers.statusReg, dstReg.data.dword - v.data.dword, dstReg.data.dword, v.data.dword);
             break;
         case OperandSize::Long :
-            UpdateCPUFlagsCMP<uint64_t>(statusReg, dstReg.data.longword - v.data.longword, dstReg.data.longword, v.data.longword);
+            UpdateCPUFlagsCMP<uint64_t>(registers.statusReg, dstReg.data.longword - v.data.longword, dstReg.data.longword, v.data.longword);
             break;
     }
 }
@@ -321,19 +321,19 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
     }
     // Only update these in case of non-zero shifts
     if (msb) {
-        statusReg.flags.carry = true;
-        statusReg.flags.extend = true;
+        registers.statusReg.flags.carry = true;
+        registers.statusReg.flags.extend = true;
     } else {
-        statusReg.flags.carry = false;
-        statusReg.flags.carry = false;
+        registers.statusReg.flags.carry = false;
+        registers.statusReg.flags.carry = false;
     }
-    statusReg.flags.zero = isZero;
-    statusReg.flags.negative = (msb)?true:false;
+    registers.statusReg.flags.zero = isZero;
+    registers.statusReg.flags.negative = (msb)?true:false;
     // Overflow - IF the MSB is toggled during anypoint...
     if (signBefore != MSBForOpSize(instrDecoder->opSize, dstReg)) {
-        statusReg.flags.overflow = true;
+        registers.statusReg.flags.overflow = true;
     } else {
-        statusReg.flags.overflow = false;
+        registers.statusReg.flags.overflow = false;
     }
 }
 
@@ -381,13 +381,13 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     }
     // Only update these in case of non-zero shifts
     if (v.data.byte > 0) {
-        statusReg.flags.carry = carryExtFlag;
-        statusReg.flags.extend = carryExtFlag;
+        registers.statusReg.flags.carry = carryExtFlag;
+        registers.statusReg.flags.extend = carryExtFlag;
     } else {
-        statusReg.flags.carry = false;
+        registers.statusReg.flags.carry = false;
     }
-    statusReg.flags.zero = isZero;
-    statusReg.flags.negative = (msb)?true:false;
+    registers.statusReg.flags.zero = isZero;
+    registers.statusReg.flags.negative = (msb)?true:false;
     // Overflow flag - is a bit odd - might not apply to ASR but rather to ASL...
     // see m68000prm.pdf - page. 4-22
     // V — Set if the most significant bit is changed at any time during the shift operation;
@@ -452,16 +452,16 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder->opSize) {
         case OperandSize::Byte :
-            Shift<OperandSize::Byte, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Byte, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Word :
-            Shift<OperandSize::Word, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Word, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::DWord :
-            Shift<OperandSize::DWord, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::DWord, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Long :
-            Shift<OperandSize::Long, OperandCode::LSL>(statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Long, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
             break;
     }
 }
@@ -596,16 +596,16 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
 
         switch(instrDecoder->opSize) {
             case OperandSize::Byte :
-                AddValues<uint8_t>(statusReg, dstReg, v);
+                AddValues<uint8_t>(registers.statusReg, dstReg, v);
                 break;
             case OperandSize::Word :
-                AddValues<uint16_t>(statusReg, dstReg, v);
+                AddValues<uint16_t>(registers.statusReg, dstReg, v);
                 break;
             case OperandSize::DWord :
-                AddValues<uint32_t>(statusReg, dstReg, v);
+                AddValues<uint32_t>(registers.statusReg, dstReg, v);
                 break;
             case OperandSize::Long :
-                AddValues<uint64_t>(statusReg, dstReg, v);
+                AddValues<uint64_t>(registers.statusReg, dstReg, v);
                 break;
         }
     }
@@ -618,16 +618,16 @@ void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
         auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
         switch(instrDecoder->opSize) {
             case OperandSize::Byte :
-                SubtractValues<uint8_t>(statusReg, dstReg, v);
+                SubtractValues<uint8_t>(registers.statusReg, dstReg, v);
                 break;
             case OperandSize::Word :
-                SubtractValues<uint16_t>(statusReg, dstReg, v);
+                SubtractValues<uint16_t>(registers.statusReg, dstReg, v);
                 break;
             case OperandSize::DWord :
-                SubtractValues<uint32_t>(statusReg, dstReg, v);
+                SubtractValues<uint32_t>(registers.statusReg, dstReg, v);
                 break;
             case OperandSize::Long :
-                SubtractValues<uint64_t>(statusReg, dstReg, v);
+                SubtractValues<uint64_t>(registers.statusReg, dstReg, v);
                 break;
         }
     }
@@ -685,9 +685,9 @@ void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
     rti.data.longword = 0x00;
 
     // Clear out the interrupt flags
-    statusReg.flags.int1 = 0;
-    statusReg.flags.int2 = 0;
-    statusReg.flags.int3 = 0;
+    registers.statusReg.flags.int1 = 0;
+    registers.statusReg.flags.int2 = 0;
+    registers.statusReg.flags.int3 = 0;
     isrState = CPUIsrState::IsrStateWaiting;
 }
 

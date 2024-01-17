@@ -91,7 +91,7 @@ void CPUBase::RaiseInterrupt(CPUISRType isrType) {
     // ok, depending on ISR type I should now map this to the correct int-level 3 bit thingie
     switch(isrType) {
         case CPUISRType::ISRTimer0 :
-            statusReg.flags.int1 = 1;
+            registers.statusReg.flags.int1 = 1;
             isrState = CPUIsrState::IsrStateFlagged;
             break;
         default:
@@ -103,8 +103,10 @@ void CPUBase::InvokeISRHandlers() {
     if (isrVectorTable == nullptr) {
         return;
     }
-    // FIXME: this needs more..
-    if ((statusReg.flags.int1) && (isrState ==CPUIsrState::IsrStateFlagged)) {
+    if ((registers.statusReg.flags.int1) && (isrState ==CPUIsrState::IsrStateFlagged)) {
+
+        // FIXME: need to store Registers (Status and so forth)
+
         // Save the current instr. pointer
         rti = registers.instrPointer;
         // reassign it..
