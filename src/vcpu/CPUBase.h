@@ -304,6 +304,9 @@ namespace gnilk {
         // Interrupt Controller Interface
             void RaiseInterrupt(CPUISRType isrType) override;
             void InvokeISRHandlers();
+            CPUIsrState GetISRState() {
+                return isrControlBlock.isrState;
+            }
 
         protected:
             template<typename T>

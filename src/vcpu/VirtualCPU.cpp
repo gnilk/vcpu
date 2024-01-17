@@ -68,8 +68,9 @@ bool VirtualCPU::Step() {
     //    Note: Can't invoke interrupt if already inside one..
     InvokeISRHandlers();
 
-    // if CPU is halted, skip this and return...
-    if (registers.statusReg.flags.halt == 1) {
+    // if CPU is halted and we idle/waiting for ISR, don't decode and skip..
+    if ((registers.statusReg.flags.halt == 1) && (isrControlBlock.isrState == CPUIsrState::IsrStateWaiting)) {
+        // FIXME: A lot of things are 'wrong' here - esp. when we dump 'lastDecodedInstr'..
         return true;
     }
 
@@ -89,8 +90,6 @@ bool VirtualCPU::Step() {
     switch(instrDecoder->opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
-            // TODO: raise halt exception
-            // set 'halt' flag
             registers.statusReg.flags.halt = 1;
             break;
         case NOP :

@@ -33,9 +33,17 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
         0x1000,
     };
     uint8_t isrRoutine[]={
-        0xf1, 0xf2, 0xf1, 0xf1, 0xf1
+        // move.l d0,0x01
+        0x20,0x03,0x03,0x01, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,
+        // syscall
+        0xc2,
+        // nop
+        0xf1,
+        // rti
+        0xf2,
     };
     uint8_t mainCode[]={
+        // nop,nop,nop,brk
         0xf1, 0xf1, 0xf1, 0x00
     };
     vcpu.Begin(ram, 32*4096);
@@ -43,12 +51,28 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
     vcpu.LoadDataToRam(0x1000, isrRoutine, sizeof(isrTable));
     vcpu.LoadDataToRam(0x2000, mainCode, sizeof(isrTable));
 
+    int irq_counter = 0;
+    vcpu.RegisterSysCall(0x01, "count",[&irq_counter](Registers &regs, CPUBase *cpu) {
+        irq_counter++;
+        fmt::println("count, counter={}",irq_counter);
+    });
+
     vcpu.SetInstrPtr(0x2000);
-    for(int i=0;i<10;i++) {
+    for(int i=0;i<15;i++) {
         vcpu.Step();
-        fmt::println("{:#x} {}",vcpu.GetLastDecodedInstr()->GetInstrStartOfs(), vcpu.GetLastDecodedInstr()->ToString());
+        // this print is quite wrong..
+        if ((vcpu.GetISRState() == CPUIsrState::IsrStateExecuting) || (!vcpu.GetStatusReg().flags.halt)) {
+            fmt::println("{} {}{:#x} {}",i,
+                (vcpu.GetISRState()==CPUIsrState::IsrStateExecuting)?'*':' ',
+                vcpu.GetLastDecodedInstr()->GetInstrStartOfs(),
+                vcpu.GetLastDecodedInstr()->ToString());
+        } else {
+            fmt::println("{} --- halted ---", i);
+        }
         std::this_thread::sleep_for(std::chrono::microseconds(250));
     }
+
+    TR_ASSERT(t, irq_counter == 3);
 
     return kTR_Pass;
 }
