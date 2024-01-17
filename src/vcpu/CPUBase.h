@@ -82,6 +82,7 @@ namespace gnilk {
             CPUStatusFlags eflags;
         };
 
+
         inline constexpr CPUStatusFlags operator | (CPUStatusFlags lhs, CPUStatusFlags rhs) {
             using T = std::underlying_type_t <CPUStatusFlags>;
             return static_cast<CPUStatusFlags>(static_cast<T>(lhs) | static_cast<T>(rhs));
@@ -136,7 +137,18 @@ namespace gnilk {
 
             CPUStatusReg statusReg = {};
         };
-        struct Control {
+
+        enum class CPUIsrState {
+            IsrStateWaiting = 0,
+            IsrStateFlagged = 1,
+            IsrStateExecuting = 2,
+        };
+
+
+        struct ISRControlBlock {
+            Registers registersBefore;
+            RegisterValue rti;  // special register for RTI
+            CPUIsrState isrState = CPUIsrState::IsrStateWaiting;
         };
 
 
@@ -167,11 +179,6 @@ namespace gnilk {
             SysCallDelegate cbHandler;
         };
 
-        enum class CPUIsrState {
-            IsrStateWaiting = 0,
-            IsrStateFlagged = 1,
-            IsrStateExecuting = 2,
-        };
 
         class InstructionDecoder;
         class CPUBase : public InterruptController {
@@ -364,14 +371,11 @@ namespace gnilk {
             size_t szRam = 0;
             Registers registers = {};
 
-            // FIXME: Create special struct 'RTIControl'
-            Registers rtiControlBlock;
-            RegisterValue rti;  // special register for RTI
+            // Used to stash all information during an interrupt..
+            ISRControlBlock isrControlBlock;
 
             MemoryUnit memoryUnit;
 
-            // FIX: Move this into RTIControl
-            CPUIsrState isrState = CPUIsrState::IsrStateWaiting;
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
 
             std::vector<ISRPeripheralInstance> peripherals;

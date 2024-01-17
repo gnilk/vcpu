@@ -82,7 +82,7 @@ void CPUBase::UpdatePeripherals() {
 }
 
 void CPUBase::RaiseInterrupt(CPUISRType isrType) {
-    if (isrState != CPUIsrState::IsrStateWaiting) {
+    if (isrControlBlock.isrState != CPUIsrState::IsrStateWaiting) {
         // Already within an ISR - do NOT execute another
         return;
     }
@@ -92,7 +92,7 @@ void CPUBase::RaiseInterrupt(CPUISRType isrType) {
     switch(isrType) {
         case CPUISRType::ISRTimer0 :
             registers.statusReg.flags.int1 = 1;
-            isrState = CPUIsrState::IsrStateFlagged;
+            isrControlBlock.isrState = CPUIsrState::IsrStateFlagged;
             break;
         default:
             break;
@@ -103,14 +103,13 @@ void CPUBase::InvokeISRHandlers() {
     if (isrVectorTable == nullptr) {
         return;
     }
-    if ((registers.statusReg.flags.int1) && (isrState ==CPUIsrState::IsrStateFlagged)) {
+    if ((registers.statusReg.flags.int1) && (isrControlBlock.isrState ==CPUIsrState::IsrStateFlagged)) {
 
-        // FIXME: need to store Registers (Status and so forth)
-
-        // Save the current instr. pointer
-        rti = registers.instrPointer;
+        // Store register control block - this is all the active registers...
+        isrControlBlock.registersBefore = registers;
         // reassign it..
         registers.instrPointer.data.longword = isrVectorTable->isr_ext_l1;
-        isrState = CPUIsrState::IsrStateExecuting;
+        // Update the state
+        isrControlBlock.isrState = CPUIsrState::IsrStateExecuting;
     }
 }

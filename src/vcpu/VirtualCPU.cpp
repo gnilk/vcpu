@@ -675,20 +675,21 @@ void VirtualCPU::ExecuteRetInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
-    if (isrState != CPUIsrState::IsrStateExecuting) {
+    if (isrControlBlock.isrState != CPUIsrState::IsrStateExecuting) {
         // FIXME: Raise invalid CPU state exception
         return;
     }
-    registers.instrPointer = rti;
+    // Restore registers
+    registers = isrControlBlock.registersBefore;
 
-    // Reset RTI
-    rti.data.longword = 0x00;
-
-    // Clear out the interrupt flags
+    // Clear out any interrupt flags (we don't support nested INT's)
+    // FIXME: this is not the correct way...
     registers.statusReg.flags.int1 = 0;
     registers.statusReg.flags.int2 = 0;
     registers.statusReg.flags.int3 = 0;
-    isrState = CPUIsrState::IsrStateWaiting;
+
+    // Reset the ISR State
+    isrControlBlock.isrState = CPUIsrState::IsrStateWaiting;
 }
 
 //
