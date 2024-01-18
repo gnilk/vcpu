@@ -82,7 +82,7 @@ void CPUBase::UpdatePeripherals() {
 }
 
 void CPUBase::RaiseInterrupt(CPUISRType isrType) {
-    if (isrControlBlock.isrState != CPUIsrState::IsrStateWaiting) {
+    if (isrControlBlock.isrState != CPUISRState::Waiting) {
         // Already within an ISR - do NOT execute another
         return;
     }
@@ -90,9 +90,9 @@ void CPUBase::RaiseInterrupt(CPUISRType isrType) {
     // Need to queue interrupts - as the CPU status register can only hold 1 ISR combo at any given time
     // ok, depending on ISR type I should now map this to the correct int-level 3 bit thingie
     switch(isrType) {
-        case CPUISRType::ISRTimer0 :
+        case CPUISRType::Timer0 :
             registers.statusReg.flags.int1 = 1;
-            isrControlBlock.isrState = CPUIsrState::IsrStateFlagged;
+            isrControlBlock.isrState = CPUISRState::Flagged;
             break;
         default:
             break;
@@ -103,13 +103,13 @@ void CPUBase::InvokeISRHandlers() {
     if (isrVectorTable == nullptr) {
         return;
     }
-    if ((registers.statusReg.flags.int1) && (isrControlBlock.isrState ==CPUIsrState::IsrStateFlagged)) {
+    if ((registers.statusReg.flags.int1) && (isrControlBlock.isrState ==CPUISRState::Flagged)) {
 
         // Store register control block - this is all the active registers...
         isrControlBlock.registersBefore = registers;
         // reassign it..
         registers.instrPointer.data.longword = isrVectorTable->isr_ext_l1;
         // Update the state
-        isrControlBlock.isrState = CPUIsrState::IsrStateExecuting;
+        isrControlBlock.isrState = CPUISRState::Executing;
     }
 }

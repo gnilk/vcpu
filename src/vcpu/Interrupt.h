@@ -38,10 +38,9 @@ namespace gnilk {
 #pragma pack(pop)
 
         enum class CPUISRType : uint8_t {
-            ISRNone,
-            ISRTimer0,
+            None,
+            Timer0,
         };
-
         class InterruptController {
         public:
             InterruptController() = default;

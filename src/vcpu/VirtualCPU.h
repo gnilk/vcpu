@@ -29,8 +29,8 @@ namespace gnilk {
 
             bool Step();
 
-            const InstructionDecoder::Ref GetLastDecodedInstr() const {
-                return lastDecodedInstruction;
+            const LastInstruction *GetLastDecodedInstr() const {
+                return &lastDecodedInstruction;
             }
 
         protected:
@@ -61,7 +61,8 @@ namespace gnilk {
             void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);
         private:
             Timer *timer0;
-            InstructionDecoder::Ref lastDecodedInstruction = nullptr;
+            LastInstruction lastDecodedInstruction;
+            //InstructionDecoder::Ref lastDecodedInstruction = nullptr;
         };
     }
 }

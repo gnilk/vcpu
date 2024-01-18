@@ -36,7 +36,7 @@ namespace gnilk {
             }
         protected:
             InterruptController *intController =nullptr;
-            CPUISRType assignedIsr = CPUISRType::ISRNone;
+            CPUISRType assignedIsr = CPUISRType::None;
         };
     }
 }

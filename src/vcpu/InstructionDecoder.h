@@ -13,6 +13,7 @@
 namespace gnilk {
     namespace vcpu {
 
+
         class InstructionDecoder {
         public:
             using Ref = std::shared_ptr<InstructionDecoder>;
@@ -100,6 +101,28 @@ namespace gnilk {
             uint64_t ofsStartInstr = {};
             uint64_t ofsEndInstr = {};
         };
+
+        // This is more or less a wrapper around the InstructionDecoder
+        // Because we need to hold more information
+        struct LastInstruction {
+            Registers cpuRegistersBefore;
+            Registers cpuRegistersAfter;
+            CPUISRState isrStateBefore;
+            CPUISRState isrStateAfter;
+            InstructionDecoder::Ref instrDecoder;
+
+            CPUISRState GetISRStateBefore() const {
+                return isrStateBefore;
+            }
+
+            std::string ToString() const {
+                if (instrDecoder == nullptr) {
+                    return "";
+                }
+                return instrDecoder->ToString();
+            }
+        };
+
     }
 }
 

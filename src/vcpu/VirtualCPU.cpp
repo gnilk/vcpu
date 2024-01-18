@@ -45,12 +45,12 @@ using namespace gnilk::vcpu;
 
 void VirtualCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
-    AddPeripheral(CPUISRType::ISRTimer0, Timer::Create(1));
+    AddPeripheral(CPUISRType::Timer0, Timer::Create(1));
 }
 
 void VirtualCPU::Begin(void *ptrRam, size_t sizeOfRam) {
     CPUBase::Begin(ptrRam, sizeOfRam);
-    AddPeripheral(CPUISRType::ISRTimer0, Timer::Create(1000));
+    AddPeripheral(CPUISRType::Timer0, Timer::Create(1000));
 }
 
 
@@ -61,6 +61,7 @@ void VirtualCPU::Reset() {
 // Use this for debugging and similar..
 bool VirtualCPU::Step() {
 
+
     // 1) update peripherals
     UpdatePeripherals();
 
@@ -68,8 +69,12 @@ bool VirtualCPU::Step() {
     //    Note: Can't invoke interrupt if already inside one..
     InvokeISRHandlers();
 
+    lastDecodedInstruction.cpuRegistersBefore = registers;
+    lastDecodedInstruction.instrDecoder = nullptr;
+    lastDecodedInstruction.isrStateBefore = isrControlBlock.isrState;
+
     // if CPU is halted and we idle/waiting for ISR, don't decode and skip..
-    if ((registers.statusReg.flags.halt == 1) && (isrControlBlock.isrState == CPUIsrState::IsrStateWaiting)) {
+    if ((registers.statusReg.flags.halt == 1) && (isrControlBlock.isrState == CPUISRState::Waiting)) {
         // FIXME: A lot of things are 'wrong' here - esp. when we dump 'lastDecodedInstr'..
         return true;
     }
@@ -148,7 +153,9 @@ bool VirtualCPU::Step() {
             return false;
     }
     UpdateMMU();
-    lastDecodedInstruction = instrDecoder;
+    lastDecodedInstruction.isrStateAfter = isrControlBlock.isrState;
+    lastDecodedInstruction.cpuRegistersAfter = registers;
+    lastDecodedInstruction.instrDecoder = instrDecoder;
     return true;
 }
 
@@ -674,7 +681,7 @@ void VirtualCPU::ExecuteRetInstr(InstructionDecoder::Ref instrDecoder) {
 }
 
 void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
-    if (isrControlBlock.isrState != CPUIsrState::IsrStateExecuting) {
+    if (isrControlBlock.isrState != CPUISRState::Executing) {
         // FIXME: Raise invalid CPU state exception
         return;
     }
@@ -688,7 +695,7 @@ void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
     registers.statusReg.flags.int3 = 0;
 
     // Reset the ISR State
-    isrControlBlock.isrState = CPUIsrState::IsrStateWaiting;
+    isrControlBlock.isrState = CPUISRState::Waiting;
 }
 
 //

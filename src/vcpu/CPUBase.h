@@ -138,18 +138,19 @@ namespace gnilk {
             CPUStatusReg statusReg = {};
         };
 
-        enum class CPUIsrState {
-            IsrStateWaiting = 0,
-            IsrStateFlagged = 1,
-            IsrStateExecuting = 2,
+        enum class CPUISRState {
+            Waiting = 0,
+            Flagged = 1,
+            Executing = 2,
         };
 
 
         struct ISRControlBlock {
             Registers registersBefore;
             RegisterValue rti;  // special register for RTI
-            CPUIsrState isrState = CPUIsrState::IsrStateWaiting;
+            CPUISRState isrState = CPUISRState::Waiting;
         };
+
 
 
         static const uint64_t VCPU_RESERVED_RAM = 0x2000;
@@ -304,7 +305,7 @@ namespace gnilk {
         // Interrupt Controller Interface
             void RaiseInterrupt(CPUISRType isrType) override;
             void InvokeISRHandlers();
-            CPUIsrState GetISRState() {
+            CPUISRState GetISRState() {
                 return isrControlBlock.isrState;
             }
 

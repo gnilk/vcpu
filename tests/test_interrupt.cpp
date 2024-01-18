@@ -61,10 +61,10 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..
-        if ((vcpu.GetISRState() == CPUIsrState::IsrStateExecuting) || (!vcpu.GetStatusReg().flags.halt)) {
+        if ((vcpu.GetISRState() == CPUISRState::Executing) || (!vcpu.GetStatusReg().flags.halt)) {
             fmt::println("{} {}{:#x} {}",i,
-                (vcpu.GetISRState()==CPUIsrState::IsrStateExecuting)?'*':' ',
-                vcpu.GetLastDecodedInstr()->GetInstrStartOfs(),
+                (vcpu.GetLastDecodedInstr()->GetISRStateBefore()==CPUISRState::Executing)?'*':' ',
+                vcpu.GetLastDecodedInstr()->cpuRegistersBefore.instrPointer.data.longword,
                 vcpu.GetLastDecodedInstr()->ToString());
         } else {
             fmt::println("{} --- halted ---", i);
