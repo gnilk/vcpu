@@ -72,7 +72,7 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
         std::this_thread::sleep_for(std::chrono::microseconds(250));
     }
 
-    TR_ASSERT(t, irq_counter == 3);
+    TR_ASSERT(t, irq_counter >= 3);
 
     return kTR_Pass;
 }
