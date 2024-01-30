@@ -22,10 +22,10 @@ ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
     auto program = Begin(srcCode);
     while(!Done()) {
         // EOL statements - we just continue
-        if (At().type == TokenType::EoL) {
-            Eat();
-            continue;
-        }
+        // if (At().type == TokenType::EoL) {
+        //     Eat();
+        //     continue;
+        // }
         auto stmt = ParseStatement();
 
         // we could expect ';' here?
@@ -87,10 +87,10 @@ ast::Statement::Ref Parser::ParseStruct() {
     std::vector<ast::Statement::Ref> declarations;
     // This is one of the few spawning multiple lines...
     while(At().type != TokenType::CloseBrace) {
-        if (At().type == TokenType::EoL) {
-            Eat();
-            continue;
-        }
+        // if (At().type == TokenType::EoL) {
+        //     Eat();
+        //     continue;
+        // }
 
         auto stmt = ParseReservationStatement();
         if (stmt == nullptr) {
@@ -169,7 +169,7 @@ ast::Statement::Ref Parser::ParseMetaStatement() {
 ast::Statement::Ref Parser::ParseLineComment() {
     Eat();
     auto text = Expect(TokenType::CommentedText, "Line comment should be followed by commented text");
-    Expect(TokenType::EoL, "Should be end of line");
+    //Expect(TokenType::EoL, "Should be end of line");
     return std::make_shared<ast::LineComment>(text.value);
 }
 
@@ -248,10 +248,10 @@ ast::Statement::Ref Parser::ParseStructDeclaration() {
     auto structDecl = std::make_shared<ast::StructLiteral>(identifier.value);
 
     while(At().type != TokenType::CloseBrace) {
-        if (At().type == TokenType::EoL) {
-            Eat();
-            continue;
-        }
+        // if (At().type == TokenType::EoL) {
+        //     Eat();
+        //     continue;
+        // }
 
         auto declStmt = ParseStatement();
 
