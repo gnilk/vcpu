@@ -244,7 +244,7 @@ bool Lexer::ParseStateRegular(std::vector<Token> &tokens, Context &context, cons
                     ++it;
                 } else {
                     //
-                    tokens.push_back(CreateToken(TokenType::EoL, 0, 0));
+                    //tokens.push_back(CreateToken(TokenType::EoL, 0, 0));
                 }
                 return true;
             }
@@ -342,7 +342,9 @@ void Lexer::ParseOperator(std::vector<Token> &outTokens, Context &context, std::
     // We will always read plus one - i.e. until we don't have a match any more - pop-one off again
     --it;
     tokenStr.pop_back();
-    outTokens.push_back(CreateToken(operators.at(tokenStr), idxTokenStart, tokenStr));
+    if (operators.at(tokenStr) != TokenType::EoL) {
+        outTokens.push_back(CreateToken(operators.at(tokenStr), idxTokenStart, tokenStr));
+    }
 }
 
 // Parse a string
