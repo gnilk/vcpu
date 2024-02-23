@@ -95,6 +95,7 @@ static const uint8_t signatureElf[]={0x7f,0x45,0x4c,0x46};
 static kEmuFileType FileType(std::filesystem::path &pathToBinary) {
     size_t szFile = file_size(pathToBinary);
     if (szFile < 4) {
+        fmt::println("file size too small {}, can't detect file type", szFile);
         return kEmuFileType::Unknown;
     }
     char signature[8] = {};
@@ -119,7 +120,7 @@ bool ProcessFile(std::filesystem::path &pathToBinary) {
         case kEmuFileType::RawBinary :
             return ProcessRaw(pathToBinary);
         default:
-            fmt::println("Unknown file type");
+            fmt::println("Unknown file type check: {}",pathToBinary.c_str());
             break;
     }
     return false;
@@ -262,6 +263,11 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
         // save current ip (this is for op-code)
         ip = cpuemu.GetInstrPtr();
         fmt::println("");
+
+        // Did we trigger 'halt'
+        if (cpuemu.IsHalted()) {
+            break;
+        }
     }
     fmt::println("------->> Execution Complete <<--------------");
     return true;
