@@ -2,6 +2,7 @@
 // Created by gnilk on 08.01.2024.
 //
 
+#include <string.h>
 #include "MemoryUnit.h"
 
 using namespace gnilk;

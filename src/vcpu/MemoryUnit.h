@@ -5,6 +5,7 @@
 #ifndef MEMORYUNIT_H
 #define MEMORYUNIT_H
 
+#include <stdlib.h>
 #include <stdint.h>
 #include <unordered_map>
 
