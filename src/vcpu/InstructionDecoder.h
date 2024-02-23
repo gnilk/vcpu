@@ -121,6 +121,18 @@ namespace gnilk {
                 }
                 return instrDecoder->ToString();
             }
+
+            size_t GetInstrSizeInBytes() const {
+                return instrDecoder->GetInstrSizeInBytes();
+            }
+            uint64_t GetInstrStartOfs() const {
+                return instrDecoder->GetInstrStartOfs();
+            }
+            uint64_t GetInstrEndOfs() const {
+                return instrDecoder->GetInstrEndOfs();
+            }
+
+
         };
 
     }
