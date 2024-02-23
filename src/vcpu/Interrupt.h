@@ -25,6 +25,8 @@ namespace gnilk {
             ISR_FUNC isr_debug_trap;    // 5
             ISR_FUNC isr_mmu_fault;     // 6
             ISR_FUNC isr_fpu_fault;     // 7
+            // FIXME: Verify this - perhaps it is easier to have specific interrupts than just 'l1,l2,l3,l4'...
+            //        Otherwise I would need a muxing table (timer0 -> ext_l1, keyboard -> ext_l2, etc...)
             ISR_FUNC isr_ext_l1;        // 8
             ISR_FUNC isr_ext_l2;        // 9
             ISR_FUNC isr_ext_l3;        // 10
@@ -36,6 +38,29 @@ namespace gnilk {
             uint64_t reserved[16];
         };
 #pragma pack(pop)
+
+        // This should go into the CPUIntCntrlRegister as a mask...
+        struct CPUIntMaskBits {
+            // CPU hard interrupts
+            uint16_t illegal_instr:1;   // 0
+            uint16_t hard_fault:1;      // 1
+            uint16_t div_zero:1;        // 2
+            uint16_t debug_trap:1;      // 3
+            uint16_t mmu_fault:1;       // 4
+            uint16_t fpu_fault:1;       // 5
+            uint16_t cpu_reserved_1:1;  // 6
+            uint16_t cpu_reserved_2:1;  // 7
+
+            // Peripherals, 8 possible interrupts
+            uint16_t ext_l1:1;
+            uint16_t ext_l2:1;
+            uint16_t ext_l3:1;
+            uint16_t ext_l4:1;
+            uint16_t ext_l5:1;
+            uint16_t ext_l6:1;
+            uint16_t ext_l7:1;
+            uint16_t ext_l8:1;
+        };
 
         enum class CPUISRType : uint8_t {
             None,
