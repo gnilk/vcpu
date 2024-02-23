@@ -194,6 +194,10 @@ namespace gnilk {
             virtual void Reset();
             bool RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler);
 
+            bool IsHalted() const {
+                return registers.statusReg.flags.halt;
+            }
+
             const Registers &GetRegisters() const {
                 return registers;
             }
