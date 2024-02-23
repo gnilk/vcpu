@@ -9,6 +9,19 @@ add_library(log_fmt STATIC ${fmt_src})
 target_compile_options(log_fmt PUBLIC -fPIC)
 target_include_directories(log_fmt PUBLIC src/ext)
 
+
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext)
+    message(STATUS "ext directory (for dependencies) missing, creating...")
+    execute_process(COMMAND mkdir src/ext)
+endif()
+
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext/ELFIO)
+    message(WARNING "Installing ELFIO library")
+    execute_process(COMMAND git clone https://github.com/serge1/ELFIO ${CMAKE_SOURCE_DIR}/src/ext/ELFIO)
+endif ()
+
+
+
 #
 # Virtual CPU sources
 #
