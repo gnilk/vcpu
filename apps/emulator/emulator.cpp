@@ -244,7 +244,7 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
         // generate op-codes for this instruction...
         std::string strOpCodes = "";
 
-        auto &lastDecoded = cpuemu.GetLastDecodedInstr();
+        auto lastDecoded = cpuemu.GetLastDecodedInstr();
 
         for(auto ofs = lastDecoded->GetInstrStartOfs(); ofs < lastDecoded->GetInstrEndOfs(); ofs++) {
             strOpCodes += fmt::format("0x{:02x}, ",cpu_ram_memory[ofs]);
