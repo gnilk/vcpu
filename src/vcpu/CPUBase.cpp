@@ -87,6 +87,8 @@ void CPUBase::RaiseInterrupt(CPUISRType isrType) {
         return;
     }
 
+    // FIXME: Need to check INT Mask if allowed
+
     // Need to queue interrupts - as the CPU status register can only hold 1 ISR combo at any given time
     // ok, depending on ISR type I should now map this to the correct int-level 3 bit thingie
     switch(isrType) {
