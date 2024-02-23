@@ -67,7 +67,8 @@ bool VirtualCPU::Step() {
 
     // 2) Invoke any Interrupt as a result..
     //    Note: Can't invoke interrupt if already inside one..
-    InvokeISRHandlers();
+    // FIXME: Enable this when we have CPUInterruptMask and CPUExceptionMask registers properly defined
+    // InvokeISRHandlers();
 
     lastDecodedInstruction.cpuRegistersBefore = registers;
     lastDecodedInstruction.instrDecoder = nullptr;
@@ -671,7 +672,7 @@ void VirtualCPU::ExecuteCallInstr(InstructionDecoder::Ref instrDecoder) {
 
 void VirtualCPU::ExecuteRetInstr(InstructionDecoder::Ref instrDecoder) {
     if (stack.empty()) {
-        // CPU exception!
+        // FIXME: Raise CPU exception!
         fmt::println(stderr, "RET - no return address - stack empty!!");
         return;
     }
