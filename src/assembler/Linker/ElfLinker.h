@@ -16,7 +16,6 @@
 
 // FIXME: This should not be here
 #include "Compiler/IdentifierRelocatation.h"
-#include "membuf.hpp"
 
 namespace gnilk {
     namespace assembler {
