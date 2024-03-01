@@ -7,6 +7,10 @@
 #include "DummyLinker.h"
 
 using namespace gnilk::assembler;
+const std::vector<uint8_t> &DummyLinker::Data() {
+    static std::vector<uint8_t> dummy;
+    return dummy;
+}
 
 bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) {
     std::vector<Segment::Ref> segments;
@@ -89,6 +93,9 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
             unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
         }
     }
+    auto linkOutputSegment = unit.GetSegment("link_out");
+    auto segData = linkOutputSegment->Data();
+    linkedData.insert(linkedData.begin(), segData.begin(), segData.end());
     return true;
 
 }

@@ -19,8 +19,8 @@ namespace gnilk {
         public:
             BaseLinker() = default;
             virtual ~BaseLinker() = default;
-
             virtual bool Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) = 0;
+            virtual const std::vector<uint8_t> &Data() = 0;
         };
     }
 }

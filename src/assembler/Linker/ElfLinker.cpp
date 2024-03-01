@@ -4,13 +4,20 @@
 
 #include "elfio/elfio.hpp"
 #include "fmt/core.h"
-
+#include <ostream>
+#include "membuf.hpp"
 #include "ElfLinker.h"
 
 #include "MemoryUnit.h"
 
 using namespace ELFIO;
 using namespace gnilk::assembler;
+
+const std::vector<uint8_t> &ElfLinker::Data() {
+    return elfData;
+}
+
+
 
 bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) {
     std::vector<Segment::Ref> segments;
@@ -110,26 +117,25 @@ bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifi
 }
 
 bool ElfLinker::WriteElf(CompiledUnit &unit) {
-    elfio writer;
     // You can't proceed without this function call!
-    writer.create( ELFCLASS64, ELFDATA2LSB );
+    elfWriter.create(ELFCLASS64, ELFDATA2LSB );
 
-    writer.set_os_abi( ELFOSABI_NONE );
-    writer.set_type( ET_EXEC );
-    writer.set_machine( EM_68K );
+    elfWriter.set_os_abi(ELFOSABI_NONE );
+    elfWriter.set_type(ET_EXEC );
+    elfWriter.set_machine(EM_68K );
 
     auto textSeg = unit.GetSegment(".text");
     if (textSeg == nullptr) {
         return false;
     }
 
-    section *elfTextSec = writer.sections.add(".text");
+    section *elfTextSec = elfWriter.sections.add(".text");
     elfTextSec->set_type( SHT_PROGBITS );
     elfTextSec->set_flags( SHF_ALLOC | SHF_EXECINSTR );
     elfTextSec->set_addr_align( 0x10 );
     elfTextSec->set_data((const char *)textSeg->DataPtr(), textSeg->Size());
 
-    segment *elfTextSeg = writer.segments.add();
+    segment *elfTextSeg = elfWriter.segments.add();
     elfTextSeg->set_type(PT_LOAD);
     elfTextSeg->set_virtual_address(textSeg->LoadAddress());
     elfTextSeg->set_physical_address(textSeg->LoadAddress());
@@ -143,13 +149,13 @@ bool ElfLinker::WriteElf(CompiledUnit &unit) {
         fmt::println(stderr,"ElfLinker, no data segment!");
         return false;
     }
-    section *elfDataSec = writer.sections.add(".data");
+    section *elfDataSec = elfWriter.sections.add(".data");
     elfDataSec->set_type(SHT_PROGBITS);
     elfDataSec->set_flags(SHF_ALLOC | SHF_WRITE);
     elfDataSec->set_addr_align(0x04);   // verify!
     elfDataSec->set_data((const char *)dataSeg->DataPtr(), dataSeg->Size());
 
-    segment *elfDataSeg = writer.segments.add();
+    segment *elfDataSeg = elfWriter.segments.add();
     elfDataSeg->set_type(PT_LOAD);
     elfDataSeg->set_virtual_address(dataSeg->LoadAddress());
     elfDataSeg->set_physical_address(dataSeg->LoadAddress());
@@ -157,8 +163,19 @@ bool ElfLinker::WriteElf(CompiledUnit &unit) {
     elfDataSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
     elfDataSeg->add_section(elfDataSec, elfDataSec->get_addr_align());
 
-    writer.set_entry(elfTextSeg->get_virtual_address());
-    writer.save("elf_linker_out.bin");
+    elfWriter.set_entry(elfTextSeg->get_virtual_address());
+
+    membuf data;
+    std::ostream outStream(&data);
+    outStream.put('c');
+    outStream.write("wef", 3);
+    elfWriter.save(outStream);
+    outStream.flush();
+
+    //elfData = std::vector<uint8_t>(data.get_memptr(), data.get_size());
+    auto szData = data.get_size();
+    auto *ptrData = static_cast<uint8_t *>(data.get_memptr());
+    elfData.insert(elfData.end(), ptrData, ptrData + data.get_size());
 
     return true;
 }

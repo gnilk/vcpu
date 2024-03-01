@@ -31,7 +31,7 @@ namespace gnilk {
 
             // TEMP TEMP
             const std::vector<uint8_t> &Data() {
-                return unit.Data();
+                return linker->Data();
             }
 
 
