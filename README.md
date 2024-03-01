@@ -121,7 +121,14 @@ Support for the following directives:
 - Interrupt drivers
   - Consider how this should be done, directly or via an 'external' chip
   - If external - how to communicate?
-           
+- Peripherals
+  - GPIO, this is the basic - need for all others
+  - DMA, ability to emulate 'Direct Memory Access'
+  - Serial
+  - I2C Bus
+  - SPI Bus
+  - Other?
+             
 - emulator
     ! accept elf files as executables
         

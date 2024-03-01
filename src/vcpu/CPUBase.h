@@ -44,7 +44,7 @@ namespace gnilk {
             uint16_t zero : 1;
             uint16_t negative : 1;
             uint16_t extend : 1;
-            uint16_t int1 : 1;
+            uint16_t int1 : 1;      // FIXME: Remove these -> move to Control Reg CR0 IntCtrl
             uint16_t int2 : 1;
             uint16_t int3 : 1;
             // next 8 bits
@@ -59,7 +59,7 @@ namespace gnilk {
             Zero = 4,
             Negative = 8,
             Extend = 16,
-            Int1 = 32,
+            Int1 = 32,      // FIXME: REMOVE these -> move to Control Reg CR0 IntCtrl
             Int2 = 64,
             Int3 = 128,
             Halt = 256,
@@ -71,7 +71,7 @@ namespace gnilk {
             Zero = 2,
             Negative = 3,
             Extend = 4,
-            Int1 = 5,
+            Int1 = 5,       // FIXME: REMOVE -> move to control reg 0, CR0, IntCtrl
             Int2 = 6,
             Int3 = 7,
             Halt = 8,
@@ -128,8 +128,24 @@ namespace gnilk {
             RegisterValue stackPointer;
 
             // Control registers - if the instr. has the 'OperandFamily == Control' set you can access these...
-            // cr0 - mmu control register
-            // cr1 - mmu page table address
+            // FIXME: decide how these should be laid out
+            // we need
+            //   - mmu control register
+            //   - mmu page table address
+            //   - CPU Interrupt mask register
+            //   - Exception mask register
+            //   - Copy of CPU Status Register?
+            //   - Other?
+            //
+            // Layout:
+            //  cr0 - INT Mask, zeroed out on reset (0 - disabled, 1 - enabled)     => gives 64 possible interrupts
+            //  cr1 - Exception Mask, zeroed out on reset (0 - disabled, 1 - enabled) => gives 64 possible exceptions
+            //  cr2 - Status Register copy (is this necessary - I think, it makes it possible to copy the whole status reg over to something else)
+            //  cr3 - mmu control register
+            //  cr4 - mmu page table address
+            //  cr5 - CPU ID or similar (feature register)
+            //  cr6 - reserved, unused
+            //  cr7 - reserved, unused
             RegisterValue cntrlRegisters[8];
 
             // Instruction pointer can't be modified

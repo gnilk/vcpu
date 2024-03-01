@@ -4,8 +4,7 @@
 
 #include "elfio/elfio.hpp"
 #include "fmt/core.h"
-#include <ostream>
-#include "membuf.hpp"
+#include <sstream>
 #include "ElfLinker.h"
 
 #include "MemoryUnit.h"
@@ -165,17 +164,18 @@ bool ElfLinker::WriteElf(CompiledUnit &unit) {
 
     elfWriter.set_entry(elfTextSeg->get_virtual_address());
 
-    membuf data;
-    std::ostream outStream(&data);
-    outStream.put('c');
-    outStream.write("wef", 3);
+    // Save this to a 'stringstream' (CPP Streams are: @#$!@$!@#)
+    std::ostringstream outStream(std::ios_base::binary | std::ios_base::out);
     elfWriter.save(outStream);
     outStream.flush();
 
-    //elfData = std::vector<uint8_t>(data.get_memptr(), data.get_size());
-    auto szData = data.get_size();
-    auto *ptrData = static_cast<uint8_t *>(data.get_memptr());
-    elfData.insert(elfData.end(), ptrData, ptrData + data.get_size());
+    // Convert the 'string' to a vector of bytes...
+    // This can be an array - but that's a refactoring for another day...
+    auto strData = outStream.rdbuf()->str();
+    auto ptrData = strData.data();
+    auto szData = strData.size();
+
+    elfData.insert(elfData.end(), ptrData, ptrData + szData);
 
     return true;
 }
