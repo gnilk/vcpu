@@ -67,7 +67,6 @@ bool VirtualCPU::Step() {
 
     // 2) Invoke any Interrupt as a result..
     //    Note: Can't invoke interrupt if already inside one..
-    // FIXME: Enable this when we have CPUInterruptMask and CPUExceptionMask registers properly defined
     InvokeISRHandlers();
 
     lastDecodedInstruction.cpuRegistersBefore = registers;

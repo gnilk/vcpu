@@ -53,7 +53,7 @@ bool CPUBase::RegisterSysCall(uint16_t id, const std::string &name, SysCallDeleg
     return true;
 }
 void CPUBase::UpdateMMU() {
-    // FIXME: implement this
+    // FIXME: refactor mmu
     auto mmuControl0 = registers.cntrlRegisters[0].data.mmuControl0;
     auto mmuControl1 = registers.cntrlRegisters[1].data.mmuControl1;
 //    memoryUnit.SetControl(cr0);

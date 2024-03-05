@@ -26,8 +26,6 @@ namespace gnilk {
             ISR_FUNC exp_debug_trap;    // 5
             ISR_FUNC exp_mmu_fault;     // 6
             ISR_FUNC exp_fpu_fault;     // 7
-            // FIXME: Verify this - perhaps it is easier to have specific interrupts than just 'l1,l2,l3,l4'...
-            //        Otherwise I would need a muxing table (timer0 -> ext_l1, keyboard -> ext_l2, etc...)
 
             // Interrupt Service Routines
             ISR_FUNC isr0;        // 8

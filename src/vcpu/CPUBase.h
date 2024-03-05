@@ -42,7 +42,7 @@ namespace gnilk {
         };
 
 
-        // FIXME: Copy M68k status bits...
+        // perhaps copy M68k status bits...
         struct CPUStatusBits {
             uint16_t carry : 1;
             uint16_t overflow : 1;
@@ -409,6 +409,7 @@ namespace gnilk {
             Registers registers = {};
 
             // Used to stash all information during an interrupt..
+            // Note: We should have one of these per interrupt - 8 of them...
             ISRControlBlock isrControlBlock;
 
             MemoryUnit memoryUnit;
