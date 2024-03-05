@@ -54,21 +54,26 @@ bool CPUBase::RegisterSysCall(uint16_t id, const std::string &name, SysCallDeleg
 }
 void CPUBase::UpdateMMU() {
     // FIXME: implement this
-    auto cr0 = registers.cntrlRegisters[0].data.longword;
-    auto cr1 = registers.cntrlRegisters[1].data.longword;
+    auto mmuControl0 = registers.cntrlRegisters[0].data.mmuControl0;
+    auto mmuControl1 = registers.cntrlRegisters[1].data.mmuControl1;
 //    memoryUnit.SetControl(cr0);
 //    memoryUnit.SetPageTranslationVAddr(cr1);
 }
 
-void CPUBase::AddPeripheral(CPUISRType isrType, Peripheral::Ref peripheral) {
+void CPUBase::AddPeripheral(CPUIntMask intMask, CPUInterruptId interruptId, Peripheral::Ref peripheral) {
     ISRPeripheralInstance instance = {
-        .isrType = isrType,
+        .intMask = intMask,
+        .interruptId = interruptId,
         .peripheral =  peripheral
     };
+    // TMP TMP TMP
+    interruptMapping[interruptId] = intMask;
+
     peripheral->SetInterruptController(this);
-    peripheral->MapToInterrupt(isrType);
+    peripheral->MapToInterrupt(interruptId);
     peripherals.push_back(instance);
 }
+
 void CPUBase::ResetPeripherals() {
     for(auto &p : peripherals) {
         p.peripheral->Initialize();
@@ -81,37 +86,57 @@ void CPUBase::UpdatePeripherals() {
     }
 }
 
-void CPUBase::RaiseInterrupt(CPUISRType isrType) {
+void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
     if (isrControlBlock.isrState != CPUISRState::Waiting) {
         // Already within an ISR - do NOT execute another
         return;
     }
 
-    // FIXME: Need to check INT Mask if allowed
-
-    // Need to queue interrupts - as the CPU status register can only hold 1 ISR combo at any given time
-    // ok, depending on ISR type I should now map this to the correct int-level 3 bit thingie
-    switch(isrType) {
-        case CPUISRType::Timer0 :
-            registers.statusReg.flags.int1 = 1;
-            isrControlBlock.isrState = CPUISRState::Flagged;
-            break;
-        default:
-            break;
+    // Is this mapped??
+    if (interruptMapping.find(interruptId) == interruptMapping.end()) {
+        return;
     }
+
+    auto mask = interruptMapping[interruptId];
+    auto &intCntrl = GetInterruptCntrl();
+
+    // Is this enabled?
+    if (!(intCntrl & mask)) {
+        return;
+    }
+
+    //
+    // Need to queue interrupts - as the CPU status register can only hold 1 ISR combo at any given time
+    //
+    // the TYPE is mapped to an interrupt level (there are 8) - in total we should be able to handle X ISR handlers
+    // with TYPE <-> INT mappings...
+    //
+    isrControlBlock.intMask = mask;
+    isrControlBlock.interruptId = interruptId;
+    isrControlBlock.isrState = CPUISRState::Flagged;
+}
+
+void CPUBase::EnableInterrupt(CPUIntMask interrupt) {
+    auto &intCntrl = GetInterruptCntrl();
+    intCntrl.data.bits |= interrupt;
 }
 
 void CPUBase::InvokeISRHandlers() {
     if (isrVectorTable == nullptr) {
         return;
     }
-    if ((registers.statusReg.flags.int1) && (isrControlBlock.isrState ==CPUISRState::Flagged)) {
-
-        // Store register control block - this is all the active registers...
-        isrControlBlock.registersBefore = registers;
-        // reassign it..
-        registers.instrPointer.data.longword = isrVectorTable->isr_ext_l1;
-        // Update the state
-        isrControlBlock.isrState = CPUISRState::Executing;
+    auto &intCntrl = GetInterruptCntrl();
+    for(int i=0;i<7;i++) {
+        // Is this enabled and raised?
+        if ((intCntrl.data.bits & (1<<i)) && (isrControlBlock.isrState == CPUISRState::Flagged)) {
+            // Save current registers
+            isrControlBlock.registersBefore = registers;
+            // Move the ISR type to a register...
+            registers.dataRegisters[0].data.longword = isrControlBlock.interruptId;
+            // reassign it..
+            registers.instrPointer.data.longword = isrVectorTable->isr0;
+            // Update the state
+            isrControlBlock.isrState = CPUISRState::Executing;
+        }
     }
 }

@@ -58,6 +58,7 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
     });
 
     vcpu.SetInstrPtr(0x2000);
+    vcpu.EnableInterrupt(INT0);
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..
@@ -72,6 +73,7 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
         std::this_thread::sleep_for(std::chrono::microseconds(250));
     }
 
+    fmt::println("irq counter={}", irq_counter);
     TR_ASSERT(t, irq_counter >= 3);
 
     return kTR_Pass;

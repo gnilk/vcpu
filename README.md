@@ -109,7 +109,7 @@ Support for the following directives:
     ! make a linker step
     - Ability to output a proper memory layout
 - VCPU
-    - CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
+    + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
       Currently we fire interrupts even if no handlers are enabled (not good)
       All Interrupts should be disabled on reset...
     + Properly define the memory layout

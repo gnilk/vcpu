@@ -19,28 +19,31 @@ namespace gnilk {
         struct ISR_VECTOR_TABLE {
             uint64_t initial_sp;        // 0
             uint64_t initial_pc;        // 1
-            ISR_FUNC isr_illegal_instr; // 2
-            ISR_FUNC isr_hard_fault;    // 3
-            ISR_FUNC isr_div_zero;      // 4
-            ISR_FUNC isr_debug_trap;    // 5
-            ISR_FUNC isr_mmu_fault;     // 6
-            ISR_FUNC isr_fpu_fault;     // 7
+            // Exceptions
+            ISR_FUNC exp_illegal_instr; // 2
+            ISR_FUNC exp_hard_fault;    // 3
+            ISR_FUNC exp_div_zero;      // 4
+            ISR_FUNC exp_debug_trap;    // 5
+            ISR_FUNC exp_mmu_fault;     // 6
+            ISR_FUNC exp_fpu_fault;     // 7
             // FIXME: Verify this - perhaps it is easier to have specific interrupts than just 'l1,l2,l3,l4'...
             //        Otherwise I would need a muxing table (timer0 -> ext_l1, keyboard -> ext_l2, etc...)
-            ISR_FUNC isr_ext_l1;        // 8
-            ISR_FUNC isr_ext_l2;        // 9
-            ISR_FUNC isr_ext_l3;        // 10
-            ISR_FUNC isr_ext_l4;        // 11
-            ISR_FUNC isr_ext_l5;        // 12
-            ISR_FUNC isr_ext_l6;        // 13
-            ISR_FUNC isr_ext_l7;        // 14
-            ISR_FUNC isr_ext_l8;        // 15
+
+            // Interrupt Service Routines
+            ISR_FUNC isr0;        // 8
+            ISR_FUNC isr1;        // 9
+            ISR_FUNC isr2;        // 10
+            ISR_FUNC isr3;        // 11
+            ISR_FUNC isr4;        // 12
+            ISR_FUNC isr5;        // 13
+            ISR_FUNC isr6;        // 14
+            ISR_FUNC isr7;        // 15
             uint64_t reserved[16];
         };
 #pragma pack(pop)
 
         // This should go into the CPUIntCntrlRegister as a mask...
-        struct CPUIntMaskBits {
+        struct CPUExceptionControl {
             // CPU hard interrupts
             uint16_t illegal_instr:1;   // 0
             uint16_t hard_fault:1;      // 1
@@ -52,26 +55,54 @@ namespace gnilk {
             uint16_t cpu_reserved_2:1;  // 7
 
             // Peripherals, 8 possible interrupts
-            uint16_t ext_l1:1;
-            uint16_t ext_l2:1;
-            uint16_t ext_l3:1;
-            uint16_t ext_l4:1;
-            uint16_t ext_l5:1;
-            uint16_t ext_l6:1;
-            uint16_t ext_l7:1;
-            uint16_t ext_l8:1;
+            uint16_t reserved:8;
         };
 
-        enum class CPUISRType : uint8_t {
-            None,
-            Timer0,
+        struct CPUIntControlBits {
+            uint16_t int0 : 1;
+            uint16_t int1 : 1;
+            uint16_t int2 : 1;
+            uint16_t int3 : 1;
+            uint16_t int4 : 1;
+            uint16_t int5 : 1;
+            uint16_t int6 : 1;
+            uint16_t int7 : 1;
+            uint16_t reserved : 8;
         };
+        struct CPUIntControl {
+            union {
+                CPUIntControlBits flags;
+                uint16_t bits;
+            } data;
+        };
+
+        enum CPUIntMask : uint16_t {
+            INT0 = 1,
+            INT1 = 2,
+            INT2 = 4,
+            INT3 = 8,
+            INT4 = 16,
+            INT5 = 32,
+            INT6 = 64,
+            INT7 = 128,
+        };
+        inline constexpr bool operator & (CPUIntControl lhs, CPUIntMask rhs) {
+            return lhs.data.bits & rhs;
+        }
+
+        typedef uint64_t CPUInterruptId;
+
+        // Not quite sure I want/need this
+        enum CPUKnownIntIds : uint64_t {
+            kTimer0,
+        };
+
         class InterruptController {
         public:
             InterruptController() = default;
             virtual ~InterruptController() = default;
 
-            virtual void RaiseInterrupt(CPUISRType isrType) = 0;
+            virtual void RaiseInterrupt(CPUInterruptId isrType) = 0;
         };
     }
 }

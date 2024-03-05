@@ -25,17 +25,22 @@ namespace gnilk {
                 uint16_t word;
                 uint32_t dword;
                 uint64_t longword;
+                // Control registers 0..3
+                CPUIntControl intControl;
+                CPUExceptionControl exceptionControl;
+                MMUControl0 mmuControl0;
+                MMUControl1 mmuControl1;
             } data;
             // Make sure this is zero when creating a register..
             RegisterValue() {
                 data.longword = 0;
             }
-
             explicit RegisterValue(uint8_t v) { data.byte = v; }
             explicit RegisterValue(uint16_t v) { data.word = v; }
             explicit RegisterValue(uint32_t v) { data.dword = v; }
             explicit RegisterValue(uint64_t v) { data.longword = v; }
         };
+
 
         // FIXME: Copy M68k status bits...
         struct CPUStatusBits {
@@ -44,11 +49,11 @@ namespace gnilk {
             uint16_t zero : 1;
             uint16_t negative : 1;
             uint16_t extend : 1;
-            uint16_t int1 : 1;      // FIXME: Remove these -> move to Control Reg CR0 IntCtrl
-            uint16_t int2 : 1;
-            uint16_t int3 : 1;
-            // next 8 bits
             uint16_t halt : 1;
+            uint16_t reservedA : 1;      // old int flags - currently unused
+            uint16_t reservedB : 1;
+            uint16_t reservedC : 1;
+            // next 8 bits
             uint16_t reserved : 7;
         };
 
@@ -59,10 +64,7 @@ namespace gnilk {
             Zero = 4,
             Negative = 8,
             Extend = 16,
-            Int1 = 32,      // FIXME: REMOVE these -> move to Control Reg CR0 IntCtrl
-            Int2 = 64,
-            Int3 = 128,
-            Halt = 256,
+            Halt = 32,
         };
 
         enum class CPUStatusFlagBitPos : uint16_t {
@@ -71,10 +73,7 @@ namespace gnilk {
             Zero = 2,
             Negative = 3,
             Extend = 4,
-            Int1 = 5,       // FIXME: REMOVE -> move to control reg 0, CR0, IntCtrl
-            Int2 = 6,
-            Int3 = 7,
-            Halt = 8,
+            Halt = 5,
         };
 
         union CPUStatusReg {
@@ -162,8 +161,10 @@ namespace gnilk {
 
 
         struct ISRControlBlock {
-            Registers registersBefore;
-            RegisterValue rti;  // special register for RTI
+            CPUIntMask intMask = {};
+            CPUInterruptId interruptId = {};
+            Registers registersBefore = {};
+            RegisterValue rti = {};  // special register for RTI
             CPUISRState isrState = CPUISRState::Waiting;
         };
 
@@ -249,6 +250,17 @@ namespace gnilk {
             const CPUStatusReg &GetStatusReg() const {
                 return registers.statusReg;
             }
+
+            CPUIntControl &GetInterruptCntrl() {
+                #define CNTRL_REG_INTERRUPT 0
+                return registers.cntrlRegisters[CNTRL_REG_INTERRUPT].data.intControl;
+            }
+
+            CPUExceptionControl &GetExceptionCntrl() {
+                #define CNTRL_REG_EXCEPTION 1
+                return registers.cntrlRegisters[CNTRL_REG_EXCEPTION].data.exceptionControl;
+            }
+
             uint8_t *GetRamPtr() {
                 return ram;
             }
@@ -318,12 +330,12 @@ namespace gnilk {
                 }
                 return v;
             }
-
-            void AddPeripheral(CPUISRType isrType, Peripheral::Ref peripheral);
+            void EnableInterrupt(CPUIntMask interrupt);
+            void AddPeripheral(CPUIntMask intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
             void ResetPeripherals();
             virtual void UpdatePeripherals();
         // Interrupt Controller Interface
-            void RaiseInterrupt(CPUISRType isrType) override;
+            void RaiseInterrupt(CPUInterruptId interruptId) override;
             void InvokeISRHandlers();
             CPUISRState GetISRState() {
                 return isrControlBlock.isrState;
@@ -387,7 +399,8 @@ namespace gnilk {
             void UpdateMMU();
         protected:
             struct ISRPeripheralInstance {
-                CPUISRType isrType;
+                CPUIntMask intMask;
+                CPUInterruptId interruptId;
                 Peripheral::Ref peripheral;
             };
         protected:
@@ -407,6 +420,7 @@ namespace gnilk {
             // FIXME: Remove this and let the supplied RAM hold the stack...
             std::stack<RegisterValue> stack;
 
+            std::unordered_map<CPUInterruptId , CPUIntMask> interruptMapping;
             std::unordered_map<uint32_t, SysCall::Ref> syscalls;
 
 

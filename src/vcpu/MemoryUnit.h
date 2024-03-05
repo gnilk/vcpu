@@ -30,6 +30,14 @@ namespace gnilk {
 
         static const uint32_t MMU_FLAGS_RWX =  0x07;    // allow Read|Write|Exec - this is the default..
 
+        // Placeholders to have Control Registers some what marked up
+        struct MMUControl0 {
+            uint64_t empty;
+        };
+        struct MMUControl1 {
+            uint64_t empty;
+        };
+
 
         // addresses are always 64bit, a mapped pages is looked up like:
         //

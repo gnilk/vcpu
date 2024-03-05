@@ -24,19 +24,19 @@ namespace gnilk {
             void SetInterruptController(InterruptController *newCntrl) {
                 intController = newCntrl;
             }
-            void MapToInterrupt(CPUISRType isrType) {
-                assignedIsr = isrType;
+            void MapToInterrupt(CPUInterruptId newInterruptId) {
+                interruptId = newInterruptId;
             }
         protected:
             void RaiseInterrupt() {
                 if (intController == nullptr) {
                     return;
                 }
-                intController->RaiseInterrupt(assignedIsr);
+                intController->RaiseInterrupt(interruptId);
             }
         protected:
             InterruptController *intController =nullptr;
-            CPUISRType assignedIsr = CPUISRType::None;
+            CPUInterruptId interruptId = {};
         };
     }
 }

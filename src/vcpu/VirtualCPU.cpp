@@ -45,12 +45,12 @@ using namespace gnilk::vcpu;
 
 void VirtualCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
-    AddPeripheral(CPUISRType::Timer0, Timer::Create(1));
+    AddPeripheral(CPUIntMask::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1));
 }
 
 void VirtualCPU::Begin(void *ptrRam, size_t sizeOfRam) {
     CPUBase::Begin(ptrRam, sizeOfRam);
-    AddPeripheral(CPUISRType::Timer0, Timer::Create(1000));
+    AddPeripheral(CPUIntMask::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1000));
 }
 
 
@@ -68,7 +68,7 @@ bool VirtualCPU::Step() {
     // 2) Invoke any Interrupt as a result..
     //    Note: Can't invoke interrupt if already inside one..
     // FIXME: Enable this when we have CPUInterruptMask and CPUExceptionMask registers properly defined
-    // InvokeISRHandlers();
+    InvokeISRHandlers();
 
     lastDecodedInstruction.cpuRegistersBefore = registers;
     lastDecodedInstruction.instrDecoder = nullptr;
@@ -686,14 +686,9 @@ void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
         // FIXME: Raise invalid CPU state exception
         return;
     }
-    // Restore registers
+    // Restore registers, this will restore ALL incl. status and interrupt masks
+    // is this what we want?
     registers = isrControlBlock.registersBefore;
-
-    // Clear out any interrupt flags (we don't support nested INT's)
-    // FIXME: this is not the correct way...
-    registers.statusReg.flags.int1 = 0;
-    registers.statusReg.flags.int2 = 0;
-    registers.statusReg.flags.int3 = 0;
 
     // Reset the ISR State
     isrControlBlock.isrState = CPUISRState::Waiting;
