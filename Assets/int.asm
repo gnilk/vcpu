@@ -41,11 +41,12 @@ _start:
     move.l  (a0+isrTable.isr0),d0
     ; move.l  (a0+8<<6),d0
     ; enable interrupt
-    move.l  d0, 0x01
-    move.l  cr0,d0
+    ; move.l  d0, 0x01
+    ; move.l  cr0,d0
     ; wait for counter to become 3
 wait_lp:
-    cmp.l   counter,3
+    add.l   counter, 1
+    cmp.l   counter, 3
     bne     wait_lp
 ; print we are done
     lea     a0, str_done
