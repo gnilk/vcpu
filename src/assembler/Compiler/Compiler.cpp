@@ -266,15 +266,35 @@ bool Compiler::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
     return EmitOpCodeForSymbol(stmt->Symbol());
 }
 
+void Compiler::DeferEmitOpSize(DeferredOpSizeHandler emitOpSizeCallback) {
+    cbDeferredOpSize = emitOpSizeCallback;
+}
+void Compiler::ResetDeferEmitOpSize() {
+    cbDeferredOpSize = nullptr;
+}
+void Compiler::EmitOpSize(uint8_t opSize) {
+    cbDeferredOpSize(opSize);
+}
+bool Compiler::IsOpSizeDeferred() {
+    return (cbDeferredOpSize != nullptr);
+}
+
 bool Compiler::ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt) {
     if (!EmitOpCodeForSymbol(stmt->Symbol())) {
         return false;
     }
     auto opSize = stmt->OpSize();
 
-    if (!EmitByte(static_cast<uint8_t>(opSize))) {
-        return false;
-    }
+    // - this won't work unless ALL one-op instruction code paths have support for it...
+    //   which might be more than lovely to fix...
+    DeferEmitOpSize([this](uint8_t opSize) {
+       EmitByte(opSize);
+    });
+
+//    if (!EmitByte(static_cast<uint8_t>(opSize))) {
+//        return false;
+//    }
+
     // FIXME: Cache this in the parser stage(?)
     auto opClass = *vcpu::GetOperandFromStr(stmt->Symbol());
     auto opDesc = *vcpu::GetOpDescFromClass(opClass);
@@ -282,6 +302,8 @@ bool Compiler::ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt) {
     if (!EmitInstrOperand(opDesc, opSize, stmt->Operand())) {
         return false;
     }
+
+    ResetDeferEmitOpSize();
 
     return true;
 
@@ -723,8 +745,6 @@ bool Compiler::EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::O
     // This a relative jump
     regMode |= vcpu::AddressMode::Immediate;
 
-    // Register|Mode = byte = RRRR | MMMM
-    EmitByte(regMode);
 
     IdentifierAddressPlaceholder addressPlaceholder;
     addressPlaceholder.segment = unit.GetActiveSegment();
@@ -754,6 +774,16 @@ bool Compiler::EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::O
             }
         }
     }
+
+    // Ok, we have changed it - so if we deferred it - let's write it out now...
+    // Note: we can NOT write anything before this has been done...
+    if (IsOpSizeDeferred()) {
+        EmitOpSize(opSize);
+    }
+
+    // Register|Mode = byte = RRRR | MMMM
+    EmitByte(regMode);
+
 
     addressPlaceholder.address = static_cast<uint64_t>(unit.GetCurrentWritePtr());
     addressPlaceholder.ident = identifier->Symbol();

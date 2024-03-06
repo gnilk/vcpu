@@ -5,6 +5,8 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#include <functional>
+
 #include "InstructionSet.h"
 #include "ast/ast.h"
 #include "Linker/CompiledUnit.h"
@@ -73,6 +75,14 @@ namespace gnilk {
             bool EmitLabelAddress(ast::Identifier::Ref identifier);
             bool EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
             bool EmitDereference(ast::DeReferenceExpression::Ref expression);
+
+            using DeferredOpSizeHandler = std::function<void(uint8_t opSize)>;
+            DeferredOpSizeHandler cbDeferredOpSize = nullptr;
+            void DeferEmitOpSize(DeferredOpSizeHandler emitOpSizeCallback);
+            void ResetDeferEmitOpSize();
+            bool IsOpSizeDeferred();
+            void EmitOpSize(uint8_t opSize);
+
 
 
             bool EmitByte(uint8_t byte);
