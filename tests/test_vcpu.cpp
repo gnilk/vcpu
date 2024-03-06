@@ -16,13 +16,16 @@ static void DumpRegs(const VirtualCPU &cpu);
 
 extern "C" {
     DLL_EXPORT int test_vcpu(ITesting *t);
+    DLL_EXPORT int test_vcpu_readwrite_ram(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_reg2reg(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_move_cntrl(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_move_absolute(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_add_overflow(ITesting *t);
+
     DLL_EXPORT int test_vcpu_instr_push(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_pop(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_call(ITesting *t);
@@ -52,6 +55,35 @@ DLL_EXPORT int test_vcpu(ITesting *t) {
 DLL_EXPORT int test_vcpu_create(ITesting *t) {
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_vcpu_readwrite_ram(ITesting *t) {
+    uint8_t ram[128] = {0x01,0x02,0x03,0x04};
+    VirtualCPU vcpu;
+    vcpu.QuickStart(ram, 1024);
+    auto readReg = vcpu.ReadFromMemoryUnit(OperandSize::Byte, 0x00);
+    TR_ASSERT(t, readReg.data.byte == 0x01);
+    readReg = vcpu.ReadFromMemoryUnit(OperandSize::Word, 0x00);
+    TR_ASSERT(t, readReg.data.word == 0x0102);
+    readReg = vcpu.ReadFromMemoryUnit(OperandSize::DWord, 0x00);
+    TR_ASSERT(t, readReg.data.dword == 0x01020304);
+
+
+    RegisterValue writeReg = {};
+    writeReg.data.byte = 0xab;
+    vcpu.WriteToMemoryUnit(OperandSize::Byte, 0x00, writeReg);
+    TR_ASSERT(t, ram[0] == 0xab);
+    memset(ram,0, sizeof(ram));
+    writeReg.data.word = 0x0102;
+    vcpu.WriteToMemoryUnit(OperandSize::Word, 0x00, writeReg);
+    TR_ASSERT(t, (ram[0] == 0x01) && (ram[1] == 0x02));
+    memset(ram,0, sizeof(ram));
+    writeReg.data.dword = 0x01020304;
+    vcpu.WriteToMemoryUnit(OperandSize::DWord, 0x00, writeReg);
+    TR_ASSERT(t, (ram[0] == 0x01) && (ram[1] == 0x02) && (ram[2] == 0x03) && (ram[3] == 0x04));
+
+    return kTR_Pass;
+}
+
 
 DLL_EXPORT int test_vcpu_flags_orequals(ITesting *t) {
     CPUStatusFlags flags = CPUStatusFlags::None;
@@ -194,6 +226,20 @@ DLL_EXPORT int test_vcpu_instr_move_cntrl(ITesting *t) {
     TR_ASSERT(t, regs.cntrlRegisters[0].data.longword == regs.dataRegisters[0].data.longword);
 
     fmt::println("{}", vcpu.GetLastDecodedInstr()->ToString());
+
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_vcpu_instr_move_absolute(ITesting *t) {
+    uint8_t program[]={
+        0x20, 0x03, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x15,0x01,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,   // move.l (0x00000015),0x01
+        0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // this should be addres 0x15
+      // 0     1     2     3     4     5     6     7     8     9     10   11   12    13    14    15    16    17    18   19
+    };
+    VirtualCPU vcpu;
+    vcpu.QuickStart(program, 1024);
+    vcpu.Step();
 
     return kTR_Pass;
 }
