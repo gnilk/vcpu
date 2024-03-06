@@ -15,7 +15,8 @@ namespace gnilk {
     namespace assembler {
         struct IdentifierAddressPlaceholder {
             std::string ident;
-            Segment::Ref segment;
+            Segment::Ref segment = nullptr;
+            Segment::DataChunk::Ref chunk = nullptr;
             uint64_t address;
             // For relative jump
             bool isRelative;
@@ -23,8 +24,9 @@ namespace gnilk {
             uint64_t ofsRelative;   // Offset to compute from..
         };
         struct IdentifierAddress {
-            Segment::Ref segment;
-            uint64_t address;
+            Segment::Ref segment = nullptr;;
+            Segment::DataChunk::Ref chunk = nullptr;
+            uint64_t address = 0;
         };
 
     }

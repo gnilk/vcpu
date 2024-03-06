@@ -28,6 +28,10 @@ namespace gnilk {
                 linker = newLinker;
             }
 
+            CompiledUnit &GetCompiledUnit() {
+                return unit;
+            }
+
 
             // TEMP TEMP
             const std::vector<uint8_t> &Data() {

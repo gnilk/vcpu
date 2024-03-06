@@ -24,12 +24,25 @@ bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
     activeSegment = segments.at(name);
     return true;
 }
+bool CompiledUnit::CreateEmptySegment(const std::string &name) {
+    auto segment = std::make_shared<Segment>(name);
+    segments[name] = segment;
+    activeSegment = segment;
+    return true;
+}
 
 bool CompiledUnit::SetActiveSegment(const std::string &name) {
     if (!segments.contains(name)) {
         return false;
     }
     activeSegment = segments.at(name);
+    if (activeSegment->currentChunk == nullptr) {
+        if (activeSegment->chunks.empty()) {
+            fmt::println(stderr, "Linker, Compiled unit can't link - no data!");
+            return false;
+        }
+        activeSegment->currentChunk =  activeSegment->chunks[0];
+    }
     return true;
 }
 
@@ -119,7 +132,7 @@ bool CompiledUnit::MergeSegments(const std::string &dst, const std::string &src)
     }
     auto srcSeg = segments.at(src);
     if (!segments.contains(dst)) {
-        if (!GetOrAddSegment(dst, srcSeg->StartAddress())) {
+        if (!CreateEmptySegment(dst)) {
             return false;
         }
     }

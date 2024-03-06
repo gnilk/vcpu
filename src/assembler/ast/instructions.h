@@ -77,7 +77,7 @@ namespace gnilk {
             }
 
             void Dump() override {
-                WriteLine("Instruction");
+                WriteLine("Two Op Instruction");
                 Indent();
                 WriteLine("Symbol: {}", symbol);
                 WriteLine("OpSize: {}", (int)opSize);
@@ -138,7 +138,7 @@ namespace gnilk {
             }
 
             void Dump() override {
-                WriteLine("Instruction");
+                WriteLine("One Op Instruction");
                 Indent();
                 WriteLine("Symbol: {}", symbol);
                 WriteLine("OpSize: {}", (int)opSize);

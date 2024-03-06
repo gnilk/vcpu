@@ -32,10 +32,14 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
     // TEMP!
     unit.GetOrAddSegment(".text", 0);
 
+    size_t idxStmtCounter = 0;
     for(auto &statement : program->Body()) {
         if (!ProcessStmt(statement)) {
+            fmt::println(stderr, "Error on stmt counter={}", idxStmtCounter);
+            statement->Dump();
             return false;
         }
+        idxStmtCounter++;
     }
     return true;
 }
@@ -144,14 +148,8 @@ bool Compiler::ProcessMetaStatement(ast::MetaStatement::Ref stmt) {
         auto numArg = std::dynamic_pointer_cast<ast::NumericLiteral>(arg);
 
         auto seg = unit.GetActiveSegment();
-        if (seg->StartAddress() == 0) {
-            seg->SetLoadAddress(numArg->Value());
-        } else {
-            fmt::println("Compiler, In segment {} - creating new chunk at addr {}", seg->Name(), numArg->Value());
-            seg->CreateChunk(numArg->Value());
-            // A segment can only have one base-address, in case we issue '.org' twice within the same segment - we duplicate the segment...
-            //fmt::println(stderr, "Compiler, segment already have base address - can have .org statement twice within same segment");
-        }
+        fmt::println("Compiler, In segment {} - creating new chunk at addr {}", seg->Name(), numArg->Value());
+        seg->CreateChunk(numArg->Value());
 
         return true;
     }
@@ -256,7 +254,10 @@ bool Compiler::ProcessIdentifier(ast::Identifier::Ref identifier) {
         fmt::println(stderr,"Identifier {} already in use - can't use duplicate identifiers!", identifier->Symbol());
         return false;
     }
-    IdentifierAddress idAddress = {.segment = unit.GetActiveSegment(), .address = ipNow};
+    IdentifierAddress idAddress = {
+        .segment = unit.GetActiveSegment(),
+        .chunk =  unit.GetActiveSegment()->CurrentChunk(),
+        .address = ipNow};
     identifierAddresses[identifier->Symbol()] = idAddress;
     return true;
 }
@@ -287,6 +288,11 @@ bool Compiler::ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt) {
 }
 
 bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
+    if (twoOpInstr->Symbol() == "add") {
+        int breakme = 1;
+    }
+
+
     if (!EmitOpCodeForSymbol(twoOpInstr->Symbol())) {
         return false;
     }
@@ -701,6 +707,7 @@ bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
 
     IdentifierAddressPlaceholder addressPlaceholder;
     addressPlaceholder.segment = unit.GetActiveSegment();
+    addressPlaceholder.chunk = unit.GetActiveSegment()->CurrentChunk();
     addressPlaceholder.address = static_cast<uint64_t>(unit.GetCurrentWritePtr());
     addressPlaceholder.ident = identifier->Symbol();
     addressPlaceholder.isRelative = false;
@@ -721,6 +728,32 @@ bool Compiler::EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::O
 
     IdentifierAddressPlaceholder addressPlaceholder;
     addressPlaceholder.segment = unit.GetActiveSegment();
+    addressPlaceholder.chunk = unit.GetActiveSegment()->CurrentChunk();
+
+    if (opSize == vcpu::OperandSize::Long) {
+        // no op.size were given
+        // FIXME: Compute distance - how?
+
+        if (identifierAddresses.find(identifier->Symbol()) == identifierAddresses.end()) {
+            fmt::println(stderr, "Compiler, Identifier not found - can't compute jump length...");
+            return false;
+        } else {
+            fmt::println("Compiler, warning - realtive address instr. detected without operand size specification - trying to deduce");
+            auto idAddress = identifierAddresses[identifier->Symbol()];
+            // We are ahead...
+            auto dist = (unit.GetCurrentWritePtr() - idAddress.address);
+            if (dist < 255) {
+                fmt::println("Compiler, warning - changing from unspecfied to byte (dist={})", dist);
+                opSize = vcpu::OperandSize::Byte;
+            } else if (dist < 65545) {
+                fmt::println("Compiler, warning - changing from unspecfied to word (dist={})", dist);
+                opSize = vcpu::OperandSize::Word;
+            } else {
+                fmt::println("Compiler, warning - changing from unspecfied to dword (dist={})", dist);
+                opSize = vcpu::OperandSize::DWord;
+            }
+        }
+    }
 
     addressPlaceholder.address = static_cast<uint64_t>(unit.GetCurrentWritePtr());
     addressPlaceholder.ident = identifier->Symbol();
@@ -743,6 +776,7 @@ bool Compiler::EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::O
             EmitDWord(0);
             break;
         default :
+            fmt::println(stderr, "Compiler, Relative Addressing but Absolute value - see: 'EmitRelativeAddress'");
             return false;
     }
 

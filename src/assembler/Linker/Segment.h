@@ -30,6 +30,8 @@ namespace gnilk {
                 DataChunk() = default;
                 virtual ~DataChunk() = default;
 
+                bool IsEmpty() const;
+
                 const std::vector<uint8_t> &Data() const;
                 const void *DataPtr() const;
                 size_t Size() const;
@@ -49,6 +51,7 @@ namespace gnilk {
 
             using Ref = std::shared_ptr<Segment>;
         public:
+            Segment(const std::string &segName);
             Segment(const std::string &segName, uint64_t address);
             virtual ~Segment() = default;
 

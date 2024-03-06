@@ -8,6 +8,8 @@
 #include <testinterface.h>
 #include "Parser/Parser.h"
 #include "Compiler/Compiler.h"
+#include "Linker/CompiledUnit.h"
+#include "HexDump.h"
 
 using namespace gnilk::assembler;
 
@@ -37,6 +39,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_const_string(ITesting *t);
     DLL_EXPORT int test_compiler_structref(ITesting *t);
     DLL_EXPORT int test_compiler_orgdecl(ITesting *t);
+    DLL_EXPORT int test_compiler_addtovar(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -682,10 +685,10 @@ DLL_EXPORT int test_compiler_orgdecl(ITesting *t) {
     const char srcCode[]= {
         "  .code \n"\
         "   .org 0x0000 \n"\
-        "   dc.l 0\n"\
-        "   .org 0x1000\n"\
+        "   dc.b 0xaa,0xbb,0xcc,0xdd\n"\
+        "   .org 100\n"\
         "   move.b d0, 1\n"\
-        "   .org 0x2000\n"\
+        "   .org 200\n"\
         "   move.b d0, 1\n"\
         "   ret\n"\
         ""
@@ -698,5 +701,65 @@ DLL_EXPORT int test_compiler_orgdecl(ITesting *t) {
     auto res = compiler.CompileAndLink(ast);
     TR_ASSERT(t, res);
 
+    auto &unit = compiler.GetCompiledUnit();
+    std::vector<Segment::Ref> segments;
+    unit.GetSegments(segments);
+
+    // NOTE: Don't assert on number of segments - there are 'hidden' segments created for the benefit of the linker...
+
+    static size_t expectedLoadAddr[]={0,100,200};
+
+    printf("Segments, num=%d\n", (int)segments.size());
+    for(int idxSeg=0;idxSeg<segments.size();idxSeg++) {
+        auto &s = segments[idxSeg];
+        printf("  Name=%s\n", s->Name().c_str());
+        auto &chunks = s->DataChunks();
+        TR_ASSERT(t, chunks.size() == 3);
+
+        printf("  Chunks, num=%d\n", (int)chunks.size());
+        for (int idxChunk=0;idxChunk<chunks.size();idxChunk++) {
+            auto &c = chunks[idxChunk];
+            if (s->Name() == ".text") {
+                TR_ASSERT(t, c->LoadAddress() == expectedLoadAddr[idxChunk]);
+            }
+            printf("    %d\n", idxChunk);
+            printf("    LoadAddress=0x%x (%d)\n",(int)c->LoadAddress(), (int)c->LoadAddress());
+            printf("    EndAddress=0x%x (%d)\n",(int)c->EndAddress(), (int)c->EndAddress());
+            printf("    Bytes=0x%x (%d)\n",(int)c->Size(), (int)c->Size());
+        }
+    }
+
+    auto data = compiler.Data();
+    printf("Binary Size: %d\n", (int)data.size());
+    HexDump::ToConsole(data.data()+0, 16);
+    HexDump::ToConsole(data.data()+100, 16);
+    HexDump::ToConsole(data.data()+200, 16);
     return kTR_Pass;
 }
+DLL_EXPORT int test_compiler_addtovar(ITesting *t) {
+    const char srcCode[]= {
+        "  .code \n"\
+        "   .org 0x0000 \n"\
+        "   add.l counter,1\n"\
+        "   ret\n"\
+        "   .data\n"\
+        "   counter: dc.l 0\n"\
+        ""
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res);
+
+    auto data = compiler.Data();
+    printf("Binary:\n");
+    HexDump::ToConsole(data.data(),data.size());
+
+
+    return kTR_Pass;
+}
+

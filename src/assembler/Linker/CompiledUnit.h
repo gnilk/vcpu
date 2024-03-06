@@ -20,6 +20,7 @@ namespace gnilk {
             virtual ~CompiledUnit() = default;
 
             void Clear();
+            bool CreateEmptySegment(const std::string &name);
             bool GetOrAddSegment(const std::string &name, uint64_t address);
             bool SetActiveSegment(const std::string &name);
             bool HaveSegment(const std::string &name);

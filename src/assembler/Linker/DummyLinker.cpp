@@ -37,6 +37,7 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
     // This is our target now...
     unit.SetActiveSegment("link_out");
 
+    // FIXME: Trying to relocate the data segment - I think - but this is horribly wrong...
     auto baseAddress = unit.GetBaseAddress();
     auto dataSeg = unit.GetSegment(".data");
     if (dataSeg != nullptr) {
@@ -72,11 +73,11 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
 //                placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
 //                identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
-            auto placeHolderChunk = placeHolder.segment->ChunkFromAddress(placeHolder.address);
-            auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
+            auto placeHolderChunk = placeHolder.chunk; //placeHolder.segment->ChunkFromAddress(placeHolder.address);
+            auto identChunk = identifierAddr.chunk; //identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
 
             fmt::println("  REL: {}@{:#x} = {}@{:#x}",
-                placeHolder.ident, placeHolder.address - placeHolderChunk->LoadAddress(),
+                placeHolder.ident, placeHolder.address + placeHolderChunk->LoadAddress(),
                 identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
 
@@ -88,19 +89,32 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
                 offset = identifierAddr.address - placeHolder.ofsRelative;
             }
             //unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), offset, placeHolder.opSize);
-            unit.ReplaceAt(placeHolder.address - placeHolderChunk->LoadAddress(), offset, placeHolder.opSize);
+            //unit.ReplaceAt(placeHolder.address - placeHolderChunk->LoadAddress(), offset, placeHolder.opSize);
+            placeHolderChunk->ReplaceAt(placeHolder.address, offset, placeHolder.opSize);
         } else {
-            auto placeHolderChunk = placeHolder.segment->ChunkFromAddress(placeHolder.address);
-            auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
+
+            // FIXME: Verify segment pointers before doing this!
+
+            auto placeHolderChunk = placeHolder.chunk; //placeHolder.segment->ChunkFromAddress(placeHolder.address);
+            // I have already relocated this - segment, which is bad...
+            auto identChunk = identifierAddr.chunk; //identifierAddr.segment->ChunkFromAddress(identifierAddr.address + identifierAddr.segment->StartAddress());
+
+            if ((placeHolderChunk==nullptr) || (identChunk == nullptr)) {
+                if (placeHolderChunk == nullptr) {
+                    fmt::println(stderr, "Linker, Can't find Segment::Chunk for '{}'", placeHolder.ident);
+                    return false;
+                }
+
+                fmt::println(stderr, "Linker, Identifier '{}' @ {} has no valid Segment::Chunk", placeHolder.ident, identifierAddr.address);
+                return false;
+            }
 
             fmt::println("  {}@{:#x} = {}@{:#x}",
-                placeHolder.ident, placeHolder.address - placeHolderChunk->LoadAddress(),
+                placeHolder.ident, placeHolder.address + placeHolderChunk->LoadAddress(),
                 identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
-            //            fmt::println("  {}@{:#x} = {}@{:#x}",
-//                placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
-//                identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
+            placeHolderChunk->ReplaceAt(placeHolder.address, identifierAddr.address + identifierAddr.segment->StartAddress());
 
             // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
             if (identifierAddr.segment == nullptr) {
@@ -109,14 +123,19 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
             }
 
             //unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), identifierAddr.segment->LoadAddress() + identifierAddr.address);
-            unit.ReplaceAt(placeHolder.address - placeHolderChunk->LoadAddress(), identChunk->LoadAddress() + identifierAddr.address);
+            //unit.ReplaceAt(placeHolder.address - placeHolderChunk->LoadAddress(), identChunk->LoadAddress() + identifierAddr.address);
         }
     }
     auto linkOutputSegment = unit.GetSegment("link_out");
     // FIXME: THIS IS WRONG!@!#!@$!@$
+    // Compute total size...
+
+    auto size = linkOutputSegment->EndAddress();
+    linkedData.resize(size);
     for(auto chunk : linkOutputSegment->DataChunks()) {
         auto data = chunk->Data();
-        linkedData.insert(linkedData.begin(), data.begin(), data.end());
+        // Inser at the load address...
+        linkedData.insert(linkedData.begin()+chunk->LoadAddress(), data.begin(), data.end());
 
     }
     return true;

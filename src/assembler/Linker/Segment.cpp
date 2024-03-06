@@ -10,6 +10,10 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
+Segment::Segment(const std::string &segName) : name(segName) {
+    // No chunks created here - this is used by the linker which merges the chunks from another segment..
+}
+
 Segment::Segment(const std::string &segName, uint64_t address) : name(segName), loadAddress(address) {
     CreateChunk(loadAddress);
 }
@@ -25,8 +29,14 @@ void Segment::CopyFrom(const Segment::Ref other) {
     }
 }
 bool Segment::CreateChunk(uint64_t loadAddress) {
-    // FIXME: Verify that this load-address is not overlapping with existing chunks
+    // If the current one is empty - just change the load address and continue...
+    // Don't do this - might be a bloody good reason someone is doing this...
+    //if ((currentChunk!=nullptr) && currentChunk->IsEmpty()) {
+    //    currentChunk->SetLoadAddress(loadAddress);
+    //    return true;
+   // }
 
+    // FIXME: Verify that this load-address is not overlapping with existing chunks
     auto chunk = std::make_shared<Segment::DataChunk>();
     chunk->loadAddress = loadAddress;
     chunks.push_back(chunk);
@@ -48,7 +58,7 @@ Segment::DataChunk::Ref Segment::CurrentChunk() {
 
 Segment::DataChunk::Ref Segment::ChunkFromAddress(uint64_t address) {
     for(auto &chunk : chunks) {
-        if ((chunk->LoadAddress() <= address) && (chunk->EndAddress() >= address)) {
+        if ((address >= chunk->LoadAddress()) && (chunk->EndAddress() > address)) {
             return chunk;
         }
     }
@@ -80,15 +90,25 @@ void Segment::WriteByte(uint8_t byte) {
 
 void Segment::ReplaceAt(uint64_t offset, uint64_t newValue) {
     // 1) find segment related to this offset
-    exit(1);
+    auto dstChunk = ChunkFromAddress(offset);
+    if (dstChunk == nullptr) {
+        int breakme = 1;
+    }
+    dstChunk->ReplaceAt(offset, newValue);
 }
 
 void Segment::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
-    exit(1);
+    int breakme = 1;
+
 }
 //
 // Segment::DataChunk impl
 //
+
+bool Segment::DataChunk::IsEmpty() const {
+    return data.empty();
+}
+
 const std::vector<uint8_t> &Segment::DataChunk::Data() const {
     return data;
 }
@@ -110,6 +130,9 @@ uint64_t Segment::DataChunk::EndAddress() const {
 
 
 void Segment::DataChunk::SetLoadAddress(uint64_t newLoadAddress) {
+    if (loadAddress == 100) {
+        int breakme = 1;
+    }
     loadAddress = newLoadAddress;
 }
 
