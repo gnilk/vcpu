@@ -330,6 +330,26 @@ namespace gnilk {
                 }
                 return v;
             }
+
+            void WriteToMemoryUnit(OperandSize szOperand, uint64_t address, RegisterValue value) {
+                address = memoryUnit.TranslateAddress(address);
+                switch(szOperand) {
+                    case OperandSize::Byte :
+                        WriteToPhysicalRam<uint8_t>(address, value.data.byte);
+                        break;
+                    case OperandSize::Word :
+                        WriteToPhysicalRam<uint16_t>(address, value.data.word);
+                    break;
+                    case OperandSize::DWord :
+                        WriteToPhysicalRam<uint32_t>(address, value.data.dword);
+                    break;
+                    case OperandSize::Long :
+                        WriteToPhysicalRam<uint64_t>(address, value.data.longword);
+                    break;
+
+                }
+
+            }
             void EnableInterrupt(CPUIntMask interrupt);
             void AddPeripheral(CPUIntMask intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
             void ResetPeripherals();
@@ -348,6 +368,24 @@ namespace gnilk {
                 T value = FetchFromPhysicalRam<T>(address);
                 registers.instrPointer.data.longword = address;
                 return value;
+            }
+
+            template<typename T>
+            void WriteToPhysicalRam(uint64_t &address, const T &value) {
+                if ((address + sizeof(T)) > szRam) {
+                    fmt::println(stderr, "WriteToRam - Invalid address {} exceeds physical memory", address);
+                    exit(1);
+                }
+                auto numToWrite = sizeof(T);
+                auto bitShift = (numToWrite-1)<<3;
+                while(numToWrite > 0) {
+
+                    ram[address] = (value >> bitShift) & 0xff;
+
+                    bitShift -= 8;
+                    address++;
+                    numToWrite -= 1;
+                }
             }
 
             // Read from physical memory..

@@ -596,25 +596,35 @@ static void SubtractValues(CPUStatusReg &statusReg, RegisterValue &dst, const Re
 
 void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
+    RegisterValue tmpReg;
 
+    switch(instrDecoder->opSize) {
+        case OperandSize::Byte :
+            AddValues<uint8_t>(registers.statusReg, tmpReg, v);
+        break;
+        case OperandSize::Word :
+            AddValues<uint16_t>(registers.statusReg, tmpReg, v);
+        break;
+        case OperandSize::DWord :
+            AddValues<uint32_t>(registers.statusReg, tmpReg, v);
+        break;
+        case OperandSize::Long :
+            AddValues<uint64_t>(registers.statusReg, tmpReg, v);
+        break;
+    }
+    WriteToDst(instrDecoder, tmpReg);
+/*
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
+        dstReg = tmpReg;
 
-        switch(instrDecoder->opSize) {
-            case OperandSize::Byte :
-                AddValues<uint8_t>(registers.statusReg, dstReg, v);
-                break;
-            case OperandSize::Word :
-                AddValues<uint16_t>(registers.statusReg, dstReg, v);
-                break;
-            case OperandSize::DWord :
-                AddValues<uint32_t>(registers.statusReg, dstReg, v);
-                break;
-            case OperandSize::Long :
-                AddValues<uint64_t>(registers.statusReg, dstReg, v);
-                break;
-        }
+    } else if (instrDecoder->dstAddrMode == AddressMode::Absolute) {
+        WriteToDst(instrDecoder, tmpReg);
+    } else {
+        fmt::println("Add instr. with address mode not supported!");
+        exit(1);
     }
+*/
 }
 
 void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
@@ -697,11 +707,15 @@ void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
 // Could be moved to base class
 //
 void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v) {
-    // Support more address mode
+    // FIXME: Support more address mode
     if (instrDecoder->dstAddrMode == AddressMode::Register) {
         auto &reg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
         reg.data = v.data;
-        // FIXME: Update CPU flags here
+    } else if (instrDecoder->dstAddrMode == AddressMode::Absolute) {
+        WriteToMemoryUnit(instrDecoder->opSize, instrDecoder->dstAbsoluteAddr, v);
+    } else {
+        fmt::println("Address mode not supported!!!!!");
+        exit(1);
     }
 }
 

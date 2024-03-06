@@ -60,9 +60,9 @@ namespace gnilk {
         private:
             uint8_t NextByte(CPUBase &cpu);
             // Helper for 'ToString'
-            std::string DisasmOperand(AddressMode addrMode, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const;
+            std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const;
             // Perhaps move to base class
-            RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, RelativeAddressing relAddr, int idxRegister);
+            RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddr, int idxRegister);
 
             void DecodeDstReg(CPUBase &cpu);
             void DecodeSrcReg(CPUBase &cpu);
@@ -83,14 +83,14 @@ namespace gnilk {
             uint8_t srcRegAndFlags; // Only if 'description.features & TwoOperands' == true
 
             AddressMode dstAddrMode;        // decoded from 'dstRegAndFlags'
+            uint64_t    dstAbsoluteAddr;     //
             RelativeAddressing dstRelAddrMode;  // decoded from 'dstRegAndFlags'
             uint8_t dstRegIndex; // decoded like: (dstRegAndFlags>>4) & 15;
 
             // Only if 'description.features & TwoOperands' == true
             AddressMode srcAddrMode;        // decoded from srcRegAndFlags
+            uint64_t    srcAbsoluteAddr;     //
             RelativeAddressing srcRelAddrMode;  // decoded from srcRegAndFlags
-
-
             uint8_t srcRegIndex; // decoded like: (srcRegAndFlags>>4) & 15;
 
             // There can only be ONE immediate value associated with an instruction
