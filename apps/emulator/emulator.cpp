@@ -243,7 +243,7 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
         auto ptrString = cpu->GetRawPtrToRAM(addrString);
         fmt::println("syscall - writeline - a0 = {}",(char *)ptrString);
     });
-
+/*
     // --> Break out to own function
     fmt::println("Disasm firmware from address: {:#x}", startAddress);
     // This is pretty lousy, as we have no clue where code/data ends...
@@ -262,7 +262,7 @@ bool ExecuteData(uint64_t startAddress, size_t szCode) {
         disasmPtr += instrDec->GetInstrSizeInBytes();
     }
     // <-- end of disassembly..
-
+*/
 
     fmt::println("Set Initial IP to: {:#x}", startAddress);
     cpuemu.SetInstrPtr(startAddress);
