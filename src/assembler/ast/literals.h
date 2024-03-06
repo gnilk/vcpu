@@ -66,6 +66,11 @@ namespace gnilk {
                 return inst;
             }
 
+            static Ref Create(int32_t intValue) {
+                auto inst = std::make_shared<NumericLiteral>(intValue);
+                return inst;
+            }
+
             static Ref CreateFromHex(const std::string &strValue) {
                 auto inst = std::make_shared<NumericLiteral>(strutil::hex2dec(strValue));
                 return inst;

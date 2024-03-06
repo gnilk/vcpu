@@ -19,6 +19,7 @@ using namespace gnilk;
 using namespace gnilk::assembler;
 
 ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
+    ast::Statement::Ref stmtPrevious = nullptr;
     auto program = Begin(srcCode);
     while(!Done()) {
         // EOL statements - we just continue
@@ -33,6 +34,7 @@ ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
             return nullptr;
         }
         program->Append(stmt);
+        stmtPrevious = stmt;
     }
     return program;
 }
@@ -51,6 +53,8 @@ ast::Statement::Ref Parser::ParseStatement() {
             return ParseIdentifierOrInstr();
         case TokenType::Declaration :
             return ParseDeclaration();
+        case TokenType::Reservation :
+            return ParseReservationStatement();
         case TokenType::LineComment :
             return ParseLineComment();
         case TokenType::Struct :
@@ -92,6 +96,7 @@ ast::Statement::Ref Parser::ParseStruct() {
         //     continue;
         // }
 
+
         auto stmt = ParseReservationStatement();
         if (stmt == nullptr) {
             return nullptr;
@@ -109,6 +114,7 @@ ast::Statement::Ref Parser::ParseReservationStatement() {
         fmt::println(stderr, "Parser, Expected Identifier in struct body!");
         return nullptr;
     }
+
     Expect(TokenType::Reservation, "'rs' must follow identifier!");
 
     auto [parseRes, opSize] = ParseOpSizeOrStruct();
@@ -452,8 +458,17 @@ ast::Expression::Ref Parser::ParsePrimaryExpression() {
             return ast::NumericLiteral::CreateFromHex(Eat().value);
         case TokenType::String :
             return ast::StringLiteral::Create(Eat().value);
-        case TokenType::Identifier :
-            return ast::Identifier::Create(Eat().value);
+        case TokenType::Identifier : {
+                auto ident = ast::Identifier::Create(Eat().value);
+                if (At().type == TokenType::Dot) {
+                    // we have a struct?
+                    Eat();
+                    auto member = ParsePrimaryExpression();
+                    return ast::MemberExpression::Create(ident, member);
+                }
+                return ident;
+            }
+            //return ast::Identifier::Create(Eat().value);
         case TokenType::OpenParen :
             // This is a deference-expression...
             {

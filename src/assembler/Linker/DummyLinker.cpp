@@ -8,8 +8,7 @@
 
 using namespace gnilk::assembler;
 const std::vector<uint8_t> &DummyLinker::Data() {
-    static std::vector<uint8_t> dummy;
-    return dummy;
+    return linkedData;
 }
 
 bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) {

@@ -34,6 +34,8 @@ extern "C" {
     DLL_EXPORT int test_compiler_var_bytedecl(ITesting *t);
     DLL_EXPORT int test_compiler_const_literal(ITesting *t);
     DLL_EXPORT int test_compiler_const_string(ITesting *t);
+    DLL_EXPORT int test_compiler_structref(ITesting *t);
+    DLL_EXPORT int test_compiler_orgdecl(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -138,6 +140,7 @@ DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t) {
 DLL_EXPORT int test_compiler_move_relative(ITesting *t) {
     // The following test-cases are taken from the test_vcpu.cpp
     std::vector<uint8_t> binaries[]= {
+        {0x20,0x03,0x98,0x00,0x03},        // move.l (a1+0),d0
         {0x20,0x01,0x94,0x43, 0x84,0x31},  // move.w (a1+d4<<3), (a0+d3<<1)
         {0x20,0x01,0x03,0x84,0x32},        // move.w d0, (a0+d3<<2)
         {0x20,0x01,0x03,0x88,0x47},        // move.w d0, (a0+0x47)
@@ -147,6 +150,7 @@ DLL_EXPORT int test_compiler_move_relative(ITesting *t) {
     };
 
     std::vector<std::string> code={
+        {"move.l (a1+0),d0"},
         {"move.w (a1+d4<<3), (a0+d3<<1)"},
         {"move.w d0, (a0 + d3<<2)"},
         {"move.w d0, (a0 + 0x47)"},
@@ -162,6 +166,10 @@ DLL_EXPORT int test_compiler_move_relative(ITesting *t) {
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.CompileAndLink(ast));
         auto binary = compiler.Data();
+        for(auto &v : binary) {
+            printf("0x%.2x ", v);
+        }
+        printf("\n");
         TR_ASSERT(t, binary == binaries[i]);
     }
 
@@ -613,4 +621,65 @@ DLL_EXPORT int test_compiler_const_string(ITesting *t) {
     //
     // return kTR_Pass;
 
+}
+DLL_EXPORT int test_compiler_structref(ITesting *t) {
+    const char srcCode[]= {
+        "struct table {\n"\
+        "   some_byte rs.b 1\n"\
+        "   some_word rs.w 1\n"\
+        "   some_dword rs.d 1\n"\
+        "   some_long rs.l 1\n"\
+        "}\n"\
+        "  move.l (a0+table.some_byte),d0\n"\
+        "  move.l (a0+table.some_word),d0\n"\
+        "  move.l (a0+table.some_dword),d0\n"\
+        "  move.l (a0+table.some_long),d0\n"\
+        ""
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res);
+    auto binary = compiler.Data();
+
+    std::vector<uint8_t> binaries[]= {
+        {
+            0x20,0x03,0x88,0x00,0x03,
+            0x20,0x03,0x88,0x01,0x03,
+            0x20,0x03,0x88,0x03,0x03,
+            0x20,0x03,0x88,0x07,0x03,   // <- very unaligned
+        },
+    };
+
+    TR_ASSERT(t, binary == binaries[0]);
+
+    return kTR_Pass;
+
+}
+
+DLL_EXPORT int test_compiler_orgdecl(ITesting *t) {
+    const char srcCode[]= {
+        "  .code \n"\
+        "   .org 0x0000 \n"\
+        "   dc.l 0\n"\
+        "   .org 0x1000\n"\
+        "   move.b d0, 1\n"\
+        "   .org 0x2000\n"\
+        "   move.b d0, 1\n"\
+        "   ret\n"\
+        ""
+    };
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res);
+
+    return kTR_Pass;
 }

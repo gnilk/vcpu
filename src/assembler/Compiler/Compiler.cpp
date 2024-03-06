@@ -91,6 +91,9 @@ bool Compiler::ProcessStructStatement(ast::StructStatement::Ref stmt) {
 
     auto &members = stmt->Declarations();
     size_t nBytes = 0;
+
+    std::vector<StructMember> structMembers;
+
     for(auto &m : members) {
         if (m->Kind() != ast::NodeType::kReservationStatment) {
             fmt::println(stderr, "Compiler, struct definition should only contain reservation statments");
@@ -105,12 +108,22 @@ bool Compiler::ProcessStructStatement(ast::StructStatement::Ref stmt) {
         auto numElem = std::dynamic_pointer_cast<ast::NumericLiteral>(elemLiteral);
         auto szPerElem = vcpu::ByteSizeOfOperandSize(reservation->OperandSize());
 
+        StructMember member;
+        member.ident = reservation->Identifier()->Symbol();
+        member.offset = nBytes;
+        member.byteSize = numElem->Value() * szPerElem;
+        // Backup...
+        member.declarationStatement = m;
+
+        structMembers.push_back(member);
+
         nBytes += numElem->Value() * szPerElem;
     }
 
     StructDefinition structDefinition  = {
         .ident = stmt->Name(),
         .byteSize = nBytes,
+        .members = std::move(structMembers),
     };
     structDefinitions.push_back(structDefinition);
 
@@ -320,6 +333,10 @@ ast::Literal::Ref Compiler::EvaluateConstantExpression(ast::Expression::Ref expr
             }
             return nullptr;
         }
+        case ast::NodeType::kMemberExpression :
+            fmt::println("Compiler, member expression");
+            return EvaluateMemberExpression(std::dynamic_pointer_cast<ast::MemberExpression>(expression));
+            break;
         case ast::NodeType::kStringLiteral :
             fmt::println(stderr, "Compiler, string literals as constants are not yet supported!");
             exit(1);
@@ -329,6 +346,43 @@ ast::Literal::Ref Compiler::EvaluateConstantExpression(ast::Expression::Ref expr
     }
     return {};
 }
+
+ast::Literal::Ref Compiler::EvaluateMemberExpression(ast::MemberExpression::Ref expression) {
+    auto &ident = expression->Ident();
+    // Try find the structure matching the name
+    auto structDef = std::find_if(structDefinitions.begin(), structDefinitions.end(), [&ident](const StructDefinition &a) {
+        return (a.ident == ident->Symbol());
+    });
+    if (structDef == structDefinitions.end()) {
+        fmt::println(stderr, "Compiler, Unable to find struct '{}'", ident->Symbol());
+        return nullptr;
+    }
+    // Make sure out member is an identifier (this should always be the case - but ergo - it isn't)
+    if (expression->Member()->Kind() != ast::NodeType::kIdentifier) {
+        fmt::println(stderr, "Compiler, expected identifier in member expression");
+        return nullptr;
+    }
+
+    // Now, find the struct member
+    auto identMember = std::dynamic_pointer_cast<ast::Identifier>(expression->Member());
+    auto memberName = identMember->Symbol();
+    auto structMember = std::find_if(structDef->members.begin(), structDef->members.end(), [&memberName](const StructMember &item) {
+       return (item.ident == memberName);
+    });
+    if (structMember == structDef->members.end()) {
+        fmt::println(stderr, "Compiler, no member in struct {} named {}", structDef->ident, memberName);
+        return nullptr;
+    }
+
+    // Here we simply create a numeric literal of the offset to the struct member
+    // Now, this is not quite the best way to do this - since we would like to verify/check
+    // - size of operand matches the size of the element
+    // - alignment
+
+    // FIXME: this is a bit 'stupid' as I would like to keep the member reference as intact as possible
+    return ast::NumericLiteral::Create(structMember->offset);
+}
+
 
 ast::Literal::Ref Compiler::EvaluateBinaryExpression(ast::BinaryExpression::Ref expression) {
     auto lhs = EvaluateConstantExpression(expression->Left());

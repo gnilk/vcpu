@@ -228,6 +228,12 @@ bool Lexer::ParseStateRegular(std::vector<Token> &tokens, Context &context, cons
             ParseString(tokens, context, line);
         } else {
             ParseOperator(tokens, context, tokenStr, line);
+            if (tokens.empty() && (it == line.end())) {
+                return false;
+            } else if (tokens.empty()) {
+                it++;
+                return true;
+            }
             if (tokens.back().type == TokenType::BlockCommentStart) {
                 context.PushState(ParseState::BlockComment);
             } else if (tokens.back().type == TokenType::LineComment) {

@@ -53,6 +53,7 @@ namespace gnilk {
             // FIXME: Replace literal with CompilerValue (or similar) - like 'RuntimeValue' from Interpreter
             ast::Literal::Ref EvaluateConstantExpression(ast::Expression::Ref expression);
             ast::Literal::Ref EvaluateBinaryExpression(ast::BinaryExpression::Ref expression);
+            ast::Literal::Ref EvaluateMemberExpression(ast::MemberExpression::Ref expression);
 
             bool EmitOpCodeForSymbol(const std::string &symbol);
             bool EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
@@ -81,9 +82,16 @@ namespace gnilk {
             // FIXME: replace this...
             //std::vector<uint8_t> outStream;
 
+            struct StructMember {
+                std::string ident;
+                size_t offset;
+                size_t byteSize;
+                ast::Statement::Ref declarationStatement;
+            };
             struct StructDefinition {
                 std::string ident;
                 size_t byteSize;
+                std::vector<StructMember> members;
             };
 
             std::vector<StructDefinition> structDefinitions;

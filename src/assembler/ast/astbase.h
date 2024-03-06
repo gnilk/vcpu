@@ -217,6 +217,36 @@ namespace gnilk {
             std::string symbol;
         };
 
+        class MemberExpression : public Expression {
+        public:
+            using Ref =std::shared_ptr<MemberExpression>;
+        public:
+            MemberExpression() : Expression(NodeType::kMemberExpression) {
+
+            }
+            virtual ~MemberExpression() = default;
+
+            static Ref Create(const Identifier::Ref &newIdent, const Expression::Ref &subexpr) {
+                auto inst = std::make_shared<MemberExpression>();
+                inst->ident = newIdent;
+                inst->member = subexpr;
+
+                return inst;
+            }
+
+            const Identifier::Ref &Ident() {
+                return ident;
+            }
+
+            const Expression::Ref &Member() {
+                return member;
+            }
+
+        protected:
+            Identifier::Ref ident = nullptr;
+            Expression::Ref member = nullptr;
+        };
+
 
 
 
