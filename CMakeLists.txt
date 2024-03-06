@@ -66,6 +66,7 @@ list(APPEND asmsrc src/assembler/Linker/ElfLinker.cpp src/assembler/Linker/ElfLi
 list(APPEND asmsrc src/assembler/Linker/Segment.cpp src/assembler/Linker/Segment.h)
 
 list(APPEND commonsrc src/common/ConvertUTF.cpp src/common/ConvertUTF.h)
+list(APPEND commonsrc src/common/HexDump.cpp src/common/HexDump.h)
 list(APPEND commonsrc src/common/StrUtil.cpp src/common/StrUtil.h)
 list(APPEND commonsrc src/common/UnicodeHelper.cpp src/common/UnicodeHelper.h)
 
