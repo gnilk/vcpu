@@ -63,7 +63,7 @@ list(APPEND asmsrc src/assembler/Linker/BaseLinker.cpp src/assembler/Linker/Base
 list(APPEND asmsrc src/assembler/Linker/CompiledUnit.cpp src/assembler/Linker/CompiledUnit.h)
 list(APPEND asmsrc src/assembler/Linker/DummyLinker.cpp src/assembler/Linker/DummyLinker.h)
 list(APPEND asmsrc src/assembler/Linker/ElfLinker.cpp src/assembler/Linker/ElfLinker.h)
-list(APPEND asmsrc src/assembler/Linker/Segment.h)
+list(APPEND asmsrc src/assembler/Linker/Segment.cpp src/assembler/Linker/Segment.h)
 
 list(APPEND commonsrc src/common/ConvertUTF.cpp src/common/ConvertUTF.h)
 list(APPEND commonsrc src/common/StrUtil.cpp src/common/StrUtil.h)
@@ -74,6 +74,7 @@ list(APPEND commonsrc src/common/UnicodeHelper.cpp src/common/UnicodeHelper.h)
 #
 list(APPEND asmtestsrc src/assembler/tests/test_lexer.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_parser.cpp)
+list(APPEND asmtestsrc src/assembler/tests/test_segment.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 
 

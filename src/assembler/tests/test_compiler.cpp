@@ -13,6 +13,7 @@ using namespace gnilk::assembler;
 
 extern "C" {
     DLL_EXPORT int test_compiler(ITesting *t);
+    DLL_EXPORT int test_compiler_linksimple(ITesting *t);
     DLL_EXPORT int test_compiler_file(ITesting *t);
     DLL_EXPORT int test_compiler_move_immediate(ITesting *t);
     DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t);
@@ -70,6 +71,22 @@ DLL_EXPORT int test_compiler_file(ITesting *t) {
 
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_compiler_linksimple(ITesting* t) {
+    Parser parser;
+    Compiler compiler;
+
+    // move.b d0, 0x45
+    static std::vector<uint8_t> expectedCase1 = {0x20,0x00,0x03,0x01, 0x45};
+    auto prg = parser.ProduceAST("move.b d0,0x45");
+    auto res = compiler.CompileAndLink(prg);
+    TR_ASSERT(t, res);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedCase1);
+
+    return kTR_Pass;
+}
+
 
 DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
     Parser parser;

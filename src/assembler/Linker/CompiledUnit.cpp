@@ -49,12 +49,14 @@ Segment::Ref CompiledUnit::GetActiveSegment() {
     return activeSegment;
 }
 
-size_t CompiledUnit::GetSegmentSize(const std::string &name) {
+
+size_t CompiledUnit::GetSegmentEndAddress(const std::string &name) {
     if (!segments.contains(name)) {
         return 0;
     }
-    return segments.at(name)->Size();
+    return segments.at(name)->EndAddress();
 }
+
 
 
 void CompiledUnit::SetBaseAddress(uint64_t address) {
@@ -92,7 +94,7 @@ uint64_t CompiledUnit::GetCurrentWritePtr() {
     if (!activeSegment) {
         return false;
     }
-    return activeSegment->GetCurrentWritePtr() + baseAddress;
+    return activeSegment->CurrentChunk()->GetCurrentWritePtr() + baseAddress;
 }
 
 const std::vector<uint8_t> &CompiledUnit::Data() {
@@ -100,7 +102,7 @@ const std::vector<uint8_t> &CompiledUnit::Data() {
         static std::vector<uint8_t> empty = {};
         return empty;
     }
-    return activeSegment->Data();
+    return activeSegment->CurrentChunk()->Data();
 }
 
 size_t CompiledUnit::GetSegments(std::vector<Segment::Ref> &outSegments) {
@@ -117,12 +119,14 @@ bool CompiledUnit::MergeSegments(const std::string &dst, const std::string &src)
     }
     auto srcSeg = segments.at(src);
     if (!segments.contains(dst)) {
-        if (!GetOrAddSegment(dst, srcSeg->LoadAddress())) {
+        if (!GetOrAddSegment(dst, srcSeg->StartAddress())) {
             return false;
         }
     }
     auto dstSeg = segments.at(dst);
+    // FIXME: This is definitley not true!!!
     // first merge is just a plain copy...
-    dstSeg->data.insert(dstSeg->data.end(), srcSeg->data.begin(), srcSeg->data.end());
+    dstSeg->CopyFrom(srcSeg);
+//    dstSeg->data.insert(dstSeg->data.end(), srcSeg->data.begin(), srcSeg->data.end());
     return true;
 }

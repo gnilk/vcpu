@@ -31,7 +31,7 @@ namespace gnilk {
 
             const Segment::Ref GetSegment(const std::string segName);
 
-            size_t GetSegmentSize(const std::string &name);
+            size_t GetSegmentEndAddress(const std::string &name);
             bool WriteByte(uint8_t byte);
             void ReplaceAt(uint64_t offset, uint64_t newValue);
             void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);

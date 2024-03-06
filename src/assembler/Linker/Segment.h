@@ -17,92 +17,65 @@ namespace gnilk {
     namespace assembler {
         class CompiledUnit;
 
+        // The ELF Writer would call this a 'Section'
         class Segment {
             friend CompiledUnit;
         public:
+            // This is what the ELF Writer call's a 'segment'
+            class DataChunk {
+                friend Segment;
+            public:
+                using Ref = std::shared_ptr<DataChunk>;
+
+                DataChunk() = default;
+                virtual ~DataChunk() = default;
+
+                const std::vector<uint8_t> &Data() const;
+                const void *DataPtr() const;
+                size_t Size() const;
+                uint64_t LoadAddress() const;
+                uint64_t EndAddress() const;
+                void SetLoadAddress(uint64_t newLoadAddress);
+
+                void WriteByte(uint8_t byte);
+                void ReplaceAt(uint64_t offset, uint64_t newValue);
+                void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
+
+                uint64_t GetCurrentWritePtr();
+            protected:
+                uint64_t loadAddress = 0;
+                std::vector<uint8_t> data;
+            };
+
             using Ref = std::shared_ptr<Segment>;
         public:
-            Segment(const std::string &segName, uint64_t address) : name(segName), loadAddress(address) {}
+            Segment(const std::string &segName, uint64_t address);
             virtual ~Segment() = default;
 
-            const std::vector<uint8_t> &Data() const {
-                return data;
-            }
+            void CopyFrom(const Segment::Ref other);
+            bool CreateChunk(uint64_t loadAddress);
 
-            const void *DataPtr() const {
-                return data.data();
-            }
-
-            size_t Size() const {
-                return data.size();
-            }
-
-            uint64_t LoadAddress() const {
-                return loadAddress;
-            }
-
-            void SetLoadAddress(uint64_t newLoadAddress) {
-                loadAddress = newLoadAddress;
-            }
-
-            const std::string &Name() const {
-                return name;
-            }
-
-            void WriteByte(uint8_t byte) {
-                data.push_back(byte);
-            }
-            void ReplaceAt(uint64_t offset, uint64_t newValue) {
-                if (data.size() < 8) {
-                    return;
-                }
-                if (offset > (data.size() - 8)) {
-                    return;
-                }
-
-                data[offset++] = (newValue>>56 & 0xff);
-                data[offset++] = (newValue>>48 & 0xff);
-                data[offset++] = (newValue>>40 & 0xff);
-                data[offset++] = (newValue>>32 & 0xff);
-                data[offset++] = (newValue>>24 & 0xff);
-                data[offset++] = (newValue>>16 & 0xff);
-                data[offset++] = (newValue>>8 & 0xff);
-                data[offset++] = (newValue & 0xff);
-            }
-            void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
-                if (data.size() < vcpu::ByteSizeOfOperandSize(opSize)) {
-                    return;
-                }
-                if (offset > (data.size() - vcpu::ByteSizeOfOperandSize(opSize))) {
-                    return;
-                }
-                switch(opSize) {
-                    case vcpu::OperandSize::Byte :
-                        data[offset++] = (newValue & 0xff);
-                        break;
-                    case vcpu::OperandSize::Word :
-                        data[offset++] = (newValue>>8 & 0xff);
-                        data[offset++] = (newValue & 0xff);
-                        break;
-                    case vcpu::OperandSize::DWord :
-                        data[offset++] = (newValue>>24 & 0xff);
-                        data[offset++] = (newValue>>16 & 0xff);
-                        data[offset++] = (newValue>>8 & 0xff);
-                        data[offset++] = (newValue & 0xff);
-                        break;
-                    default:
-                        return;
-                }
-            }
+            const std::string &Name() const;
+            const std::vector<DataChunk::Ref> &DataChunks();
+            DataChunk::Ref ChunkFromAddress(uint64_t address);
+            DataChunk::Ref CurrentChunk();
+            void SetLoadAddress(uint64_t newLoadAddress);
+            uint64_t StartAddress();
+            uint64_t EndAddress();
 
 
-            uint64_t GetCurrentWritePtr() {
-                return data.size();
-            }
+            void WriteByte(uint8_t byte);
+            void ReplaceAt(uint64_t offset, uint64_t newValue);
+            void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
+
+
         protected:
             std::string name = {};
             uint64_t loadAddress = 0;
             std::vector<uint8_t> data;
+
+            DataChunk::Ref currentChunk = nullptr;
+            std::vector<DataChunk::Ref> chunks;
         };
 
     }

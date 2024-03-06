@@ -144,11 +144,13 @@ bool Compiler::ProcessMetaStatement(ast::MetaStatement::Ref stmt) {
         auto numArg = std::dynamic_pointer_cast<ast::NumericLiteral>(arg);
 
         auto seg = unit.GetActiveSegment();
-        if (seg->LoadAddress() == 0) {
+        if (seg->StartAddress() == 0) {
             seg->SetLoadAddress(numArg->Value());
         } else {
+            fmt::println("Compiler, In segment {} - creating new chunk at addr {}", seg->Name(), numArg->Value());
+            seg->CreateChunk(numArg->Value());
             // A segment can only have one base-address, in case we issue '.org' twice within the same segment - we duplicate the segment...
-            fmt::println(stderr, "Compiler, segment already have base address - can have .org statement twice within same segment");
+            //fmt::println(stderr, "Compiler, segment already have base address - can have .org statement twice within same segment");
         }
 
         return true;

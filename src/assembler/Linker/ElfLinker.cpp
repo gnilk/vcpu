@@ -32,7 +32,7 @@ bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Identif
     if (dataSeg == nullptr) {
         fmt::println(stderr, "Linker, no data segment?");
     } else {
-        auto ofsDataSeg = textSeg->LoadAddress() + textSeg->Size();
+        auto ofsDataSeg = textSeg->EndAddress();
         // put the data segment at the next MMU page after the text segment
         ofsDataSeg = (ofsDataSeg & (~(vcpu::VCPU_MMU_PAGE_SIZE - 1)));
         ofsDataSeg +=  + vcpu::VCPU_MMU_PAGE_SIZE;
@@ -41,7 +41,7 @@ bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Identif
 
     fmt::println("Segments:");
     for(auto &s : segments) {
-        fmt::println("  Name={}  LoadAddress={:#x}  Size={:#x}",s->Name(), s->LoadAddress(), s->Size());
+        fmt::println("  Name={}  LoadAddress={:#x}  EndAddress={:#x}",s->Name(), s->StartAddress(), s->EndAddress());
     }
 
     fmt::println("Linking");
@@ -78,9 +78,12 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
     }
     fmt::println("  from:{}, to:{}", placeHolder.ofsRelative, identifierAddr.address);
 
+    auto placeHolderChunk = placeHolder.segment->ChunkFromAddress(placeHolder.address);
+    auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
+
     fmt::println("  REL: {}@{:#x} = {}@{:#x}",
-        placeHolder.ident, placeHolder.segment->LoadAddress() + placeHolder.address,
-        identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
+        placeHolder.ident, placeHolderChunk->LoadAddress() + placeHolder.address,
+        identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
     int offset = 0;
     if (identifierAddr.address > placeHolder.ofsRelative) {
@@ -96,9 +99,13 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
 }
 
 bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder &placeHolder) {
+    auto placeHolderChunk = placeHolder.segment->ChunkFromAddress(placeHolder.address);
+    auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
+
+
     fmt::println("  {}@{:#x} = {}@{:#x}",
-        placeHolder.ident, placeHolder.segment->LoadAddress() + placeHolder.address,
-        identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
+        placeHolder.ident, placeHolderChunk->LoadAddress() + placeHolder.address,
+        identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
     // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
     if (identifierAddr.segment == nullptr) {
@@ -110,7 +117,7 @@ bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifi
         return false;
     }
 
-    placeHolder.segment->ReplaceAt(placeHolder.address, identifierAddr.segment->LoadAddress() + identifierAddr.address);
+    placeHolder.segment->ReplaceAt(placeHolder.address, identChunk->LoadAddress() + identifierAddr.address);
 
     return true;
 }
@@ -132,12 +139,14 @@ bool ElfLinker::WriteElf(CompiledUnit &unit) {
     elfTextSec->set_type( SHT_PROGBITS );
     elfTextSec->set_flags( SHF_ALLOC | SHF_EXECINSTR );
     elfTextSec->set_addr_align( 0x10 );
-    elfTextSec->set_data((const char *)textSeg->DataPtr(), textSeg->Size());
+    // FIXME...
+    //elfTextSec->set_data((const char *)textSeg->DataPtr(), textSeg->Size());
 
     segment *elfTextSeg = elfWriter.segments.add();
     elfTextSeg->set_type(PT_LOAD);
-    elfTextSeg->set_virtual_address(textSeg->LoadAddress());
-    elfTextSeg->set_physical_address(textSeg->LoadAddress());
+    // FIXME:
+    elfTextSeg->set_virtual_address(textSeg->StartAddress());
+    elfTextSeg->set_physical_address(textSeg->StartAddress());
     elfTextSeg->set_flags(PF_X | PF_R);
     elfTextSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
     elfTextSeg->add_section(elfTextSec, elfTextSec->get_addr_align());
@@ -152,12 +161,12 @@ bool ElfLinker::WriteElf(CompiledUnit &unit) {
     elfDataSec->set_type(SHT_PROGBITS);
     elfDataSec->set_flags(SHF_ALLOC | SHF_WRITE);
     elfDataSec->set_addr_align(0x04);   // verify!
-    elfDataSec->set_data((const char *)dataSeg->DataPtr(), dataSeg->Size());
+    elfDataSec->set_data((const char *)dataSeg->CurrentChunk()->DataPtr(), dataSeg->CurrentChunk()->Size());
 
     segment *elfDataSeg = elfWriter.segments.add();
     elfDataSeg->set_type(PT_LOAD);
-    elfDataSeg->set_virtual_address(dataSeg->LoadAddress());
-    elfDataSeg->set_physical_address(dataSeg->LoadAddress());
+    elfDataSeg->set_virtual_address(dataSeg->StartAddress());
+    elfDataSeg->set_physical_address(dataSeg->StartAddress());
     elfDataSeg->set_flags(PF_W | PF_R);
     elfDataSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
     elfDataSeg->add_section(elfDataSec, elfDataSec->get_addr_align());
