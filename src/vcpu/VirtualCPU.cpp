@@ -270,8 +270,18 @@ void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
         // raise exception
         return;
     }
+    RegisterValue dstReg;
+    if (instrDecoder->dstAddrMode == AddressMode::Register) {
+        auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
+    } else if (instrDecoder->dstAddrMode == AddressMode::Absolute) {
+        dstReg = ReadFromMemoryUnit(instrDecoder->opSize, instrDecoder->dstAbsoluteAddr);
+    } else {
+        // raise exception??
+        fmt::println("ExecuteCmpInstr, invalid address mode; {}", (int)instrDecoder->dstAddrMode);
+        return;
+    }
 
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
+
     switch(instrDecoder->opSize) {
         case OperandSize::Byte :
             UpdateCPUFlagsCMP<uint8_t>(registers.statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
@@ -597,6 +607,10 @@ static void SubtractValues(CPUStatusReg &statusReg, RegisterValue &dst, const Re
 void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
     RegisterValue tmpReg;
+    if (instrDecoder->dstAddrMode == AddressMode::Absolute) {
+        // If we have absolute destination - we need to issue a read first..
+        tmpReg = ReadFromMemoryUnit(instrDecoder->opSize, instrDecoder->dstAbsoluteAddr);
+    }
 
     switch(instrDecoder->opSize) {
         case OperandSize::Byte :

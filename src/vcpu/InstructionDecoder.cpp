@@ -84,6 +84,8 @@ void InstructionDecoder::DecodeDstReg(CPUBase &cpu) {
         dstAbsoluteAddr = cpu.FetchFromPhysicalRam<uint64_t>(memoryOffset);
     } else if (dstAddrMode == AddressMode::Register) {
         // nothing to do here
+    } else if (dstAddrMode == AddressMode::Immediate) {
+        // do something?
     } else {
         fmt::println("Destination address mode {} not supported!", (int)dstAddrMode);
         exit(1);
