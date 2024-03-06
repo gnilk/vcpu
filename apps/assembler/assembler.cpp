@@ -16,7 +16,21 @@
 static gnilk::assembler::DummyLinker dummyLinker;
 static gnilk::assembler::ElfLinker elfLinker;
 
+static gnilk::assembler::BaseLinker *ptrUseLinker = &elfLinker;
+
 bool ProcessFile(const std::string &outFilename, std::filesystem::path &pathToSrcFile);
+
+static void Usage() {
+    fmt::println("Ruddy Assembler for VCPU project");
+    fmt::println("Use:");
+    fmt::println("  asm [options] <input file>");
+    fmt::println("Options");
+    fmt::println("  -o <output>    Output filename (default: a.gnk)");
+    fmt::println("  -t <raw | elf> Binary type (default: elf)");
+    fmt::println("Ex:");
+    fmt::println("  asm -o mybinary.bin -t raw mysource.asm");
+    exit(1);
+}
 
 int main(int argc, const char **argv) {
     std::string outFilename = "a.gnk";
@@ -27,6 +41,26 @@ int main(int argc, const char **argv) {
                 case 'o' :
                     outFilename = argv[++i];
                     break;
+                case 't' : {
+                    auto linkerName = argv[++i];
+                    if (linkerName == std::string("raw")) {
+                        ptrUseLinker = &dummyLinker;
+                    } else if (linkerName == std::string("elf")) {
+                        ptrUseLinker = &elfLinker;
+                    } else {
+                        fmt::println(stderr, "Unknown linker: {}", linkerName);
+                        Usage();
+                    }
+                    break;
+                }
+                case '?' :
+                case 'H' :
+                case 'h' :
+                    Usage();
+                    break;
+                default:
+                    fmt::println(stderr, "Unknown option '{}'", argv[i]);
+                    Usage();
             }
             // parse
         } else {
@@ -35,6 +69,7 @@ int main(int argc, const char **argv) {
     }
     if (filesToAssemble.empty()) {
         fmt::println("Nothing to do, bailing...");
+        Usage();
         return 0;
     }
     for(auto &fToAsm : filesToAssemble) {
@@ -94,7 +129,7 @@ bool CompileData(const std::string &outFilename, const std::string_view &srcData
     gnilk::assembler::Compiler compiler;
 
     // Use the elf-linker by default...
-    compiler.SetLinker(&elfLinker);
+    compiler.SetLinker(ptrUseLinker);
 
     auto ast = parser.ProduceAST(srcData);
     if (ast == nullptr) {

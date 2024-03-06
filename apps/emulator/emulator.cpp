@@ -31,6 +31,17 @@ bool ProcessFile(std::filesystem::path &pathToBinary);
 bool ProcessElf(std::filesystem::path &pathToBinary);
 bool ProcessRaw(std::filesystem::path &pathToBinary);
 
+static void Usage() {
+    fmt::println("Lousy emulator for VCPU project");
+    fmt::println("Use:");
+    fmt::println("  emu [options] <binary>");
+    fmt::println("Options:");
+    fmt::println("  -d <num>     Load and Start to this address (default=0)");
+    fmt::println("  -s <num>     Start at this address (default=0)");
+    fmt::println("Example (load binary to address 0 but start from address 0x2000):");
+    fmt::println("  emu -s 0x2000 mybinary.bin");
+}
+
 int main(int argc, char **argv)  {
     std::vector<std::string> filesToRun;
     for(int i=1;i<argc;i++) {
@@ -45,6 +56,25 @@ int main(int argc, char **argv)  {
                         rawLoadToAddress = *tmp;
                         rawStartAddress = *tmp;
                     }
+                    break;
+                case 's' : {
+                        auto tmp = ParseNumber(argv[++i]);
+                        if (!tmp.has_value()) {
+                            fmt::println(stderr, "Invalid number {} as argument, use: -d <number>", argv[i]);
+                            return 1;
+                        }
+                        rawStartAddress = *tmp;
+                    }
+                    break;
+                case 'h' :
+                case '?' :
+                    Usage();
+                    exit(1);
+                    break;
+                default:
+                    fmt::println(stderr,"Unknown option {}", argv[i]);
+                    Usage();
+                    exit(1);
                     break;
             }
         } else {
