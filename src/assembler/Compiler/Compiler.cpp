@@ -531,7 +531,7 @@ bool Compiler::EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize
         case ast::NodeType::kIdentifier :
             // After statement parsing is complete we will change all place-holders
             if ((desc.features & vcpu::OperandDescriptionFlags::Addressing) && (opSize == vcpu::OperandSize::Long)) {
-                return EmitLabelAddress(std::dynamic_pointer_cast<ast::Identifier>(operandExp));
+                return EmitLabelAddress(std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             } else {
                 return EmitRelativeLabelAddress(std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             }
@@ -718,12 +718,15 @@ bool Compiler::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral:
     return false;
 }
 
-bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
+bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
     // This is an absolute jump
     regMode |= vcpu::AddressMode::Immediate;
 
+    if (IsOpSizeDeferred()) {
+        EmitOpSize(opSize);
+    }
     // Register|Mode = byte = RRRR | MMMM
     EmitByte(regMode);
 

@@ -72,7 +72,7 @@ namespace gnilk {
             bool EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitStringLiteral(vcpu::OperandSize opSize, ast::StringLiteral::Ref strLiteral);
             bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
-            bool EmitLabelAddress(ast::Identifier::Ref identifier);
+            bool EmitLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
             bool EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
             bool EmitDereference(ast::DeReferenceExpression::Ref expression);
 
