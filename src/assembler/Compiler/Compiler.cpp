@@ -310,7 +310,7 @@ bool Compiler::ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt) {
 }
 
 bool Compiler::ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref twoOpInstr) {
-    if (twoOpInstr->Symbol() == "add") {
+    if (twoOpInstr->Symbol() == "lea") {
         int breakme = 1;
     }
 
@@ -722,7 +722,7 @@ bool Compiler::EmitLabelAddress(ast::Identifier::Ref identifier) {
     uint8_t regMode = 0; // no register
 
     // This is an absolute jump
-    regMode |= vcpu::AddressMode::Absolute;
+    regMode |= vcpu::AddressMode::Immediate;
 
     // Register|Mode = byte = RRRR | MMMM
     EmitByte(regMode);
