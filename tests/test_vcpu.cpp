@@ -174,8 +174,8 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
     uint8_t program[]= {
         // not quite sure how I should store this addressing...
 
-        // op code = 0x02,
-        // op size = 0x01,
+        // op code = 0x20,  -> move
+        // op size = 0x01,  -> word
         // dstRegMode = 0x03,
         // dstRelMode = -
         // srcRegMode = 0x84,   => RRRR | MMMM => Reg = 8, Mode = 8 => b0100 => 01|00 => RelAddrMode = 01 = RegRelative, 00 = Indirect
@@ -198,7 +198,8 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.word = 0x4711;
 
-    while(vcpu.Step()) {
+    while(!vcpu.IsHalted()) {
+        vcpu.Step();
         fmt::println("{}", vcpu.GetLastDecodedInstr()->ToString());
     }
 
@@ -444,12 +445,14 @@ DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
 }
 
 DLL_EXPORT int test_vcpu_instr_lea(ITesting *t) {
-    // Note: We are using 'absolute' to denote an address - not sure if this is a good thing...
+    // Lea uses 'immediate' mode addressing - since the address is fixed - absolute would cause a ready of the absolute address specified
     uint8_t program[]={
-        0x28, 0x03, 0x83, 0x02, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11        // lea a0, 0x8877665544332211
+        0x28, 0x03, 0x83, 0x01, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11        // lea a0, 0x8877665544332211
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
+
+    // Problem here; LEA will encode address mode 'absolute', which is wrong - it should be 'immediate'.
 
     vcpu.QuickStart(program, 1024);
     auto res = vcpu.Step();
@@ -462,12 +465,10 @@ DLL_EXPORT int test_vcpu_instr_lea(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_move_indirect(ITesting *t) {
     uint8_t program[] = {
-        0x28,0x03,0x83,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
-        0x20,0x00,0x03,0x80,                                                // this is wrong!
-        0x00,                       // 5 WHALT!
-        0xf1,                       // 6 <- call should go here (offset of label)
-        0xf1,                       // 7
-        0xf0,                       // 8 <- return, should be ip+1 => 5
+        0x28,0x03,0x83,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11,        // lea a0, 0x11
+        0x20,0x00,0x03,0x80,                                                // move.b d0, (a0)
+        0x00,                       // 0x10 BRK
+        0xf1,                       // 0x17 <- we will read this value in the second instr..
     };
 
     VirtualCPU vcpu;
@@ -761,7 +762,7 @@ DLL_EXPORT int test_vcpu_halt(ITesting *t) {
     vcpu.QuickStart(program, 1024);
     TR_ASSERT(t, status.flags.halt == 0);
     TR_ASSERT(t, vcpu.Step());
-    TR_ASSERT(t, !vcpu.Step()); // we return 'false' during step
+    TR_ASSERT(t, vcpu.Step());
     auto instrPtr = vcpu.GetInstrPtr();
     TR_ASSERT(t, status.flags.halt == 1);
     TR_ASSERT(t, vcpu.Step());
@@ -791,10 +792,12 @@ DLL_EXPORT int test_vcpu_disasm(ITesting *t) {
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
     auto &regs = vcpu.GetRegisters();
-    while(vcpu.Step()) {
+    while(!vcpu.IsHalted()) {
+        vcpu.Step();
         auto lastInstr = vcpu.GetLastDecodedInstr();
         auto str = lastInstr->ToString();
         fmt::println("{}", str);
+        if (vcpu.IsHalted()) break;
     }
 
     return kTR_Pass;
