@@ -11,7 +11,7 @@ const std::vector<uint8_t> &DummyLinker::Data() {
     return linkedData;
 }
 
-bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) {
+bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
     fmt::println("Segments:");
@@ -50,74 +50,75 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
     }
 
     //
+    // FIXME: REWRITE THIS!
     // Perform relocation...
     //
     fmt::println("Linking");
     for(auto &placeHolder : addressPlaceholders) {
-        if (!identifierAddresses.contains(placeHolder.ident)) {
-            fmt::println(stderr, "Unknown identifier: {}", placeHolder.ident);
+        if (!identifierAddresses.contains(placeHolder->ident)) {
+            fmt::println(stderr, "Unknown identifier: {}", placeHolder->ident);
             return false;
         }
         // This address is in a specific segment, we need to store that as well for the placeholder
-        auto identifierAddr = identifierAddresses[placeHolder.ident];
+        auto identifierAddr = identifierAddresses[placeHolder->ident];
 
-        if (placeHolder.isRelative) {
-            if (placeHolder.segment != identifierAddr.segment) {
-                fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder.ident);
+        if (placeHolder->isRelative) {
+            if (placeHolder->segment != identifierAddr.segment) {
+                fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder->ident);
                 return false;
             }
-            fmt::println("  from:{}, to:{}", placeHolder.ofsRelative, identifierAddr.address);
+            fmt::println("  from:{}, to:{}", placeHolder->ofsRelative, identifierAddr.address);
 
 //            fmt::println("  REL: {}@{:#x} = {}@{:#x}",
 //                placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
 //                identifierAddr.segment->Name(),identifierAddr.segment->LoadAddress() + identifierAddr.address);
 
-            auto placeHolderChunk = placeHolder.chunk; //placeHolder.segment->ChunkFromAddress(placeHolder.address);
+            auto placeHolderChunk = placeHolder->chunk; //placeHolder.segment->ChunkFromAddress(placeHolder.address);
             auto identChunk = identifierAddr.chunk; //identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
 
             fmt::println("  REL: {}@{:#x} = {}@{:#x}",
-                placeHolder.ident, placeHolder.address + placeHolderChunk->LoadAddress(),
+                placeHolder->ident, placeHolder->address + placeHolderChunk->LoadAddress(),
                 identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
 
             int offset = 0;
-            if (identifierAddr.address > placeHolder.ofsRelative) {
+            if (identifierAddr.address > placeHolder->ofsRelative) {
                 // FIXME: This is a bit odd - but if we jump forward I need to add 1 to the offset..
-                offset = identifierAddr.address - placeHolder.ofsRelative + 1;
+                offset = identifierAddr.address - placeHolder->ofsRelative + 1;
             } else {
-                offset = identifierAddr.address - placeHolder.ofsRelative;
+                offset = identifierAddr.address - placeHolder->ofsRelative;
             }
             //unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), offset, placeHolder.opSize);
             //unit.ReplaceAt(placeHolder.address - placeHolderChunk->LoadAddress(), offset, placeHolder.opSize);
-            placeHolderChunk->ReplaceAt(placeHolder.address, offset, placeHolder.opSize);
+            placeHolderChunk->ReplaceAt(placeHolder->address, offset, placeHolder->opSize);
         } else {
 
             // FIXME: Verify segment pointers before doing this!
 
-            auto placeHolderChunk = placeHolder.chunk; //placeHolder.segment->ChunkFromAddress(placeHolder.address);
+            auto placeHolderChunk = placeHolder->chunk; //placeHolder.segment->ChunkFromAddress(placeHolder.address);
             // I have already relocated this - segment, which is bad...
             auto identChunk = identifierAddr.chunk; //identifierAddr.segment->ChunkFromAddress(identifierAddr.address + identifierAddr.segment->StartAddress());
 
             if ((placeHolderChunk==nullptr) || (identChunk == nullptr)) {
                 if (placeHolderChunk == nullptr) {
-                    fmt::println(stderr, "Linker, Can't find Segment::Chunk for '{}'", placeHolder.ident);
+                    fmt::println(stderr, "Linker, Can't find Segment::Chunk for '{}'", placeHolder->ident);
                     return false;
                 }
 
-                fmt::println(stderr, "Linker, Identifier '{}' @ {} has no valid Segment::Chunk", placeHolder.ident, identifierAddr.address);
+                fmt::println(stderr, "Linker, Identifier '{}' @ {} has no valid Segment::Chunk", placeHolder->ident, identifierAddr.address);
                 return false;
             }
 
             fmt::println("  {}@{:#x} = {}@{:#x}",
-                placeHolder.ident, placeHolder.address + placeHolderChunk->LoadAddress(),
+                placeHolder->ident, placeHolder->address + placeHolderChunk->LoadAddress(),
                 identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
 
-            placeHolderChunk->ReplaceAt(placeHolder.address, identifierAddr.address + identifierAddr.segment->StartAddress());
+            placeHolderChunk->ReplaceAt(placeHolder->address, identifierAddr.address + identifierAddr.segment->StartAddress());
 
             // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
             if (identifierAddr.segment == nullptr) {
-                fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder.ident);
+                fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder->ident);
                 exit(1);
             }
 

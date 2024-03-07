@@ -38,6 +38,9 @@ const StructDefinition &Context::GetStructDefinitionFromTypeName(const std::stri
             return structDef;
         }
     }
+    // Should never be reached - throw something???
+    fmt::println(stderr, "Compiler, critical error; no struct with type name={}", typeName);
+    exit(1);
 }
 bool Context::HasIdentifierAddress(const std::string &ident) {
     return identifierAddresses.contains(ident);
@@ -49,6 +52,6 @@ const IdentifierAddress &Context::GetIdentifierAddress(const std::string &ident)
     return identifierAddresses[ident];
 }
 
-void Context::AddAddressPlaceholder(const IdentifierAddressPlaceholder &addressPlaceholder) {
+void Context::AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder) {
     addressPlaceholders.push_back(addressPlaceholder);
 }

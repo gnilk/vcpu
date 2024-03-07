@@ -63,7 +63,7 @@ namespace gnilk {
             void AddIdentifierAddress(const std::string &ident, const IdentifierAddress &idAddress);
             const IdentifierAddress &GetIdentifierAddress(const std::string &ident);
 
-            void AddAddressPlaceholder(const IdentifierAddressPlaceholder &addressPlaceholder);
+            void AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder);
 
             CompiledUnit &Unit() {
                 return unit;
@@ -73,7 +73,8 @@ namespace gnilk {
             CompiledUnit unit;
 
             std::vector<StructDefinition> structDefinitions;
-            std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
+            //std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
+            std::vector<IdentifierAddressPlaceholder::Ref> addressPlaceholders;
             std::unordered_map<std::string, IdentifierAddress> identifierAddresses;
             std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
 

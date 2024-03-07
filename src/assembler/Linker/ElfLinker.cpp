@@ -18,7 +18,7 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 
 
 
-bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) {
+bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
 
@@ -53,15 +53,15 @@ bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Identif
     return true;
 }
 
-bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) {
+bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
     for(auto &placeHolder : addressPlaceholders) {
-        if (!identifierAddresses.contains(placeHolder.ident)) {
-            fmt::println(stderr, "Unknown identifier: {}", placeHolder.ident);
+        if (!identifierAddresses.contains(placeHolder->ident)) {
+            fmt::println(stderr, "Unknown identifier: {}", placeHolder->ident);
             return false;
         }
         // This address is in a specific segment, we need to store that as well for the placeholder
-        auto identifierAddr = identifierAddresses[placeHolder.ident];
-        if (placeHolder.isRelative) {
+        auto identifierAddr = identifierAddresses[placeHolder->ident];
+        if (placeHolder->isRelative) {
             RelocateRelative(unit, identifierAddr, placeHolder);
         } else {
             RelocateAbsolute(unit, identifierAddr, placeHolder);
@@ -71,53 +71,53 @@ bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::
     return true;
 }
 
-bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder &placeHolder) {
-    if (placeHolder.segment != identifierAddr.segment) {
-        fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder.ident);
+bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder) {
+    if (placeHolder->segment != identifierAddr.segment) {
+        fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder->ident);
         return false;
     }
-    fmt::println("  from:{}, to:{}", placeHolder.ofsRelative, identifierAddr.address);
+    fmt::println("  from:{}, to:{}", placeHolder->ofsRelative, identifierAddr.address);
 
-    auto placeHolderChunk = placeHolder.segment->ChunkFromAddress(placeHolder.address);
+    auto placeHolderChunk = placeHolder->segment->ChunkFromAddress(placeHolder->address);
     auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
 
     fmt::println("  REL: {}@{:#x} = {}@{:#x}",
-        placeHolder.ident, placeHolderChunk->LoadAddress() + placeHolder.address,
+        placeHolder->ident, placeHolderChunk->LoadAddress() + placeHolder->address,
         identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
     int offset = 0;
-    if (identifierAddr.address > placeHolder.ofsRelative) {
+    if (identifierAddr.address > placeHolder->ofsRelative) {
         // FIXME: This is a bit odd - but if we jump forward I need to add 1 to the offset..
-        offset = identifierAddr.address - placeHolder.ofsRelative + 1;
+        offset = identifierAddr.address - placeHolder->ofsRelative + 1;
     } else {
-        offset = identifierAddr.address - placeHolder.ofsRelative;
+        offset = identifierAddr.address - placeHolder->ofsRelative;
     }
 
-    placeHolder.segment->ReplaceAt(placeHolder.address, offset, placeHolder.opSize);
+    placeHolder->segment->ReplaceAt(placeHolder->address, offset, placeHolder->opSize);
 
     return true;
 }
 
-bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder &placeHolder) {
-    auto placeHolderChunk = placeHolder.segment->ChunkFromAddress(placeHolder.address);
+bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder) {
+    auto placeHolderChunk = placeHolder->segment->ChunkFromAddress(placeHolder->address);
     auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
 
 
     fmt::println("  {}@{:#x} = {}@{:#x}",
-        placeHolder.ident, placeHolderChunk->LoadAddress() + placeHolder.address,
+        placeHolder->ident, placeHolderChunk->LoadAddress() + placeHolder->address,
         identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
 
     // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
     if (identifierAddr.segment == nullptr) {
-        fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder.ident);
+        fmt::println(stderr, "Linker: no segment for identifier '{}'", placeHolder->ident);
         return false;
     }
-    if (placeHolder.segment == nullptr) {
+    if (placeHolder->segment == nullptr) {
         fmt::println(stderr, "Linker, placehold has no segment - can't replace!");
         return false;
     }
 
-    placeHolder.segment->ReplaceAt(placeHolder.address, identChunk->LoadAddress() + identifierAddr.address);
+    placeHolder->segment->ReplaceAt(placeHolder->address, identChunk->LoadAddress() + identifierAddr.address);
 
     return true;
 }

@@ -23,7 +23,7 @@ namespace gnilk {
             virtual ~DummyLinker() = default;
 
             const std::vector<uint8_t> &Data() override;
-            bool Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder> &addressPlaceholders) override;
+            bool Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) override;
         private:
             std::vector<uint8_t> linkedData;
         };

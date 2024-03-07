@@ -692,16 +692,16 @@ bool EmitStatement::EmitLabelAddress(ast::Identifier::Ref identifier, vcpu::Oper
     // Register|Mode = byte = RRRR | MMMM
     EmitRegMode(regMode);
 
-    IdentifierAddressPlaceholder addressPlaceholder;
-    addressPlaceholder.segment = context.Unit().GetActiveSegment();
-    addressPlaceholder.chunk = context.Unit().GetActiveSegment()->CurrentChunk();
+    IdentifierAddressPlaceholder::Ref addressPlaceholder = std::make_shared<IdentifierAddressPlaceholder>();
+    addressPlaceholder->segment = context.Unit().GetActiveSegment();
+    addressPlaceholder->chunk = context.Unit().GetActiveSegment()->CurrentChunk();
 
     // !!!!!!!!!!!!!!!
     // FIXME: This doesn't work - we need to have the _ACTUAL_ address of where this is written - currently all of them will be '0'...
     // !!!!!!!!!!!!!
-    addressPlaceholder.address = data.size(); // static_cast<uint64_t>(context.Unit().GetCurrentWritePtr());
-    addressPlaceholder.ident = identifier->Symbol();
-    addressPlaceholder.isRelative = false;
+    addressPlaceholder->address = data.size(); // static_cast<uint64_t>(context.Unit().GetCurrentWritePtr());
+    addressPlaceholder->ident = identifier->Symbol();
+    addressPlaceholder->isRelative = false;
     context.AddAddressPlaceholder(addressPlaceholder);
     //addressPlaceholders.push_back(addressPlaceholder);
 
@@ -715,9 +715,9 @@ bool EmitStatement::EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vc
     // This a relative jump
     regMode |= vcpu::AddressMode::Immediate;
 
-    IdentifierAddressPlaceholder addressPlaceholder;
-    addressPlaceholder.segment = context.Unit().GetActiveSegment();
-    addressPlaceholder.chunk = context.Unit().GetActiveSegment()->CurrentChunk();
+    IdentifierAddressPlaceholder::Ref addressPlaceholder = std::make_shared<IdentifierAddressPlaceholder>();
+    addressPlaceholder->segment = context.Unit().GetActiveSegment();
+    addressPlaceholder->chunk = context.Unit().GetActiveSegment()->CurrentChunk();
 
     if (opSize == vcpu::OperandSize::Long) {
         // no op.size were given
@@ -754,15 +754,15 @@ bool EmitStatement::EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vc
     // !!!!!!!!!!!!!!!
     // FIXME: This doesn't work - we need to have the _ACTUAL_ address of where this is written - currently all of them will be '0'...
     // !!!!!!!!!!!!!
-    addressPlaceholder.address = data.size(); //static_cast<uint64_t>(context.Unit().GetCurrentWritePtr());
-    addressPlaceholder.ident = identifier->Symbol();
-    addressPlaceholder.isRelative = true;
-    addressPlaceholder.opSize = opSize;
+    addressPlaceholder->address = data.size(); //static_cast<uint64_t>(context.Unit().GetCurrentWritePtr());
+    addressPlaceholder->ident = identifier->Symbol();
+    addressPlaceholder->isRelative = true;
+    addressPlaceholder->opSize = opSize;
 
     // We are always relative to the complete instruction
     // Note: could have been relative to the start of the instr. but that would require a state (or caching of the IP) in the cpu
     //addressPlaceholder.ofsRelative = static_cast<uint64_t>(context.Unit().GetCurrentWritePtr()) + vcpu::ByteSizeOfOperandSize(opSize);
-    addressPlaceholder.ofsRelative = static_cast<uint64_t>(data.size()) + vcpu::ByteSizeOfOperandSize(opSize);
+    addressPlaceholder->ofsRelative = static_cast<uint64_t>(data.size()) + vcpu::ByteSizeOfOperandSize(opSize);
 
     context.AddAddressPlaceholder(addressPlaceholder);
     //addressPlaceholders.push_back(addressPlaceholder);

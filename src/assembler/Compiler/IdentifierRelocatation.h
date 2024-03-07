@@ -7,6 +7,7 @@
 
 #include <string>
 #include <stdint.h>
+#include <memory>
 
 #include "InstructionSet.h"
 #include "Linker/Segment.h"
@@ -14,6 +15,8 @@
 namespace gnilk {
     namespace assembler {
         struct IdentifierAddressPlaceholder {
+            using Ref = std::shared_ptr<IdentifierAddressPlaceholder>;
+
             std::string ident;
             Segment::Ref segment = nullptr;
             Segment::DataChunk::Ref chunk = nullptr;
