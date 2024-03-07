@@ -103,6 +103,7 @@ DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
     TR_ASSERT(t, res);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedCase1);
+    binary.clear();
 
     // move.w d0, 0x4433
     static std::vector<uint8_t> expectedCase2 = {0x20,0x01,0x03,0x01, 0x44,0x33};
@@ -427,7 +428,8 @@ DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(codes[0]);
     TR_ASSERT(t, ast != nullptr);
-    auto res = compiler.CompileAndLink(ast);
+    auto compileOk = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, compileOk == true);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 

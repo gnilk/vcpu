@@ -7,11 +7,13 @@
 
 #include <functional>
 
+#include "Context.h"
 #include "InstructionSet.h"
 #include "ast/ast.h"
 #include "Linker/CompiledUnit.h"
 #include "IdentifierRelocatation.h"
 #include "Linker/BaseLinker.h"
+#include "EmitStatement.h"
 
 namespace gnilk {
     namespace assembler {
@@ -31,7 +33,8 @@ namespace gnilk {
             }
 
             CompiledUnit &GetCompiledUnit() {
-                return unit;
+                //return unit;
+                return context.Unit();
             }
 
 
@@ -39,42 +42,10 @@ namespace gnilk {
             const std::vector<uint8_t> &Data() {
                 return linker->Data();
             }
-
-
         protected:
-            bool ProcessStmt(ast::Statement::Ref stmt);
-            bool ProcessIdentifier(ast::Identifier::Ref identifier);
-            bool ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt);
-            bool ProcessOneOpInstrStmt(ast::OneOpInstrStatment::Ref stmt);
-            bool ProcessTwoOpInstrStmt(ast::TwoOpInstrStatment::Ref stmt);
+            void WriteEmitStatements();
+            void WriteEmitStatement(const EmitStatement::Ref &emitStatement);
 
-            bool ProcessArrayLiteral(ast::ArrayLiteral::Ref stmt);
-            bool ProcessStructLiteral(ast::StructLiteral::Ref stmt);
-            bool ProcessConstLiteral(ast::ConstLiteral::Ref stmt);
-
-            bool ProcessMetaStatement(ast::MetaStatement::Ref stmt);
-            bool ProcessStructStatement(ast::StructStatement::Ref stmt);
-
-
-            // FIXME: Replace literal with CompilerValue (or similar) - like 'RuntimeValue' from Interpreter
-            ast::Literal::Ref EvaluateConstantExpression(ast::Expression::Ref expression);
-            ast::Literal::Ref EvaluateBinaryExpression(ast::BinaryExpression::Ref expression);
-            ast::Literal::Ref EvaluateMemberExpression(ast::MemberExpression::Ref expression);
-
-            bool EmitOpCodeForSymbol(const std::string &symbol);
-            bool EmitInstrOperand(vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
-            bool EmitInstrDst(vcpu::OperandSize opSize, ast::Expression::Ref dst);
-            bool EmitInstrSrc(vcpu::OperandSize opSize, ast::Expression::Ref src);
-
-            bool EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral);
-            bool EmitRegisterLiteralWithAddrMode(ast::RegisterLiteral::Ref regLiteral, uint8_t addrMode);
-            // Special version which will also output the reg|mode byte
-            bool EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
-            bool EmitStringLiteral(vcpu::OperandSize opSize, ast::StringLiteral::Ref strLiteral);
-            bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
-            bool EmitLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
-            bool EmitRelativeLabelAddress(ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
-            bool EmitDereference(ast::DeReferenceExpression::Ref expression);
 
             using DeferredOpSizeHandler = std::function<void(uint8_t opSize)>;
             DeferredOpSizeHandler cbDeferredOpSize = nullptr;
@@ -82,36 +53,11 @@ namespace gnilk {
             void ResetDeferEmitOpSize();
             bool IsOpSizeDeferred();
             void EmitOpSize(uint8_t opSize);
-
-
-
-            bool EmitByte(uint8_t byte);
-            bool EmitWord(uint16_t word);
-            bool EmitDWord(uint32_t dword);
-            bool EmitLWord(uint64_t lword);
         private:
-            CompiledUnit unit;
+            Context context;
+
             BaseLinker *linker = nullptr;
-
-            // FIXME: replace this...
-            //std::vector<uint8_t> outStream;
-
-            struct StructMember {
-                std::string ident;
-                size_t offset;
-                size_t byteSize;
-                ast::Statement::Ref declarationStatement;
-            };
-            struct StructDefinition {
-                std::string ident;
-                size_t byteSize;
-                std::vector<StructMember> members;
-            };
-
-            std::vector<StructDefinition> structDefinitions;
-            std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
-            std::unordered_map<std::string, IdentifierAddress> identifierAddresses;
-            std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
+            std::vector<EmitStatement::Ref> emitStatements;
 
             std::vector<uint8_t> linkdata;
         };

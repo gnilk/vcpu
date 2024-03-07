@@ -50,9 +50,8 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
     }
 
     //
-    // Link code to stuff
+    // Perform relocation...
     //
-
     fmt::println("Linking");
     for(auto &placeHolder : addressPlaceholders) {
         if (!identifierAddresses.contains(placeHolder.ident)) {

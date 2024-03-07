@@ -6,6 +6,7 @@
 #define GNILK_AST_LITERALS_H
 
 #include "astbase.h"
+#include "CPUBase.h"
 
 
 namespace gnilk {
