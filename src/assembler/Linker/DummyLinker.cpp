@@ -134,9 +134,15 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
     linkedData.resize(size);
     for(auto chunk : linkOutputSegment->DataChunks()) {
         auto data = chunk->Data();
-        // Inser at the load address...
-        linkedData.insert(linkedData.begin()+chunk->LoadAddress(), data.begin(), data.end());
-
+        auto endOfs = chunk->LoadAddress() + data.size();
+        if (endOfs > linkedData.capacity()) {
+            // We have a problem..
+            fmt::println(stderr, "Linker, final link output data would exceed buffer - size computation mismatch - critical!");
+            return false;
+        }
+        // I really wish there was a way to actually do this through the interface...
+        // But I couldn't find any...
+        memcpy(linkedData.data()+chunk->LoadAddress(), data.data(), data.size());
     }
     return true;
 
