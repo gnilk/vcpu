@@ -437,7 +437,7 @@ DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t) {
 
 DLL_EXPORT int test_compiler_call_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0xc0,0x03,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0d,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
+        0xc0,0x03,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0d,        // 0, Call label, opSize = lword, [reg|mode] = 0|immediate, <address of label> = 0x0d
         0xf1,                       // 4
         0x00,                       // 5 WHALT!
         0xf1,                       // 6 <- call should go here (offset of label)
@@ -461,7 +461,9 @@ DLL_EXPORT int test_compiler_call_label(ITesting *t) {
     Compiler compiler;
     auto ast = parser.ProduceAST(codes[0]);
     TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
     auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res == true);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
