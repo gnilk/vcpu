@@ -14,6 +14,23 @@
 namespace gnilk {
     namespace assembler {
         class Compiler;
+
+        //
+        // TODO: Consider splitting this into several different classes for different use cases
+        //       1) Code
+        //       2) Relocation points
+        //       3) Meta (segment/orgin stuff)
+        //       4) Data (?) - unless this can be treated like Code
+        //
+        // The type of 'Emitter' Statement is depending on the ast::Statement::Kind - so we will need a 'factory' method..
+        // which is called from the HL compiler and then the emitter is processed. Once all emitters have processed they are finalized.
+        // Finalization basically merges the data points into a flat list which is processed by the linker..
+        // the flat list is like:
+        //  <offset><type><data>
+        // The relocation would take place on this list or when it's happening..
+        //
+
+
         // This encapsulats the data generated for a single statement
         // Once a statement has been processed this is written to the output stream..
         class EmitStatement {
