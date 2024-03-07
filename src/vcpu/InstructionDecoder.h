@@ -57,7 +57,13 @@ namespace gnilk {
                 return ofsEndInstr;
             }
 
-        private:
+            RegisterValue ReadSrcValue(CPUBase &cpu);
+            RegisterValue ReadDstValue(CPUBase &cpu);
+
+            uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddr);
+
+
+        protected:
             uint8_t NextByte(CPUBase &cpu);
             // Helper for 'ToString'
             std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const;

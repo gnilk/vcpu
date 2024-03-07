@@ -56,11 +56,11 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
     if (description.features & OperandDescriptionFlags::OneOperand) {
         DecodeDstReg(cpu);
-        value = ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
+        value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
     } else if (description.features & OperandDescriptionFlags::TwoOperands) {
         DecodeDstReg(cpu);
         DecodeSrcReg(cpu);
-        value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+        value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
     } else {
         // No operands
     }
@@ -76,9 +76,8 @@ void InstructionDecoder::DecodeDstReg(CPUBase &cpu) {
     // Same as below..
     dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
     dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
-    if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
-        // FIXME: this can be both word and others...
-        dstRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
+    if (dstAddrMode == AddressMode::Indirect) {
+        // Do nothing - this is decoded from the data about - details will be decoded further down...
     } else if (dstAddrMode == AddressMode::Absolute) {
         // moving to an absolute address..
         dstAbsoluteAddr = cpu.FetchFromPhysicalRam<uint64_t>(memoryOffset);
@@ -90,6 +89,19 @@ void InstructionDecoder::DecodeDstReg(CPUBase &cpu) {
         fmt::println("Destination address mode {} not supported!", (int)dstAddrMode);
         exit(1);
     }
+
+    // Do this here - allows for alot of strange stuff...
+    if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        auto relative = NextByte(cpu);
+        // This is for clarity - just assigning to 'Absolute' would be sufficient..
+        if (dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) {
+            dstRelAddrMode.relativeAddress.absoulte = relative;
+        } else {
+            dstRelAddrMode.relativeAddress.reg.index = (relative & 0xf0) >> 4;
+            dstRelAddrMode.relativeAddress.reg.shift = (relative & 0x0f);
+        }
+    }
+
     dstRegIndex = (dstRegAndFlags>>4) & 15;
 
 }
@@ -101,8 +113,8 @@ void InstructionDecoder::DecodeSrcReg(CPUBase &cpu) {
     srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x03);
     srcRelAddrMode.mode  = static_cast<RelativeAddressMode>((srcRegAndFlags & 0x0c)>>2);
     // Switch?
-    if ((srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (srcRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
-        srcRelAddrMode.relativeAddress.absoulte = NextByte(cpu);
+    if (srcAddrMode == AddressMode::Indirect) {
+
     } else if (srcAddrMode == AddressMode::Absolute) {
         srcAbsoluteAddr = cpu.FetchFromPhysicalRam<uint64_t>(memoryOffset);
     } else if ((srcAddrMode == AddressMode::Immediate) || (srcAddrMode == AddressMode::Register)) {
@@ -111,7 +123,31 @@ void InstructionDecoder::DecodeSrcReg(CPUBase &cpu) {
         fmt::println("Source address mode {} not supported!", (int)srcAddrMode);
         exit(1);
     }
+
+    // Do this here - allows for alot of strange stuff...
+    if ((srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (srcRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        auto relative = NextByte(cpu);
+        // This is for clarity - just assigning to 'Absolute' would be sufficient..
+        if (srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) {
+            srcRelAddrMode.relativeAddress.absoulte = relative;
+        } else {
+            srcRelAddrMode.relativeAddress.reg.index = (relative & 0xf0) >> 4;
+            srcRelAddrMode.relativeAddress.reg.shift = (relative & 0x0f);
+        }
+    }
+
+
     srcRegIndex = (srcRegAndFlags>>4) & 15;
+}
+
+// Returns a value based on src op decoding
+RegisterValue InstructionDecoder::ReadSrcValue(CPUBase &cpu) {
+    return ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+}
+
+// Returns a value based on dst op decoding
+RegisterValue InstructionDecoder::ReadDstValue(CPUBase &cpu) {
+    return ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
 }
 
 
@@ -129,11 +165,27 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
         v = cpuBase.ReadFromMemoryUnit(szOperand, absAddress);
         //memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
+        auto relativeAddrOfs = ComputeRelativeAddress(cpuBase, relAddrMode);
         auto &reg = cpuBase.GetRegisterValue(idxRegister, opFamily);
-        // TODO: take relative addressing into account..
-        v = cpuBase.ReadFromMemoryUnit(szOperand, reg.data.longword);
+        v = cpuBase.ReadFromMemoryUnit(szOperand, reg.data.longword + relativeAddrOfs);
     }
     return v;
+}
+
+uint64_t InstructionDecoder::ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddrMode) {
+    uint64_t relativeAddrOfs = 0;
+    // Break out to own function - this is also used elsewhere..
+    if ((relAddrMode.mode == RelativeAddressMode::AbsRelative) || (relAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        if (relAddrMode.mode == RelativeAddressMode::AbsRelative) {
+            relativeAddrOfs = relAddrMode.relativeAddress.absoulte;
+        } else {
+            // Relative handling can only come from Integer operand family!
+            auto regRel = cpuBase.GetRegisterValue(relAddrMode.relativeAddress.reg.index, OperandFamily::Integer);
+            relativeAddrOfs = regRel.data.byte;
+            relativeAddrOfs = relativeAddrOfs << relAddrMode.relativeAddress.reg.shift;
+        }
+    }
+    return relativeAddrOfs;
 }
 
 uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
