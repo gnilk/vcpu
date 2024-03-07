@@ -470,7 +470,7 @@ DLL_EXPORT int test_compiler_call_label(ITesting *t) {
 
 DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0x28,0x03,0x83,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0e,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
+        0x28,0x03,0x83,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0e,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
         0xf1,                       // 4
         0x00,                       // 5 WHALT!
         0xf1,                       // 6 <- call should go here (offset of label)
