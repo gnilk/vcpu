@@ -57,6 +57,7 @@ list(APPEND asmsrc src/assembler/Compiler/Compiler.cpp src/assembler/Compiler/Co
 list(APPEND asmsrc src/assembler/Compiler/Context.cpp src/assembler/Compiler/Context.h)
 list(APPEND asmsrc src/assembler/Compiler/EmitStatement.cpp src/assembler/Compiler/EmitStatement.h)
 list(APPEND asmsrc src/assembler/Compiler/IdentifierRelocatation.h)
+list(APPEND asmsrc src/assembler/Compiler/StmtEmitter.cpp src/assembler/Compiler/StmtEmitter.h)
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)
 list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h)
 
@@ -78,6 +79,7 @@ list(APPEND commonsrc src/common/UnicodeHelper.cpp src/common/UnicodeHelper.h)
 list(APPEND asmtestsrc src/assembler/tests/test_lexer.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_parser.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_segment.cpp)
+list(APPEND asmtestsrc src/assembler/tests/test_stmtemitter.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 
 

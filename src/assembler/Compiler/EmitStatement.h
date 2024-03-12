@@ -22,13 +22,6 @@ namespace gnilk {
         //       3) Meta (segment/orgin stuff)
         //       4) Data (?) - unless this can be treated like Code
         //
-        // The type of 'Emitter' Statement is depending on the ast::Statement::Kind - so we will need a 'factory' method..
-        // which is called from the HL compiler and then the emitter is processed. Once all emitters have processed they are finalized.
-        // Finalization basically merges the data points into a flat list which is processed by the linker..
-        // the flat list is like:
-        //  <offset><type><data>
-        // The relocation would take place on this list or when it's happening..
-        //
 
 
         // This encapsulats the data generated for a single statement
@@ -41,7 +34,6 @@ namespace gnilk {
             EmitStatement(size_t emitId, Context &useContext, ast::Statement::Ref stmt) : id(emitId), context(useContext), statement(stmt) {}
             virtual ~EmitStatement() = default;
             bool Process();
-
             bool Finalize();
 
         protected:

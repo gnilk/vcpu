@@ -14,6 +14,7 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
+
 bool EmitStatement::Process() {
     return ProcessStmt(statement);
 }
@@ -70,6 +71,7 @@ bool EmitStatement::ProcessStmt(ast::Statement::Ref stmt) {
     }
     return false;
 }
+
 
 bool EmitStatement::ProcessStructStatement(ast::StructStatement::Ref stmt) {
 
@@ -196,7 +198,6 @@ bool EmitStatement::ProcessConstLiteral(ast::ConstLiteral::Ref stmt) {
     //constants[stmt->Ident()] = stmt;
     return true;
 }
-
 
 bool EmitStatement::ProcessStructLiteral(ast::StructLiteral::Ref stmt) {
 

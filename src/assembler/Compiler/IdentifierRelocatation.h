@@ -26,10 +26,17 @@ namespace gnilk {
             vcpu::OperandSize opSize;
             uint64_t ofsRelative;   // Offset to compute from..
         };
+
+        struct IdentifierResolvePoint {
+            vcpu::OperandSize opSize;
+            size_t placeholderOffset;
+        };
         struct IdentifierAddress {
             Segment::Ref segment = nullptr;;
             Segment::DataChunk::Ref chunk = nullptr;
             uint64_t address = 0;
+            // New emittor stuff
+            std::vector<IdentifierResolvePoint> resolvePoints;
         };
 
     }

@@ -14,6 +14,7 @@
 #include "IdentifierRelocatation.h"
 #include "Linker/BaseLinker.h"
 #include "EmitStatement.h"
+#include "StmtEmitter.h"
 
 namespace gnilk {
     namespace assembler {
@@ -40,11 +41,10 @@ namespace gnilk {
 
             // TEMP TEMP
             const std::vector<uint8_t> &Data() {
-                return linker->Data();
+                //return linker->Data();
+                return context.Data();
             }
         protected:
-            void WriteEmitStatements();
-            void WriteEmitStatement(const EmitStatement::Ref &emitStatement);
 
 
             using DeferredOpSizeHandler = std::function<void(uint8_t opSize)>;
@@ -57,7 +57,7 @@ namespace gnilk {
             Context context;
 
             BaseLinker *linker = nullptr;
-            std::vector<EmitStatement::Ref> emitStatements;
+            std::vector<EmitStatementBase::Ref> emitStatements;
 
             std::vector<uint8_t> linkdata;
         };

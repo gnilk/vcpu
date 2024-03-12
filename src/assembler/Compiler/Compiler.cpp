@@ -18,6 +18,8 @@
 #include "Linker/DummyLinker.h"
 #include "Linker/ElfLinker.h"
 
+#include "StmtEmitter.h"
+
 using namespace gnilk;
 using namespace gnilk::assembler;
 
@@ -25,13 +27,17 @@ bool Compiler::CompileAndLink(ast::Program::Ref program) {
     if (!Compile(program)) {
         return false;
     }
-    return Link();
+    //return Link();
+    return true;
 }
+
+static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
+
 bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 
     // Some unit-tests reuse the Compiler instance - this probably not a good idea...
     // Perhaps a specific 'reset' call...
-    context = Context();
+    //context = Context();
     emitStatements.clear();
 
 //    context.Unit().Clear();
@@ -42,33 +48,66 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
     // This can now be multi-threaded - fancy, eh?
     size_t idxStmtCounter = 0;
     for(auto &statement : program->Body()) {
-        EmitStatement::Ref emitStatement = std::make_shared<EmitStatement>(idxStmtCounter, context, statement);
-
-        if (!emitStatement->Process()) {
-            fmt::println(stderr, "Error on stmt counter={}", idxStmtCounter);
+        auto stmtEmitter = EmitStatementBase::Create(statement);
+        if (stmtEmitter == nullptr) {
+            fmt::println(stderr, "Compiler, failed to generate emitter for statement {}", (int)statement->Kind());
             statement->Dump();
             return false;
         }
-
-        // Advance to next stmt...
-        // FIXME: lock the queue and counter here...
-
-        idxStmtCounter++;
-        emitStatements.push_back(emitStatement);
+        stmtEmitter->Process(context);
+        emitStatements.push_back(stmtEmitter);
     }
 
-    // Now sort the array
-    std::sort(emitStatements.begin(), emitStatements.end(), [](const EmitStatement::Ref &a, const EmitStatement::Ref &b) {
-       return (a->id < b->id);
-    });
-    // Write them out
-    WriteEmitStatements();
+
+    for(auto stmt : emitStatements) {
+        auto ofsBefore = context.Data().size();
+        stmt->Finalize(context);
+        fmt::println("  Stmt {}, before={}, after={}", stmt->emitid, ofsBefore, context.Data().size());
+    }
+
+    // TEMP - resolve
+    auto &data = context.Data();
+    for(auto &[symbol, identifier] : context.identifierAddresses) {
+        fmt::println("  {} @ {}", symbol, identifier.address);
+        for(auto &resolvePoint : identifier.resolvePoints) {
+            VectorReplaceAt(data, resolvePoint.placeholderOffset, identifier.address, resolvePoint.opSize);
+        }
+    }
 
     return true;
 }
-void Compiler::WriteEmitStatements() {
-    for(auto &stmt : emitStatements) {
-        stmt->Finalize();
+
+static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
+    if (data.size() < vcpu::ByteSizeOfOperandSize(opSize)) {
+        return;
+    }
+    if (offset > (data.size() - vcpu::ByteSizeOfOperandSize(opSize))) {
+        return;
+    }
+    switch(opSize) {
+        case vcpu::OperandSize::Byte :
+            data[offset++] = (newValue & 0xff);
+            break;
+        case vcpu::OperandSize::Word :
+            data[offset++] = (newValue>>8 & 0xff);
+            data[offset++] = (newValue & 0xff);
+            break;
+        case vcpu::OperandSize::DWord :
+            data[offset++] = (newValue>>24 & 0xff);
+            data[offset++] = (newValue>>16 & 0xff);
+            data[offset++] = (newValue>>8 & 0xff);
+            data[offset++] = (newValue & 0xff);
+            break;
+        case vcpu::OperandSize::Long :
+            data[offset++] = (newValue>>56 & 0xff);
+            data[offset++] = (newValue>>48 & 0xff);
+            data[offset++] = (newValue>>40 & 0xff);
+            data[offset++] = (newValue>>32 & 0xff);
+            data[offset++] = (newValue>>24 & 0xff);
+            data[offset++] = (newValue>>16 & 0xff);
+            data[offset++] = (newValue>>8 & 0xff);
+            data[offset++] = (newValue & 0xff);
+            return;
     }
 }
 

@@ -48,7 +48,7 @@ bool Context::HasIdentifierAddress(const std::string &ident) {
 void Context::AddIdentifierAddress(const std::string &ident, const IdentifierAddress &idAddress) {
     identifierAddresses[ident] = idAddress;
 }
-const IdentifierAddress &Context::GetIdentifierAddress(const std::string &ident) {
+IdentifierAddress &Context::GetIdentifierAddress(const std::string &ident) {
     return identifierAddresses[ident];
 }
 

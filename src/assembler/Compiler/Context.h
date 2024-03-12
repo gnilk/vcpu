@@ -59,9 +59,10 @@ namespace gnilk {
             void AddConstant(const std::string &name, ast::ConstLiteral::Ref constant);
             ast::ConstLiteral::Ref GetConstant(const std::string &name);
 
+            // FIXME: Once emitters are 'working' drop 'Address' for this...
             bool HasIdentifierAddress(const std::string &ident);
             void AddIdentifierAddress(const std::string &ident, const IdentifierAddress &idAddress);
-            const IdentifierAddress &GetIdentifierAddress(const std::string &ident);
+            IdentifierAddress &GetIdentifierAddress(const std::string &ident);
 
             void AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder);
 
@@ -69,7 +70,14 @@ namespace gnilk {
                 return unit;
             }
 
+            std::vector<uint8_t> &Data() {
+                return outputdata;
+            }
+
         protected:
+            // TEMP:
+            std::vector<uint8_t> outputdata;
+
             CompiledUnit unit;
 
             std::vector<StructDefinition> structDefinitions;
