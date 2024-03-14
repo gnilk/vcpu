@@ -173,12 +173,17 @@ bool EmitMetaStatement::Finalize(gnilk::assembler::Context &context) {
     if (!isOrigin) {
         return true;
     }
+    // We should probably create chunk here
+
 
     // Make sure we can fill upp to the origin...
     auto &out = context.Data();
     if (out.capacity() < origin) {
         out.reserve(origin);
     }
+    // Should this actually be here??
+
+    return true;
 }
 
 EmitCommentStatement::EmitCommentStatement() {
