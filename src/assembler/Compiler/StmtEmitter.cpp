@@ -31,11 +31,13 @@ EmitStatementBase::Ref EmitStatementBase::Create(ast::Statement::Ref statement) 
     } else if (statement->Kind() == ast::NodeType::kIdentifier) {
         ref = std::make_shared<EmitIdentifierStatement>();
     } else if (statement->Kind() == ast::NodeType::kStructStatement) {
-        // Struct statements are different
+        ref = std::make_shared<EmitStructStatement>();
     } else if (IsCodeStatement(statement->Kind())) {
         ref = std::make_shared<EmitCodeStatement>();
+    } else if (statement->Kind() == ast::NodeType::kCommentStatement){
+        ref = std::make_shared<EmitCommentStatement>();
     } else {
-
+        fmt::println("StateEmitter - {} - not handled", ast::NodeTypeToString(statement->Kind()));
     }
 
     if (ref != nullptr) {
@@ -56,7 +58,8 @@ EmitStatementBase::Ref EmitStatementBase::Create(ast::Statement::Ref statement) 
 bool EmitStatementBase::IsDataStatement(ast::NodeType nodeType) {
     if ((nodeType == ast::NodeType::kNumericLiteral) ||
             (nodeType == ast::NodeType::kArrayLiteral) ||
-            (nodeType == ast::NodeType::kConstLiteral)) {
+            (nodeType == ast::NodeType::kConstLiteral) ||
+            (nodeType == ast::NodeType::kStructLiteral)) {
         return true;
     }
     return false;
@@ -177,6 +180,21 @@ bool EmitMetaStatement::Finalize(gnilk::assembler::Context &context) {
         out.reserve(origin);
     }
 }
+
+EmitCommentStatement::EmitCommentStatement() {
+    emitType = kEmitType::kComment;
+}
+
+bool EmitCommentStatement::Process(gnilk::assembler::Context &context) {
+    auto cmtStatement = std::dynamic_pointer_cast<ast::LineComment>(statement);
+    text = cmtStatement->Text();
+    return true;
+}
+
+bool EmitCommentStatement::Finalize(gnilk::assembler::Context &context) {
+    return true;
+}
+
 ///////////////////
 //
 // Data Emitters
@@ -188,6 +206,8 @@ EmitDataStatement::EmitDataStatement() {
 bool EmitDataStatement::Process(gnilk::assembler::Context &context) {
     if (statement->Kind() == ast::NodeType::kConstLiteral) {
         return ProcessConstLiteral(context, std::dynamic_pointer_cast<ast::ConstLiteral>(statement));
+    } else if (statement->Kind() == ast::NodeType::kStructLiteral) {
+        return ProcessStructLiteral(context, std::dynamic_pointer_cast<ast::StructLiteral>(statement));
     }
     return ProcessArrayLiteral(context, std::dynamic_pointer_cast<ast::ArrayLiteral>(statement));
 }
@@ -257,6 +277,95 @@ bool EmitDataStatement::ProcessConstLiteral(Context &context, ast::ConstLiteral:
     return true;
 }
 
+bool EmitDataStatement::ProcessStructLiteral(Context &context, ast::StructLiteral::Ref stmt) {
+
+    size_t szExpected = 0;
+    if (!context.HasStructDefinintion(stmt->StructTypeName())) {
+        fmt::println(stderr, "Compiler, undefined struct type '{}'", stmt->StructTypeName());
+        return false;
+    }
+
+    auto &structDef = context.GetStructDefinitionFromTypeName(stmt->StructTypeName());
+    szExpected = structDef.byteSize;
+
+    // Reserve the amount of bytes we need
+    data.reserve(szExpected);
+
+    auto writeStart = context.Unit().GetCurrentWritePtr();
+    size_t szOffset = 0;
+    size_t idxMember = 0;
+    for (auto &m : stmt->Members()) {
+        if (idxMember > structDef.NumMembers()) {
+            fmt::println(stderr,"Compiler, declaring too many members");
+            break;
+        }
+        auto &structDefMember = structDef.GetMemberAt(idxMember);
+        fmt::println("Assigning to struct member '{}'", structDefMember.ident);
+
+        auto memberEmitter = EmitStatementBase::Create(m);
+        if (memberEmitter == nullptr) {
+            fmt::println(stderr, "Compiler, Member is statement type '{}' not a supported type for struct member declarations", ast::NodeTypeToString(m->Kind()));
+            return false;
+        }
+        if (memberEmitter->Kind() != kEmitType::kData) {
+            fmt::println(stderr, "Compiler, Struct member is no data statement!");
+            return false;
+        }
+        auto member = std::dynamic_pointer_cast<EmitDataStatement>(memberEmitter);
+        if (member == nullptr) {
+            // wrong type?
+            fmt::println(stderr, "Compiler, struct member is null!!!");
+            return false;
+        }
+
+        if (!member->Process(context)) {
+            fmt::println(stderr, "Compiler, Struct member process failed!");
+            return false;
+        }
+
+        //structMemberStatements.push_back(memberEmitter);
+        auto &memberData = member->Data();
+        // TO-DO: Support struct initialization through .<name> syntax (as with C/C++)
+        // structDef.GetMember(member->Symbol()).offset
+
+        if ((szOffset + memberData.size()) > data.capacity()) {
+            // Overflow is generally not a problem when declaring a struct..
+            // C allows last member to overflow as an empty array declaration
+            // we allow every member (as we don't really track which member)
+        }
+
+        data.insert(data.begin() + szOffset, memberData.begin(), memberData.end());
+        // Advance forward..
+        // TO-DO: IF we do: structDefMember.byteSize; we would advance properly to the next element even
+        //        if a member is defined as word and declared using byte...
+        szOffset += memberData.size();
+        idxMember++;
+
+    }
+    fmt::println("struct literal - bytes generated {} - bytes expected {}", data.size(), szExpected);
+    auto nBytesGenerated =  data.size();
+
+    // This is no error as such or is it??
+    if (nBytesGenerated > szExpected) {
+        fmt::println(stderr, "Compiler, too many elements in struct declaration");
+        return true;
+    }
+
+    if (nBytesGenerated < szExpected) {
+        fmt::println(stderr, "Compiler, not enough bytes, filling with zero");
+        while(nBytesGenerated < szExpected) {
+            EmitByte(0x00);
+            nBytesGenerated++;
+        }
+        return true;
+    }
+
+    // Perfect - structure definintion matches instance...
+
+    return true;
+}
+
+
 ///////////
 EmitIdentifierStatement::EmitIdentifierStatement() {
     emitType = kEmitType::kIdentifier;
@@ -303,6 +412,58 @@ bool EmitIdentifierStatement::ProcessIdentifier(Context &context, ast::Identifie
     return true;
 }
 
+EmitStructStatement::EmitStructStatement() : EmitStatementBase() {
+    emitType = kEmitType::kStruct;
+}
+bool EmitStructStatement::Process(gnilk::assembler::Context &context) {
+    return ProcessStructStatement(context, std::dynamic_pointer_cast<ast::StructStatement>(statement));
+}
+bool EmitStructStatement::Finalize(gnilk::assembler::Context &context) {
+    return true;
+}
+bool EmitStructStatement::ProcessStructStatement(Context &context, ast::StructStatement::Ref stmt) {
+
+    auto &members = stmt->Declarations();
+    size_t nBytes = 0;
+
+    std::vector<StructMember> structMembers;
+
+    for(auto &m : members) {
+        if (m->Kind() != ast::NodeType::kReservationStatment) {
+            fmt::println(stderr, "Compiler, struct definition should only contain reservation statments");
+            return false;
+        }
+        auto reservation = std::dynamic_pointer_cast<ast::ReservationStatement>(m);
+        auto elemLiteral = EvaluateConstantExpression(context, reservation->NumElements());
+        if (elemLiteral->Kind() != ast::NodeType::kNumericLiteral) {
+            fmt::println(stderr, "Compiler, reservation expression did not yield a numerical result!");
+            return false;
+        }
+        auto numElem = std::dynamic_pointer_cast<ast::NumericLiteral>(elemLiteral);
+        auto szPerElem = vcpu::ByteSizeOfOperandSize(reservation->OperandSize());
+
+        StructMember member;
+        member.ident = reservation->Identifier()->Symbol();
+        member.offset = nBytes;
+        member.byteSize = numElem->Value() * szPerElem;
+        // Backup...
+        member.declarationStatement = m;
+
+        structMembers.push_back(member);
+
+        nBytes += numElem->Value() * szPerElem;
+    }
+
+    StructDefinition structDefinition  = {
+            .ident = stmt->Name(),
+            .byteSize = nBytes,
+            .members = std::move(structMembers),
+    };
+    context.AddStructDefinition(structDefinition);
+
+    return true;
+}
+
 
 EmitCodeStatement::EmitCodeStatement() {
     emitType = kEmitType::kCode;
@@ -331,8 +492,9 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::Context &context) {
         auto &identifier = context.GetIdentifierAddress(symbol);
         identifier.resolvePoints.push_back({
             .opSize = opSize,
+            .isRelative = isRelative,
             // FIXME: This should be current write pointer!
-            .placeholderOffset = context.Data().size() + placeholderOffset,
+            .placeholderAddress = context.Data().size() + placeholderAddress,
         });
     }
 
@@ -389,9 +551,15 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(Context &context, ast::TwoOpInstrS
     auto opClass = *vcpu::GetOperandFromStr(twoOpInstr->Symbol());
     auto opDesc = *vcpu::GetOpDescFromClass(opClass);
 
+
+    EmitOpSize(opSizeAndFamilyCode);
+
+    // This can't output opSize..
     if (!EmitInstrOperand(context, opDesc, opSize, twoOpInstr->Dst())) {
         return false;
     }
+
+    // This can output opSize..
     if (!EmitInstrOperand(context, opDesc, opSize, twoOpInstr->Src())) {
         return false;
     }
@@ -644,7 +812,11 @@ bool EmitCodeStatement::EmitLabelAddress(Context &context, ast::Identifier::Ref 
     // This is an absolute jump
     regMode |= vcpu::AddressMode::Immediate;
 
-    EmitOpSize(opSize);
+    // FIXME: We need to understand if this is a single-op instruction or two-op instruction
+    //        in case of two-op instr. we can't really do this...
+    if (!(emitFlags & kEmitOpSize)) {
+        EmitOpSize(opSize);
+    }
 
     // Register|Mode = byte = RRRR | MMMM
     EmitRegMode(regMode);
@@ -654,7 +826,7 @@ bool EmitCodeStatement::EmitLabelAddress(Context &context, ast::Identifier::Ref 
     isRelative = false;
     symbol = identifier->Symbol();
     this->opSize = opSize;
-    placeholderOffset = data.size();
+    placeholderAddress = data.size();       // Set address to the location within the instruction
 
 
     // Not needed
@@ -723,7 +895,7 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(Context &context, ast::Identifi
     this->opSize = opSize;
     // not sure if needed
     //ofsRelative = static_cast<uint64_t>(emitData.data.size()) + vcpu::ByteSizeOfOperandSize(opSize);
-    placeholderOffset = data.size();
+    placeholderAddress = data.size();
 
 
 
@@ -764,7 +936,7 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(Context &context, ast::Identifi
 //
 // Evaluate a constant expression...
 //
-ast::Literal::Ref EmitCodeStatement::EvaluateConstantExpression(Context &context, ast::Expression::Ref expression) {
+ast::Literal::Ref EmitStatementBase::EvaluateConstantExpression(Context &context, ast::Expression::Ref expression) {
     switch (expression->Kind()) {
         case ast::NodeType::kNumericLiteral :
             return std::dynamic_pointer_cast<ast::Literal>(expression);
@@ -789,7 +961,6 @@ ast::Literal::Ref EmitCodeStatement::EvaluateConstantExpression(Context &context
         case ast::NodeType::kMemberExpression :
             fmt::println("Compiler, member expression");
             return EvaluateMemberExpression(context, std::dynamic_pointer_cast<ast::MemberExpression>(expression));
-            break;
         case ast::NodeType::kStringLiteral :
             fmt::println(stderr, "Compiler, string literals as constants are not yet supported!");
             exit(1);
@@ -800,7 +971,7 @@ ast::Literal::Ref EmitCodeStatement::EvaluateConstantExpression(Context &context
     return {};
 }
 
-ast::Literal::Ref EmitCodeStatement::EvaluateBinaryExpression(Context &context, ast::BinaryExpression::Ref expression) {
+ast::Literal::Ref EmitStatementBase::EvaluateBinaryExpression(Context &context, ast::BinaryExpression::Ref expression) {
     auto lhs = EvaluateConstantExpression(context, expression->Left());
     auto rhs = EvaluateConstantExpression(context, expression->Right());
     if ((lhs->Kind() == ast::NodeType::kRegisterLiteral) && (rhs->Kind() == ast::NodeType::kRegisterLiteral)) {
@@ -850,7 +1021,7 @@ ast::Literal::Ref EmitCodeStatement::EvaluateBinaryExpression(Context &context, 
     return nullptr;
 }
 
-ast::Literal::Ref EmitCodeStatement::EvaluateMemberExpression(Context &context, ast::MemberExpression::Ref expression) {
+ast::Literal::Ref EmitStatementBase::EvaluateMemberExpression(Context &context, ast::MemberExpression::Ref expression) {
     auto &ident = expression->Ident();
     // Try find the structure matching the name
     if (!context.HasStructDefinintion(ident->Symbol())) {

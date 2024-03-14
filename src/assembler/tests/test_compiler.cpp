@@ -499,6 +499,7 @@ DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
     auto ast = parser.ProduceAST(codes[0]);
     TR_ASSERT(t, ast != nullptr);
     auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res == true);
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
@@ -508,7 +509,7 @@ DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
 
 DLL_EXPORT int test_compiler_move_indirect(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0x28,0x03,0x83,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
+        0x28,0x03,0x83,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
         0x20,0x00,0x03,0x80,                                                // this is wrong!
         0x00,                       // 5 WHALT!
         0xf1,                       // 6 <- call should go here (offset of label)

@@ -25,6 +25,12 @@ namespace gnilk {
         };
 
         struct StructDefinition {
+            size_t NumMembers() const {
+                return members.size();
+            }
+            const StructMember &GetMemberAt(size_t idx) const {
+                return members[idx];
+            }
             const StructMember &GetMember(const std::string &name) const {
                 auto member = std::find_if(members.begin(), members.end(), [&name](const StructMember &member) {
                     return (member.ident == name);

@@ -31,13 +31,13 @@ bool Compiler::CompileAndLink(ast::Program::Ref program) {
     return true;
 }
 
-static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
+static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t newValue, vcpu::OperandSize opSize);
 
 bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 
     // Some unit-tests reuse the Compiler instance - this probably not a good idea...
     // Perhaps a specific 'reset' call...
-    //context = Context();
+    context = Context();
     emitStatements.clear();
 
 //    context.Unit().Clear();
@@ -50,7 +50,7 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
     for(auto &statement : program->Body()) {
         auto stmtEmitter = EmitStatementBase::Create(statement);
         if (stmtEmitter == nullptr) {
-            fmt::println(stderr, "Compiler, failed to generate emitter for statement {}", (int)statement->Kind());
+            fmt::println(stderr, "Compiler, failed to generate emitter for statement {}", ast::NodeTypeToString(statement->Kind()));
             statement->Dump();
             return false;
         }
@@ -58,26 +58,34 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
         emitStatements.push_back(stmtEmitter);
     }
 
-
+    // This will produce a flat binary...
     for(auto stmt : emitStatements) {
         auto ofsBefore = context.Data().size();
         stmt->Finalize(context);
         fmt::println("  Stmt {}, before={}, after={}", stmt->emitid, ofsBefore, context.Data().size());
     }
 
-    // TEMP - resolve
+    // Resolve - this needs to move to the linker...
     auto &data = context.Data();
     for(auto &[symbol, identifier] : context.identifierAddresses) {
         fmt::println("  {} @ {}", symbol, identifier.address);
         for(auto &resolvePoint : identifier.resolvePoints) {
-            VectorReplaceAt(data, resolvePoint.placeholderOffset, identifier.address, resolvePoint.opSize);
+            if (!resolvePoint.isRelative) {
+                VectorReplaceAt(data, resolvePoint.placeholderAddress, identifier.address, resolvePoint.opSize);
+            } else {
+                int64_t offset = static_cast<int64_t>(identifier.address) - static_cast<int64_t>(resolvePoint.placeholderAddress);
+                if (offset < 0) {
+                    offset -= 1;
+                }
+                VectorReplaceAt(data, resolvePoint.placeholderAddress, offset, resolvePoint.opSize);
+            }
         }
     }
 
     return true;
 }
 
-static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
+static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t newValue, vcpu::OperandSize opSize) {
     if (data.size() < vcpu::ByteSizeOfOperandSize(opSize)) {
         return;
     }

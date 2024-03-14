@@ -29,7 +29,8 @@ namespace gnilk {
 
         struct IdentifierResolvePoint {
             vcpu::OperandSize opSize;
-            size_t placeholderOffset;
+            bool isRelative;
+            size_t placeholderAddress;
         };
         struct IdentifierAddress {
             Segment::Ref segment = nullptr;;

@@ -29,8 +29,10 @@ namespace gnilk {
             kCode,
             kData,
             kMeta,
+            kComment,
             kRelocationPoint,
             kIdentifier,
+            kStruct,
         };
 
 //        // Remove this
@@ -59,6 +61,11 @@ namespace gnilk {
 
             virtual bool Process(Context &context) { return false; }
             virtual bool Finalize(Context &context) { return false; }
+
+            kEmitType Kind() {
+                return emitType;
+            }
+
         protected:
             enum kEmitFlags : uint8_t {
                 kEmitNone = 0,
@@ -68,6 +75,15 @@ namespace gnilk {
                 kEmitDst = 8,
                 kEmitSrc = 16,
             };
+
+            // Evaluation stuff - here?
+            ast::Literal::Ref EvaluateConstantExpression(Context &context, ast::Expression::Ref expression);
+            ast::Literal::Ref EvaluateBinaryExpression(Context &context, ast::BinaryExpression::Ref expression);
+            ast::Literal::Ref EvaluateMemberExpression(Context &context, ast::MemberExpression::Ref expression);
+
+            const std::vector<uint8_t> &Data() {
+                return data;
+            }
 
 
             static bool IsCodeStatement(ast::NodeType nodeType);
@@ -114,6 +130,17 @@ namespace gnilk {
             std::string segmentName;
         };
 
+        class EmitCommentStatement : public EmitStatementBase {
+        public:
+            EmitCommentStatement();
+            virtual ~EmitCommentStatement() = default;
+
+            bool Process(Context &context) override;
+            bool Finalize(Context &context) override;
+        protected:
+            std::string text;
+        };
+
         class EmitDataStatement : public EmitStatementBase {
         public:
             EmitDataStatement();
@@ -126,8 +153,10 @@ namespace gnilk {
             bool ProcessArrayLiteral(gnilk::assembler::Context &context, ast::ArrayLiteral::Ref stmt);
             bool ProcessStringLiteral(vcpu::OperandSize opSize, ast::StringLiteral::Ref strLiteral);
             bool ProcessNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
-
-            };
+            bool ProcessStructLiteral(Context &context, ast::StructLiteral::Ref stmt);
+        private:
+            std::vector<EmitStatementBase::Ref> structMemberStatements;
+        };
 
         class EmitIdentifierStatement : public EmitStatementBase {
         public:
@@ -141,6 +170,18 @@ namespace gnilk {
         protected:
             std::string symbol;
             size_t address;
+        };
+        class EmitStructStatement : public EmitStatementBase {
+        public:
+            EmitStructStatement();
+            virtual ~EmitStructStatement() = default;
+
+            bool Process(Context &context) override;
+            bool Finalize(Context &context) override;
+        protected:
+            bool ProcessStructStatement(Context &context, ast::StructStatement::Ref stmt);
+
+
         };
 
         class EmitCodeStatement : public EmitStatementBase {
@@ -168,10 +209,6 @@ namespace gnilk {
             bool EmitRelativeLabelAddress(Context &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
 
 
-                // Evaluation stuff - here?
-            ast::Literal::Ref EvaluateConstantExpression(Context &context, ast::Expression::Ref expression);
-            ast::Literal::Ref EvaluateBinaryExpression(Context &context, ast::BinaryExpression::Ref expression);
-            ast::Literal::Ref EvaluateMemberExpression(Context &context, ast::MemberExpression::Ref expression);
         private:
             // placeholder stuff here...
             bool haveIdentifier = false;
@@ -179,8 +216,8 @@ namespace gnilk {
             // Can store this directly here!
             bool isRelative = false;
             std::string symbol;
-            size_t address = 0;
-            size_t placeholderOffset = 0;
+            size_t address = 0;         // needed???
+            size_t placeholderAddress = 0;
             vcpu::OperandSize opSize;
             //int ofsRelative = 0;
 

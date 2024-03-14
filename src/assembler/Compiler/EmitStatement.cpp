@@ -688,6 +688,8 @@ bool EmitStatement::EmitLabelAddress(ast::Identifier::Ref identifier, vcpu::Oper
     // This is an absolute jump
     regMode |= vcpu::AddressMode::Immediate;
 
+
+    // THIS IS WRONG!
     EmitOpSize(opSize);
 
     // Register|Mode = byte = RRRR | MMMM

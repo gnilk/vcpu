@@ -16,10 +16,10 @@ namespace gnilk {
 
     namespace ast {
         enum class NodeType {
+            // 0
             kUnknown,
             kProgram,
             kScope,
-
             kVarDeclaration,
             kFunctionDeclaration,
 
@@ -29,28 +29,32 @@ namespace gnilk {
             kNoOpInstrStatement,         // instructions without operands (nop, brk, etc..)
             kJumpInstrStatement,         // not sure if needed
 
-
+            // 10
             kIfStatement,         // Expression or Statement (I think this should be a statement)
             kWhileStatement,      // Expression?
             kBreakStatement,
             kAssignmentStatement,
             kCallStatement,
+
             kCommentStatement,
             kMetaStatement,
             kStructStatement,
             kReservationStatment,
-
             kProperty,
+
+            // 20
             kObjectLiteral,
             kConstLiteral,
             kNumericLiteral,
             kStringLiteral,
             kNullLiteral,
+
             kRegisterLiteral,
             kRelativeRegisterLiteral,   // holds 1 base register and a relative expr.
             kArrayLiteral,
             kStructLiteral,
             kIdentifier,
+
             kDeRefExpression,
 
             kLogicalExpression,

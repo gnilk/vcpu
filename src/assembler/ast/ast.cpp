@@ -31,6 +31,10 @@ static std::unordered_map<NodeType, std::string> typeToStringMap = {
     {NodeType::kLogicalExpression, "LogicalExpression"},
     {NodeType::kBinaryExpression,"BinaryExpression"},
     {NodeType::kMemberExpression,"MemberExpression"},
+    {NodeType::kCommentStatement,"CommentStatement"},
+    {NodeType::kRelativeRegisterLiteral, "RelativeRegisterLiteral"},
+    {NodeType::kArrayLiteral, "ArrayLiteral"},
+    {NodeType::kStructLiteral, "StructLiteral"},
 };
 static const std::string unknownNodeType="<unknown>";
 
