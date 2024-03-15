@@ -60,6 +60,12 @@ uint64_t Context::GetCurrentWriteAddress() {
     return unit.GetCurrentWriteAddress();
 }
 
+void Context::Merge() {
+    // Make sure this is empty...
+    outputdata.clear();
+    unit.MergeAllSegments(outputdata);
+}
+
 size_t Context::Write(const std::vector<uint8_t> &data) {
     auto nWritten = unit.Write(data);
     return nWritten;

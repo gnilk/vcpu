@@ -108,7 +108,10 @@ bool Compiler::Link() {
         fmt::println("  Stmt {}, before={}, after={}", stmt->emitid, ofsBefore, context.Data().size());
     }
 
-    // Resolve - this needs to move to the linker...
+    // Now merge to one big blob...
+    context.Merge();
+
+    // Relocate symbols, this should all be done in the linker
     auto &data = context.Data();
     for(auto &[symbol, identifier] : context.identifierAddresses) {
         fmt::println("  {} @ {}", symbol, identifier.absoluteAddress);

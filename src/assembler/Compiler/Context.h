@@ -55,6 +55,7 @@ namespace gnilk {
             Context() = default;
             virtual ~Context() = default;
 
+
             const std::vector<StructDefinition> &StructDefinitions();
 
             bool HasStructDefinintion(const std::string &typeName);
@@ -75,6 +76,9 @@ namespace gnilk {
             CompiledUnit &Unit() {
                 return unit;
             }
+
+            void Merge();
+
 
             uint64_t GetCurrentWriteAddress();
             size_t Write(const std::vector<uint8_t> &data);

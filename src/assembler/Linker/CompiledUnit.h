@@ -28,6 +28,8 @@ namespace gnilk {
             bool HaveSegment(const std::string &name);
             Segment::Ref GetActiveSegment();
 
+            void MergeAllSegments(std::vector<uint8_t> &out);
+
             bool MergeSegments(const std::string &dst, const std::string &src);
 
             size_t GetSegments(std::vector<Segment::Ref> &outSegments);

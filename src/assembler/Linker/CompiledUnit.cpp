@@ -25,6 +25,7 @@ bool CompiledUnit::EnsureChunk() {
         return true;
     }
     activeSegment->CreateChunk(GetCurrentWriteAddress());
+    return true;
 }
 
 size_t CompiledUnit::Write(const std::vector<uint8_t> &data) {
@@ -150,6 +151,7 @@ size_t CompiledUnit::GetSegments(std::vector<Segment::Ref> &outSegments) {
     return outSegments.size();
 }
 
+// THIS IS DEPRECATED!
 bool CompiledUnit::MergeSegments(const std::string &dst, const std::string &src) {
     // The source must exists
     if (!segments.contains(src)) {
@@ -167,4 +169,31 @@ bool CompiledUnit::MergeSegments(const std::string &dst, const std::string &src)
     dstSeg->CopyFrom(srcSeg);
 //    dstSeg->data.insert(dstSeg->data.end(), srcSeg->data.begin(), srcSeg->data.end());
     return true;
+}
+
+// FIXME: Temporary
+void CompiledUnit::MergeAllSegments(std::vector<uint8_t> &out) {
+    // FIXME: This should be an helper
+    size_t startAddress = 0;
+    size_t endAddress = 0;
+    for(auto [name, seg] : segments) {
+        for(auto chunk : seg->chunks) {
+            if (chunk->EndAddress() > endAddress) {
+                endAddress = chunk->EndAddress();
+            }
+        }
+    }
+
+    // This should be done in the linker
+
+    // Calculate the size of final binary imasge
+    auto szFinalData = endAddress - startAddress;
+    out.resize(szFinalData);
+
+    // Append the data
+    for(auto [name, seg] : segments) {
+        for(auto chunk : seg->chunks) {
+            memcpy(out.data()+chunk->LoadAddress(), chunk->DataPtr(), chunk->Size());
+        }
+    }
 }
