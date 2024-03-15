@@ -13,7 +13,6 @@
 #include "Linker/CompiledUnit.h"
 #include "IdentifierRelocatation.h"
 #include "Linker/BaseLinker.h"
-#include "EmitStatement.h"
 #include "StmtEmitter.h"
 
 namespace gnilk {
