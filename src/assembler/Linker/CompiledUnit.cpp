@@ -16,6 +16,31 @@ void CompiledUnit::Clear() {
     segments.clear();
 }
 
+bool CompiledUnit::EnsureChunk() {
+    if (activeSegment == nullptr) {
+        fmt::println(stderr, "Compiler, need at least an active segment");
+        return false;
+    }
+    if (activeSegment->currentChunk != nullptr) {
+        return true;
+    }
+    activeSegment->CreateChunk(GetCurrentWriteAddress());
+}
+
+size_t CompiledUnit::Write(const std::vector<uint8_t> &data) {
+    if (activeSegment == nullptr) {
+        return 0;
+    }
+    if (activeSegment->currentChunk == nullptr) {
+        return 0;
+    }
+    auto nWritten = activeSegment->currentChunk->Write(data);
+
+    currentWriteAddress = activeSegment->CurrentChunk()->GetCurrentWriteAddress();
+    return nWritten;
+}
+
+
 bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
     if (!segments.contains(name)) {
         auto segment = std::make_shared<Segment>(name, address);
@@ -85,7 +110,10 @@ bool CompiledUnit::WriteByte(uint8_t byte) {
     if (!activeSegment) {
         return false;
     }
-    activeSegment->WriteByte(byte);
+    if (!activeSegment->WriteByte(byte)) {
+        return false;
+    }
+    currentWriteAddress = activeSegment->currentChunk->GetCurrentWriteAddress();
     return true;
 }
 void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue) {
@@ -103,11 +131,8 @@ void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSi
 
 
 
-uint64_t CompiledUnit::GetCurrentWritePtr() {
-    if (!activeSegment) {
-        return false;
-    }
-    return activeSegment->CurrentChunk()->GetCurrentWritePtr() + baseAddress;
+uint64_t CompiledUnit::GetCurrentWriteAddress() {
+    return currentWriteAddress;
 }
 
 const std::vector<uint8_t> &CompiledUnit::Data() {

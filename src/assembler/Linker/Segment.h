@@ -39,11 +39,12 @@ namespace gnilk {
                 uint64_t EndAddress() const;
                 void SetLoadAddress(uint64_t newLoadAddress);
 
-                void WriteByte(uint8_t byte);
+                size_t Write(const std::vector<uint8_t> &data);
+                size_t WriteByte(uint8_t byte);
                 void ReplaceAt(uint64_t offset, uint64_t newValue);
                 void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
 
-                uint64_t GetCurrentWritePtr();
+                uint64_t GetCurrentWriteAddress();
             protected:
                 uint64_t loadAddress = 0;
                 std::vector<uint8_t> data;
@@ -67,7 +68,9 @@ namespace gnilk {
             uint64_t EndAddress();
 
 
-            void WriteByte(uint8_t byte);
+            size_t Write(const std::vector<uint8_t> &srcData);
+            size_t WriteByte(uint8_t byte);
+            uint64_t GetCurrentWriteAddress();
             void ReplaceAt(uint64_t offset, uint64_t newValue);
             void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
 

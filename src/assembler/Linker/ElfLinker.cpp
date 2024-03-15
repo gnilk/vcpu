@@ -76,21 +76,21 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
         fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder->ident);
         return false;
     }
-    fmt::println("  from:{}, to:{}", placeHolder->ofsRelative, identifierAddr.address);
+    fmt::println("  from:{}, to:{}", placeHolder->ofsRelative, identifierAddr.absoluteAddress);
 
     auto placeHolderChunk = placeHolder->segment->ChunkFromAddress(placeHolder->address);
-    auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
+    auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.absoluteAddress);
 
     fmt::println("  REL: {}@{:#x} = {}@{:#x}",
         placeHolder->ident, placeHolderChunk->LoadAddress() + placeHolder->address,
-        identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
+        identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.absoluteAddress);
 
     int offset = 0;
-    if (identifierAddr.address > placeHolder->ofsRelative) {
+    if (identifierAddr.absoluteAddress > placeHolder->ofsRelative) {
         // FIXME: This is a bit odd - but if we jump forward I need to add 1 to the offset..
-        offset = identifierAddr.address - placeHolder->ofsRelative + 1;
+        offset = identifierAddr.absoluteAddress - placeHolder->ofsRelative + 1;
     } else {
-        offset = identifierAddr.address - placeHolder->ofsRelative;
+        offset = identifierAddr.absoluteAddress - placeHolder->ofsRelative;
     }
 
     placeHolder->segment->ReplaceAt(placeHolder->address, offset, placeHolder->opSize);
@@ -100,12 +100,12 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
 
 bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder) {
     auto placeHolderChunk = placeHolder->segment->ChunkFromAddress(placeHolder->address);
-    auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.address);
+    auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.absoluteAddress);
 
 
     fmt::println("  {}@{:#x} = {}@{:#x}",
         placeHolder->ident, placeHolderChunk->LoadAddress() + placeHolder->address,
-        identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
+        identifierAddr.segment->Name(),identifierAddr.absoluteAddress);
 
     // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
     if (identifierAddr.segment == nullptr) {
@@ -117,7 +117,7 @@ bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifi
         return false;
     }
 
-    placeHolder->segment->ReplaceAt(placeHolder->address, identChunk->LoadAddress() + identifierAddr.address);
+    placeHolder->segment->ReplaceAt(placeHolder->address, identifierAddr.absoluteAddress);
 
     return true;
 }

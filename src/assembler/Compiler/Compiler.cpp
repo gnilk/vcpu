@@ -27,8 +27,7 @@ bool Compiler::CompileAndLink(ast::Program::Ref program) {
     if (!Compile(program)) {
         return false;
     }
-    //return Link();
-    return true;
+    return Link();
 }
 
 static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t newValue, vcpu::OperandSize opSize);
@@ -58,29 +57,6 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
         emitStatements.push_back(stmtEmitter);
     }
 
-    // This will produce a flat binary...
-    for(auto stmt : emitStatements) {
-        auto ofsBefore = context.Data().size();
-        stmt->Finalize(context);
-        fmt::println("  Stmt {}, before={}, after={}", stmt->emitid, ofsBefore, context.Data().size());
-    }
-
-    // Resolve - this needs to move to the linker...
-    auto &data = context.Data();
-    for(auto &[symbol, identifier] : context.identifierAddresses) {
-        fmt::println("  {} @ {}", symbol, identifier.address);
-        for(auto &resolvePoint : identifier.resolvePoints) {
-            if (!resolvePoint.isRelative) {
-                VectorReplaceAt(data, resolvePoint.placeholderAddress, identifier.address, resolvePoint.opSize);
-            } else {
-                int64_t offset = static_cast<int64_t>(identifier.address) - static_cast<int64_t>(resolvePoint.placeholderAddress);
-                if (offset < 0) {
-                    offset -= 1;
-                }
-                VectorReplaceAt(data, resolvePoint.placeholderAddress, offset, resolvePoint.opSize);
-            }
-        }
-    }
 
     return true;
 }
@@ -125,6 +101,32 @@ static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t
 // We should split this to it's own structure
 //
 bool Compiler::Link() {
+    // This will produce a flat binary...
+    for(auto stmt : emitStatements) {
+        auto ofsBefore = context.Data().size();
+        stmt->Finalize(context);
+        fmt::println("  Stmt {}, before={}, after={}", stmt->emitid, ofsBefore, context.Data().size());
+    }
+
+    // Resolve - this needs to move to the linker...
+    auto &data = context.Data();
+    for(auto &[symbol, identifier] : context.identifierAddresses) {
+        fmt::println("  {} @ {}", symbol, identifier.absoluteAddress);
+        for(auto &resolvePoint : identifier.resolvePoints) {
+            if (!resolvePoint.isRelative) {
+                VectorReplaceAt(data, resolvePoint.placeholderAddress, identifier.absoluteAddress, resolvePoint.opSize);
+            } else {
+                int64_t offset = static_cast<int64_t>(identifier.absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
+                if (offset < 0) {
+                    offset -= 1;
+                }
+                VectorReplaceAt(data, resolvePoint.placeholderAddress, offset, resolvePoint.opSize);
+            }
+        }
+    }
+
+    return true;
+    /*
     if (linker == nullptr) {
         static DummyLinker dummyLinker;
         linker = &dummyLinker;
@@ -132,6 +134,7 @@ bool Compiler::Link() {
     //DummyLinker linker;
     //ElfLinker linker;
     return linker->Link(context.Unit(), context.identifierAddresses, context.addressPlaceholders);
+     */
 }
 
 

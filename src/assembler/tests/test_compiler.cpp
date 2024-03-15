@@ -736,6 +736,8 @@ DLL_EXPORT int test_compiler_orgdecl(ITesting *t) {
     }
 
     auto data = compiler.Data();
+    TR_ASSERT(t, data.size() > 200);
+
     printf("Binary Size: %d\n", (int)data.size());
     HexDump::ToConsole(data.data()+0, 16);
     HexDump::ToConsole(data.data()+100, 16);

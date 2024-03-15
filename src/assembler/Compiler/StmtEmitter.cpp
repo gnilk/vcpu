@@ -123,18 +123,21 @@ bool EmitMetaStatement::ProcessMetaStatement(Context &context, ast::MetaStatemen
     if (stmt->Symbol() == "org") {
         auto arg = stmt->Argument();
         if (arg == nullptr) {
-            fmt::println(stderr, ".org directive requires expression");
+            fmt::println(stderr, "Compiler, .org directive requires expression");
             return false;
         }
         if (arg->Kind() != ast::NodeType::kNumericLiteral) {
-            fmt::println(stderr, ".org expects numeric expression");
+            fmt::println(stderr, "Compiler, .org expects numeric expression");
             return false;
         }
         auto numArg = std::dynamic_pointer_cast<ast::NumericLiteral>(arg);
 
         origin = numArg->Value();
         isOrigin = true;
-
+        return true;
+    }
+    segmentName = stmt->Symbol();
+/*
         // TODO: move this out of here - we are not dealing with segment creation just yet
         auto seg = context.Unit().GetActiveSegment();
         if ((seg->CurrentChunk()->Size() == 0) && (seg->CurrentChunk()->LoadAddress() == numArg->Value())) {
@@ -151,40 +154,38 @@ bool EmitMetaStatement::ProcessMetaStatement(Context &context, ast::MetaStatemen
 
         return true;
     }
-
+    */
     segmentName = stmt->Symbol();
-
-    // TODO: Move this out of here...
-    if ((stmt->Symbol() == "text") || (stmt->Symbol() == "code")) {
-        context.Unit().GetOrAddSegment(".text",0);
-        return true;
-    }
-    if (stmt->Symbol() == "data") {
-        context.Unit().GetOrAddSegment(".data",0);
-        return true;
-    }
-    if (stmt->Symbol() == "bss") {
-        context.Unit().GetOrAddSegment(".bss",0);
-        return true;
-    }
-    return false;
-}
-bool EmitMetaStatement::Finalize(gnilk::assembler::Context &context) {
-    if (!isOrigin) {
-        return true;
-    }
-    // We should probably create chunk here
-
-
-    // Make sure we can fill upp to the origin...
-    auto &out = context.Data();
-    if (out.capacity() < origin) {
-        out.reserve(origin);
-    }
-    // Should this actually be here??
-
     return true;
 }
+
+bool EmitMetaStatement::Finalize(gnilk::assembler::Context &context) {
+    if (!isOrigin) {
+        return FinalizeSegment(context);
+    }
+
+    // We should probably create chunk here
+    auto currentSegment = context.Unit().GetActiveSegment();
+    currentSegment->CreateChunk(origin);
+    return true;
+}
+
+bool EmitMetaStatement::FinalizeSegment(Context &context) {
+    if ((segmentName == "text") || (segmentName == "code")) {
+        context.Unit().CreateEmptySegment(".text");
+        return true;
+    }
+    if (segmentName == "data") {
+        context.Unit().CreateEmptySegment(".data");
+        return true;
+    }
+    if (segmentName == "bss") {
+        context.Unit().CreateEmptySegment(".bss");
+        return true;
+    }
+
+}
+
 
 EmitCommentStatement::EmitCommentStatement() {
     emitType = kEmitType::kComment;
@@ -218,9 +219,9 @@ bool EmitDataStatement::Process(gnilk::assembler::Context &context) {
 }
 
 bool EmitDataStatement::Finalize(gnilk::assembler::Context &context) {
-    auto &out = context.Data();
-    // Insert our data
-    out.insert(out.begin(), data.begin(), data.end());
+    if (!context.Write(data)) {
+        return false;
+    }
     return true;
 }
 
@@ -296,7 +297,7 @@ bool EmitDataStatement::ProcessStructLiteral(Context &context, ast::StructLitera
     // Reserve the amount of bytes we need
     data.reserve(szExpected);
 
-    auto writeStart = context.Unit().GetCurrentWritePtr();
+    auto writeStart = context.GetCurrentWriteAddress();
     size_t szOffset = 0;
     size_t idxMember = 0;
     for (auto &m : stmt->Members()) {
@@ -381,15 +382,34 @@ bool EmitIdentifierStatement::Process(Context &context) {
 }
 
 bool EmitIdentifierStatement::Finalize(Context &context) {
+    // Make sure we have somewhere to place our data
+    // This in case someone does '.code' but not .org statement
+    context.Unit().EnsureChunk();
 
     // The address is the current write point...
     if (!context.HasIdentifierAddress(symbol)) {
-        fmt::println("No such identifier '{}'", symbol);
+        fmt::println(stderr, "Compiler, No such identifier '{}'", symbol);
         return false;
     }
     auto &ident = context.GetIdentifierAddress(symbol);
-    ident.address = context.Data().size();
-    fmt::println("EmitIdentifier, {} @ {}", symbol, ident.address);
+    ident.segment = context.Unit().GetActiveSegment();
+    if (ident.segment == nullptr) {
+        fmt::println(stderr, "Compiler, no active segment!");
+        return false;
+    }
+    ident.chunk = context.Unit().GetActiveSegment()->CurrentChunk();
+    if (ident.chunk == nullptr) {
+        fmt::println(stderr, "Compiler, no active 'chunk' in segment {}", ident.segment->Name());
+
+        // Create a new chunk at the exact write address
+        auto loadAddress = context.GetCurrentWriteAddress();
+        ident.segment->CreateChunk(loadAddress);
+        ident.chunk = context.Unit().GetActiveSegment()->CurrentChunk();
+        return false;
+    }
+    // Set the absolute address
+    ident.absoluteAddress = context.GetCurrentWriteAddress();
+    fmt::println("EmitIdentifier, {} @ {}", symbol, ident.absoluteAddress);
     return true;
 }
 
@@ -405,7 +425,7 @@ bool EmitIdentifierStatement::ProcessIdentifier(Context &context, ast::Identifie
     }
 
     symbol = identifier->Symbol();
-    address = 0;
+//    address = 0;
 
 
     // Actually we just need to make sure it is registered...
@@ -487,7 +507,6 @@ bool EmitCodeStatement::Process(gnilk::assembler::Context &context) {
 
 bool EmitCodeStatement::Finalize(gnilk::assembler::Context &context) {
     // Here we have quite a few things to do - need to change relocation stuff
-    auto &out = context.Data();
     if (haveIdentifier) {
         // Add this identifier to the list of resolve points..
         if (!context.HasIdentifierAddress(symbol)) {
@@ -498,12 +517,13 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::Context &context) {
         identifier.resolvePoints.push_back({
             .opSize = opSize,
             .isRelative = isRelative,
-            // FIXME: This should be current write pointer!
-            .placeholderAddress = context.Data().size() + placeholderAddress,
+            .placeholderAddress = context.GetCurrentWriteAddress(),
         });
     }
 
-    out.insert(out.end(), data.begin(), data.end());
+    if (!context.Write(data)) {
+        return false;
+    }
 
     return true;
 }
@@ -859,8 +879,8 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(Context &context, ast::Identifi
     regMode |= vcpu::AddressMode::Immediate;
 
     IdentifierAddressPlaceholder::Ref addressPlaceholder = std::make_shared<IdentifierAddressPlaceholder>();
-    addressPlaceholder->segment = context.Unit().GetActiveSegment();
-    addressPlaceholder->chunk = context.Unit().GetActiveSegment()->CurrentChunk();
+//    addressPlaceholder->segment = context.Unit().GetActiveSegment();
+//    addressPlaceholder->chunk = context.Unit().GetActiveSegment()->CurrentChunk();
 
     if (opSize == vcpu::OperandSize::Long) {
         // no op.size were given
@@ -873,7 +893,7 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(Context &context, ast::Identifi
             fmt::println("Compiler, warning - realtive address instr. detected without operand size specification - trying to deduce");
             auto idAddress = context.GetIdentifierAddress(identifier->Symbol()); // identifierAddresses[identifier->Symbol()];
             // We are ahead...
-            auto dist = (context.Unit().GetCurrentWritePtr() - idAddress.address);
+            auto dist = (context.GetCurrentWriteAddress() - idAddress.absoluteAddress);
             if (dist < 255) {
                 fmt::println("Compiler, warning - changing from unspecfied to byte (dist={})", dist);
                 opSize = vcpu::OperandSize::Byte;

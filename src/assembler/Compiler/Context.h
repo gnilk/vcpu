@@ -76,6 +76,8 @@ namespace gnilk {
                 return unit;
             }
 
+            uint64_t GetCurrentWriteAddress();
+            size_t Write(const std::vector<uint8_t> &data);
             std::vector<uint8_t> &Data() {
                 return outputdata;
             }

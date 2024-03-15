@@ -38,8 +38,6 @@ namespace gnilk {
                 return context.Unit();
             }
 
-
-            // TEMP TEMP
             const std::vector<uint8_t> &Data() {
                 //return linker->Data();
                 return context.Data();

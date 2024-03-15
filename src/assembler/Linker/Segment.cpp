@@ -84,8 +84,25 @@ const std::string &Segment::Name() const {
     return name;
 }
 
-void Segment::WriteByte(uint8_t byte) {
-    currentChunk->WriteByte(byte);
+uint64_t Segment::GetCurrentWriteAddress() {
+    if (currentChunk == nullptr) {
+        return 0;
+    }
+    return currentChunk->GetCurrentWriteAddress();
+};
+
+size_t Segment::Write(const std::vector<uint8_t> &srcData) {
+    if (currentChunk == nullptr) {
+        return 0;
+    }
+    return currentChunk->Write(srcData);
+}
+
+size_t Segment::WriteByte(uint8_t byte) {
+    if (currentChunk == nullptr) {
+        return 0;
+    }
+    return currentChunk->WriteByte(byte);
 }
 
 void Segment::ReplaceAt(uint64_t offset, uint64_t newValue) {
@@ -137,8 +154,9 @@ void Segment::DataChunk::SetLoadAddress(uint64_t newLoadAddress) {
 }
 
 
-void Segment::DataChunk::WriteByte(uint8_t byte) {
+size_t Segment::DataChunk::WriteByte(uint8_t byte) {
     data.push_back(byte);
+    return 1;
 }
 void Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue) {
     if (data.size() < 8) {
@@ -184,7 +202,11 @@ void Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::Ope
     }
 }
 
+size_t Segment::DataChunk::Write(const std::vector<uint8_t> &srcData) {
+    data.insert(data.end(), srcData.begin(), srcData.end());
+    return srcData.size();
+}
 
-uint64_t Segment::DataChunk::GetCurrentWritePtr() {
-    return data.size();
+uint64_t Segment::DataChunk::GetCurrentWriteAddress() {
+    return loadAddress + data.size();
 }

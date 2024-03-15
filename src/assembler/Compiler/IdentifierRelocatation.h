@@ -35,7 +35,7 @@ namespace gnilk {
         struct IdentifierAddress {
             Segment::Ref segment = nullptr;;
             Segment::DataChunk::Ref chunk = nullptr;
-            uint64_t address = 0;
+            uint64_t absoluteAddress = 0;
             // New emittor stuff
             std::vector<IdentifierResolvePoint> resolvePoints;
         };

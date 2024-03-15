@@ -41,7 +41,7 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
     auto baseAddress = unit.GetBaseAddress();
     auto dataSeg = unit.GetSegment(".data");
     if (dataSeg != nullptr) {
-        dataSeg->SetLoadAddress(unit.GetCurrentWritePtr());
+        dataSeg->SetLoadAddress(unit.GetCurrentWriteAddress());
     }
 
     // Since we merge the segments we need to replace this...
@@ -67,7 +67,7 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
                 fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder->ident);
                 return false;
             }
-            fmt::println("  from:{}, to:{}", placeHolder->ofsRelative, identifierAddr.address);
+            fmt::println("  from:{}, to:{}", placeHolder->ofsRelative, identifierAddr.absoluteAddress);
 
 //            fmt::println("  REL: {}@{:#x} = {}@{:#x}",
 //                placeHolder.ident, placeHolder.address - placeHolder.segment->LoadAddress(),
@@ -78,15 +78,15 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
 
             fmt::println("  REL: {}@{:#x} = {}@{:#x}",
                 placeHolder->ident, placeHolder->address + placeHolderChunk->LoadAddress(),
-                identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
+                identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.absoluteAddress);
 
 
             int offset = 0;
-            if (identifierAddr.address > placeHolder->ofsRelative) {
+            if (identifierAddr.absoluteAddress > placeHolder->ofsRelative) {
                 // FIXME: This is a bit odd - but if we jump forward I need to add 1 to the offset..
-                offset = identifierAddr.address - placeHolder->ofsRelative + 1;
+                offset = identifierAddr.absoluteAddress - placeHolder->ofsRelative + 1;
             } else {
-                offset = identifierAddr.address - placeHolder->ofsRelative;
+                offset = identifierAddr.absoluteAddress - placeHolder->ofsRelative;
             }
             //unit.ReplaceAt(placeHolder.address - placeHolder.segment->LoadAddress(), offset, placeHolder.opSize);
             //unit.ReplaceAt(placeHolder.address - placeHolderChunk->LoadAddress(), offset, placeHolder.opSize);
@@ -105,16 +105,16 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
                     return false;
                 }
 
-                fmt::println(stderr, "Linker, Identifier '{}' @ {} has no valid Segment::Chunk", placeHolder->ident, identifierAddr.address);
+                fmt::println(stderr, "Linker, Identifier '{}' @ {} has no valid Segment::Chunk", placeHolder->ident, identifierAddr.absoluteAddress);
                 return false;
             }
 
             fmt::println("  {}@{:#x} = {}@{:#x}",
                 placeHolder->ident, placeHolder->address + placeHolderChunk->LoadAddress(),
-                identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.address);
+                identifierAddr.segment->Name(),identChunk->LoadAddress() + identifierAddr.absoluteAddress);
 
 
-            placeHolderChunk->ReplaceAt(placeHolder->address, identifierAddr.address + identifierAddr.segment->StartAddress());
+            placeHolderChunk->ReplaceAt(placeHolder->address, identifierAddr.absoluteAddress + identifierAddr.segment->StartAddress());
 
             // WEFU@#$T)&#$YTG(# - DO NOT ASSUME we only want to 'lea' from .data!!!!
             if (identifierAddr.segment == nullptr) {

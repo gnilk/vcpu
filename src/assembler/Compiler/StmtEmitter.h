@@ -123,6 +123,7 @@ namespace gnilk {
             bool Process(Context &context) override;
             bool Finalize(Context &context) override;
         protected:
+            bool FinalizeSegment(Context &context);
             bool ProcessMetaStatement(Context &context, ast::MetaStatement::Ref stmt);
         private:
             bool isOrigin = false;
@@ -169,7 +170,8 @@ namespace gnilk {
             bool ProcessIdentifier(Context &context, ast::Identifier::Ref identifier);
         protected:
             std::string symbol;
-            size_t address;
+
+            //size_t address;
         };
         class EmitStructStatement : public EmitStatementBase {
         public:

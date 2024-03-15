@@ -55,7 +55,7 @@ list(APPEND asmsrc src/assembler/ast/expressions.h)
 
 list(APPEND asmsrc src/assembler/Compiler/Compiler.cpp src/assembler/Compiler/Compiler.h)
 list(APPEND asmsrc src/assembler/Compiler/Context.cpp src/assembler/Compiler/Context.h)
-list(APPEND asmsrc src/assembler/Compiler/EmitStatement.cpp src/assembler/Compiler/EmitStatement.h)
+#list(APPEND asmsrc src/assembler/Compiler/EmitStatement.cpp src/assembler/Compiler/EmitStatement.h)
 list(APPEND asmsrc src/assembler/Compiler/IdentifierRelocatation.h)
 list(APPEND asmsrc src/assembler/Compiler/StmtEmitter.cpp src/assembler/Compiler/StmtEmitter.h)
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)

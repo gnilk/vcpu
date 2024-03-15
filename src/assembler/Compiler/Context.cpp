@@ -55,3 +55,12 @@ IdentifierAddress &Context::GetIdentifierAddress(const std::string &ident) {
 void Context::AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder) {
     addressPlaceholders.push_back(addressPlaceholder);
 }
+
+uint64_t Context::GetCurrentWriteAddress() {
+    return unit.GetCurrentWriteAddress();
+}
+
+size_t Context::Write(const std::vector<uint8_t> &data) {
+    auto nWritten = unit.Write(data);
+    return nWritten;
+}
