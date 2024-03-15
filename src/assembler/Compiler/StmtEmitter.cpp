@@ -517,7 +517,7 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::Context &context) {
         identifier.resolvePoints.push_back({
             .opSize = opSize,
             .isRelative = isRelative,
-            .placeholderAddress = context.GetCurrentWriteAddress(),
+            .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
         });
     }
 
