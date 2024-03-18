@@ -105,17 +105,19 @@ bool Compiler::Link() {
     for(auto stmt : emitStatements) {
         auto ofsBefore = context.Data().size();
         stmt->Finalize(context);
-        fmt::println("  Stmt {}, before={}, after={}", stmt->emitid, ofsBefore, context.Data().size());
+        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->emitid, (int)stmt->Kind(), ofsBefore, context.Data().size());
     }
 
     // Now merge to one big blob...
     context.Merge();
 
+    fmt::println("Relocate symbols");
     // Relocate symbols, this should all be done in the linker
     auto &data = context.Data();
     for(auto &[symbol, identifier] : context.identifierAddresses) {
-        fmt::println("  {} @ {}", symbol, identifier.absoluteAddress);
+        fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
         for(auto &resolvePoint : identifier.resolvePoints) {
+            fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
             if (!resolvePoint.isRelative) {
                 VectorReplaceAt(data, resolvePoint.placeholderAddress, identifier.absoluteAddress, resolvePoint.opSize);
             } else {

@@ -41,6 +41,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_orgdecl(ITesting *t);
     DLL_EXPORT int test_compiler_addtovar(ITesting *t);
     DLL_EXPORT int test_compiler_cmpbne(ITesting *t);
+    DLL_EXPORT int test_compiler_lea_labelseg(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -799,3 +800,31 @@ DLL_EXPORT int test_compiler_cmpbne(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_compiler_lea_labelseg(ITesting *t) {
+    // For some reason there is a problem here
+    // variable 'myvar' don't get the correct address...
+    std::vector<std::string> codes={
+            {
+                    ".code\n"\
+                    ".org 0\n"\
+                    "lea    a0,myvar\n "\
+                    "move.l d0,(a0)\n"\
+                    "ret\n"\
+                    ".data\n"\
+                    ".org 0x100\n"\
+                    "myvar: dc.l 0x4711\n"\
+            }
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(codes[0]);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res == true);
+    auto binary = compiler.Data();
+//    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+
+}

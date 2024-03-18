@@ -37,7 +37,7 @@ size_t CompiledUnit::Write(const std::vector<uint8_t> &data) {
     }
     auto nWritten = activeSegment->currentChunk->Write(data);
 
-    currentWriteAddress = activeSegment->CurrentChunk()->GetCurrentWriteAddress();
+    //currentWriteAddress = activeSegment->CurrentChunk()->GetCurrentWriteAddress();
     return nWritten;
 }
 
@@ -114,7 +114,7 @@ bool CompiledUnit::WriteByte(uint8_t byte) {
     if (!activeSegment->WriteByte(byte)) {
         return false;
     }
-    currentWriteAddress = activeSegment->currentChunk->GetCurrentWriteAddress();
+    //currentWriteAddress = activeSegment->currentChunk->GetCurrentWriteAddress();
     return true;
 }
 void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue) {
@@ -133,7 +133,15 @@ void CompiledUnit::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSi
 
 
 uint64_t CompiledUnit::GetCurrentWriteAddress() {
-    return currentWriteAddress;
+    if (activeSegment == nullptr) {
+        fmt::println(stderr, "Compiler, not active segment!!");
+        return 0;
+    }
+    if (activeSegment->currentChunk == nullptr) {
+        fmt::println(stderr, "Compiler, no chunk in active segment {}", activeSegment->Name());
+        return 0;
+    }
+    return activeSegment->currentChunk->GetCurrentWriteAddress();
 }
 
 const std::vector<uint8_t> &CompiledUnit::Data() {
