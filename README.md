@@ -94,7 +94,7 @@ Support for the following directives:
     - block/buffer declarations; dcb.<opsize> <num>{,<initial value>}
     - include; include "lib/mylib.asm" or include "defs/structs.inc"
     - incbin, for binary inclusion; incbin "assets/somebinary.bin"
-    - section <code/text/data/bss>  -> long form of '.code','.data', etc.. -> asmone
+    ! section <code/text/data/bss>  -> long form of '.code','.data', etc.. -> asmone
 
 ! syscall, through sys instruction
 ! disassembling (i.e. reconstructing an instruction from op-codes)     
@@ -105,9 +105,14 @@ Support for the following directives:
 + bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
-    ! output elf files
-    ! make a linker step
-    - Ability to output a proper memory layout
+    + output elf files (currently broken)
+    + make a linker step (works, but is WIP)
+    ! Ability to output a proper memory layout
+    - Perhaps output emitter statement as some kind of 'language' (text) - JSON/XML/Other?
+      This can later be fed into the linker step. Which allows for 'streaming' data between these steps.      
+- linker
+    - Support for multiple compile units
+    - Support for static (within a compile-unit) and exported functions and variables
 - VCPU
     + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
       Currently we fire interrupts even if no handlers are enabled (not good)
@@ -122,6 +127,7 @@ Support for the following directives:
   - Consider how this should be done, directly or via an 'external' chip
   - If external - how to communicate?
 - Peripherals
+  + Timers, proof-of-concept in place
   - GPIO, this is the basic - need for all others
   - DMA, ability to emulate 'Direct Memory Access'
   - Serial
@@ -130,9 +136,11 @@ Support for the following directives:
   - Other?
              
 - emulator
-    ! accept elf files as executables
+    + accept elf files as executables (broken due to linker refactoring)
         
-! consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
++ consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
+  Currently broken due to refactoring of linker step...
+  
 - write an OS
 + have fun...       <- don't forget...
 ```
