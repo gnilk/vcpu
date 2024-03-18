@@ -48,8 +48,6 @@ namespace gnilk {
 
             const std::vector<uint8_t> &Data();
         protected:
-            // Consider exposing the segments!!   it becomes tideous to access them through the unit...
-            //uint64_t currentWriteAddress = 0;
             uint64_t baseAddress = 0x0;
             std::unordered_map<std::string, Segment::Ref> segments;
             Segment::Ref activeSegment = nullptr;
