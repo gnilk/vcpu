@@ -6,9 +6,9 @@
 // TO-DO:
 // - MUCH better support for multiple compile units
 //   - Check if .org statements overlap within segment (in case multiple compile units have segment and org statements causing overlaps)
-//   - handle symbol export -> this needs full lexer/ast/compiler support as well - but here we need
+//   + handle symbol export -> this needs full lexer/ast/compiler support as well - but here we need
 //     - symbols across units => context
-//     - local symbols => unit
+//     - local symbols => unit (or name-mangling - think namespaces)
 //     [note: the elf write will only care about symbols in the context]
 //
 
@@ -79,7 +79,7 @@ Identifier &Context::GetExport(const std::string &ident) {
 
 
 //
-// Private identifiers, FIXME: Move to compileunit
+// Private identifiers
 //
 bool Context::HasIdentifier(const std::string &ident) {
     return identifierAddresses.contains(ident);
@@ -91,10 +91,6 @@ void Context::AddIdentifier(const std::string &ident, const Identifier &idAddres
 
 Identifier &Context::GetIdentifier(const std::string &ident) {
     return identifierAddresses[ident];
-}
-
-void Context::AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder) {
-    addressPlaceholders.push_back(addressPlaceholder);
 }
 
 size_t Context::Write(const std::vector<uint8_t> &data) {

@@ -110,10 +110,11 @@ Support for the following directives:
     ! Ability to output a proper memory layout
     - Perhaps output emitter statement as some kind of 'language' (text) - JSON/XML/Other?
       This can later be fed into the linker step. Which allows for 'streaming' data between these steps.
-    - add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)      
+    + add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)
+    - Consider using name-mangling for private symbols..      
 - linker
     + Support for multiple compile units
-    - Support for static (within a compile-unit) and exported functions and variables
+    + Support for static (within a compile-unit) and exported functions and variables
 - VCPU
     + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
       Currently we fire interrupts even if no handlers are enabled (not good)

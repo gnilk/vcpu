@@ -414,6 +414,12 @@ bool EmitIdentifierStatement::Finalize(Context &context) {
     // Set the absolute address
     ident.absoluteAddress = context.GetCurrentWriteAddress();
     fmt::println("EmitIdentifier, {} @ {}", symbol, ident.absoluteAddress);
+    // Update the export - this way we create a shortcut when the linker kicks in and wants to write out the
+    // symbol table for all exports...
+    if (context.HasExport(symbol)) {
+        auto identExport = context.GetExport(symbol);
+        identExport.absoluteAddress = ident.absoluteAddress;
+    }
     return true;
 }
 

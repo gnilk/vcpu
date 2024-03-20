@@ -83,8 +83,6 @@ namespace gnilk {
             }
 
 
-            void AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder);
-
             CompiledUnit &CreateUnit();
             const std::vector<CompiledUnit> &GetUnits() {
                 return units;
@@ -128,16 +126,15 @@ namespace gnilk {
             std::unordered_map<std::string, Segment::Ref> segments;
             Segment::Ref activeSegment = nullptr;
 
+            // This is a type-definition - should they always be exported?
+            std::vector<StructDefinition> structDefinitions;
+            // identifiers explicitly marked for export goes here...
             std::unordered_map<std::string, Identifier> publicIdentifiers;
 
 
-            // This is a type-definition - should they always be exported?
-            std::vector<StructDefinition> structDefinitions;
 
             // FIXME: move to compiled unit
-            std::vector<IdentifierAddressPlaceholder::Ref> addressPlaceholders;
             std::unordered_map<std::string, Identifier> identifierAddresses;
-
             std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
 
         };
