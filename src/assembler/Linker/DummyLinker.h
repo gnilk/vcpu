@@ -24,7 +24,7 @@ namespace gnilk {
 
             const std::vector<uint8_t> &Data() override;
             bool LinkOld(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) override;
-            bool Link(Context &contex) override;
+            bool Link(Context &context) override;
 
         private:
             std::vector<uint8_t> linkedData;
