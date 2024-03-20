@@ -12,7 +12,7 @@
 
 #include "InstructionSet.h"
 #include "InstructionSet.h"
-#include "Linker/CompiledUnit.h"
+#include "CompiledUnit.h"
 
 #include "elfio/elfio.hpp"
 #include "Linker/DummyLinker.h"
@@ -38,26 +38,14 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
     // Perhaps a specific 'reset' call...
 
     context = Context();
-    emitStatements.clear();
-
-//    context.Unit().Clear();
-
-    // TEMP!
     context.GetOrAddSegment(".text", 0);
 
-    // This can now be multi-threaded - fancy, eh?
-    size_t idxStmtCounter = 0;
+    auto &unit = context.Unit();
     for(auto &statement : program->Body()) {
-        auto stmtEmitter = EmitStatementBase::Create(statement);
-        if (stmtEmitter == nullptr) {
-            fmt::println(stderr, "Compiler, failed to generate emitter for statement {}", ast::NodeTypeToString(statement->Kind()));
-            statement->Dump();
+        if (!unit.ProcessASTStatement(context, statement)) {
             return false;
         }
-        stmtEmitter->Process(context);
-        emitStatements.push_back(stmtEmitter);
     }
-
 
     return true;
 }
@@ -102,11 +90,19 @@ static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t
 // We should split this to it's own structure
 //
 bool Compiler::Link() {
+    if (linker == nullptr) {
+        static DummyLinker dummyLinker;
+        linker = &dummyLinker;
+    }
+    linker->Link(context);
+
+    auto &unit = context.Unit();
+
     // This will produce a flat binary...
-    for(auto stmt : emitStatements) {
+    for(auto stmt : unit.GetEmitStatements()) {
         auto ofsBefore = context.Data().size();
         stmt->Finalize(context);
-        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->emitid, (int)stmt->Kind(), ofsBefore, context.Data().size());
+        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, context.Data().size());
     }
 
     // Now merge to one big blob...
@@ -115,7 +111,7 @@ bool Compiler::Link() {
     fmt::println("Relocate symbols");
     // Relocate symbols, this should all be done in the linker
     auto &data = context.Data();
-    for(auto &[symbol, identifier] : context.identifierAddresses) {
+    for(auto &[symbol, identifier] : context.GetIdentifierAddresses()) {
         fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
         for(auto &resolvePoint : identifier.resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
@@ -130,7 +126,6 @@ bool Compiler::Link() {
             }
         }
     }
-
     return true;
     /*
     if (linker == nullptr) {

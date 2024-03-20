@@ -10,7 +10,7 @@
 #include "Context.h"
 #include "InstructionSet.h"
 #include "ast/ast.h"
-#include "Linker/CompiledUnit.h"
+#include "CompiledUnit.h"
 #include "IdentifierRelocatation.h"
 #include "Linker/BaseLinker.h"
 #include "StmtEmitter.h"
@@ -52,9 +52,7 @@ namespace gnilk {
             void EmitOpSize(uint8_t opSize);
         private:
             Context context;
-
             BaseLinker *linker = nullptr;
-            std::vector<EmitStatementBase::Ref> emitStatements;
 
             std::vector<uint8_t> linkdata;
         };

@@ -10,7 +10,7 @@
 
 #include "BaseLinker.h"
 
-#include "CompiledUnit.h"
+#include "Compiler/CompiledUnit.h"
 
 // FIXME: This should not be here
 #include "Compiler/IdentifierRelocatation.h"

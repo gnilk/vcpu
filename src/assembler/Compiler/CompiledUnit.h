@@ -9,12 +9,16 @@
 #include <vector>
 #include <stdint.h>
 
+#include "ast/ast.h"
+#include "StmtEmitter.h"
 #include "InstructionSet.h"
-#include "Segment.h"
+#include "Linker/Segment.h"
 
 namespace gnilk {
     namespace assembler {
+        // Forward declare so we can use the reference but avoid circular references
         class Context;
+
         // This should represent a single compiler unit
         // Segment handling should be moved out from here -> they belong to the context as they are shared between compiled units
         class CompiledUnit {
@@ -23,15 +27,19 @@ namespace gnilk {
             virtual ~CompiledUnit() = default;
 
             void Clear();
+
+            bool ProcessASTStatement(Context &context, ast::Statement::Ref statement);
+
             size_t Write(Context &context, const std::vector<uint8_t> &data);
-//            bool WriteByte(Context &context, uint8_t byte);
-//            void ReplaceAt(Context &context, uint64_t offset, uint64_t newValue);
-//            void ReplaceAt(Context &context, uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
 
             uint64_t GetCurrentWriteAddress(Context &context);
+            const std::vector<EmitStatementBase::Ref> &GetEmitStatements() {
+                return emitStatements;
+            }
             // temp?
             const std::vector<uint8_t> &Data(Context &context);
         private:
+            std::vector<EmitStatementBase::Ref> emitStatements;
         };
     }
 }

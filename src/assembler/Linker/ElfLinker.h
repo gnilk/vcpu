@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "BaseLinker.h"
-#include "CompiledUnit.h"
+#include "Compiler/CompiledUnit.h"
 
 #include "elfio/elfio.hpp"
 

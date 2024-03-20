@@ -2,6 +2,7 @@
 // Created by gnilk on 10.03.2024.
 //
 
+#include "Context.h"
 #include "StmtEmitter.h"
 
 //

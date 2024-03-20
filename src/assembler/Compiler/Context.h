@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "Linker/CompiledUnit.h"
+#include "CompiledUnit.h"
 #include "Linker/Segment.h"
 #include "IdentifierRelocatation.h"
 #include "ast/ast.h"
@@ -16,7 +16,6 @@
 
 namespace gnilk {
     namespace assembler {
-        class Compiler;
 
         struct StructMember {
             std::string ident;
@@ -51,9 +50,8 @@ namespace gnilk {
         };
 
         class Context {
-            friend Compiler;
         public:
-            Context();
+            Context() = default;
             virtual ~Context() = default;
 
             void Clear();
@@ -72,7 +70,9 @@ namespace gnilk {
             bool HasIdentifierAddress(const std::string &ident);
             void AddIdentifierAddress(const std::string &ident, const IdentifierAddress &idAddress);
             IdentifierAddress &GetIdentifierAddress(const std::string &ident);
-
+            const std::unordered_map<std::string, IdentifierAddress> &GetIdentifierAddresses() {
+                return identifierAddresses;
+            }
             void AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder);
 
             CompiledUnit &Unit() {

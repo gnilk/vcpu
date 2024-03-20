@@ -8,7 +8,7 @@
 #include <testinterface.h>
 #include "Parser/Parser.h"
 #include "Compiler/Compiler.h"
-#include "Linker/CompiledUnit.h"
+#include "Compiler/CompiledUnit.h"
 #include "HexDump.h"
 
 using namespace gnilk::assembler;

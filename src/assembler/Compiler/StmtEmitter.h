@@ -8,7 +8,6 @@
 
 #include "InstructionSet.h"
 #include "ast/ast.h"
-#include "Context.h"
 
 //
 // This should replace EmitStatement.cpp/EmitStatement.h
@@ -16,7 +15,7 @@
 
 namespace gnilk {
     namespace assembler {
-        class Compiler;
+        class Context;
         // The type of 'Emitter' Statement is depending on the ast::Statement::Kind - so we will need a 'factory' method..
         // which is called from the HL compiler and then the emitter is processed. Once all emitters have processed they are finalized.
         // Finalization basically merges the data points into a flat list which is processed by the linker..
@@ -50,7 +49,6 @@ namespace gnilk {
 
 
         class EmitStatementBase {
-            friend Compiler;
         public:
             using Ref = std::shared_ptr<EmitStatementBase>;
         public:
@@ -64,6 +62,9 @@ namespace gnilk {
 
             kEmitType Kind() {
                 return emitType;
+            }
+            size_t EmitId() {
+                return emitid;
             }
 
         protected:

@@ -5,18 +5,27 @@
 
 #include <memory>
 #include <unordered_map>
-#include "Linker/CompiledUnit.h"
+#include "CompiledUnit.h"
 #include "Compiler/Context.h"
 
 using namespace gnilk;
 using namespace gnilk::assembler;
 
-
-// Compiled Unit
 void CompiledUnit::Clear() {
-    // Nothing to do?
+    emitStatements.clear();
 }
 
+bool CompiledUnit::ProcessASTStatement(Context &context, ast::Statement::Ref statement) {
+    auto stmtEmitter = EmitStatementBase::Create(statement);
+    if (stmtEmitter == nullptr) {
+        fmt::println(stderr, "Compiler, failed to generate emitter for statement {}", ast::NodeTypeToString(statement->Kind()));
+        statement->Dump();
+        return false;
+    }
+    stmtEmitter->Process(context);
+    emitStatements.push_back(stmtEmitter);
+    return true;
+}
 
 size_t CompiledUnit::Write(Context &context, const std::vector<uint8_t> &data) {
     if (context.GetActiveSegment() == nullptr) {
@@ -30,30 +39,6 @@ size_t CompiledUnit::Write(Context &context, const std::vector<uint8_t> &data) {
 
     return nWritten;
 }
-/*
-bool CompiledUnit::WriteByte(Context &context, uint8_t byte) {
-    if (context.GetActiveSegment() == nullptr) {
-        return false;
-    }
-    if (!context.GetActiveSegment()->WriteByte(byte)) {
-        return false;
-    }
-    return true;
-}
-void CompiledUnit::ReplaceAt(Context &context, uint64_t offset, uint64_t newValue) {
-    if (context.GetActiveSegment() == nullptr) {
-        return;
-    }
-    context.GetActiveSegment()->ReplaceAt(offset, newValue);
-}
-void CompiledUnit::ReplaceAt(Context &context, uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
-    if (context.GetActiveSegment() == nullptr) {
-        return;
-    }
-    context.GetActiveSegment()->ReplaceAt(offset, newValue, opSize);
-}
-*/
-
 
 uint64_t CompiledUnit::GetCurrentWriteAddress(Context &context) {
     if (context.GetActiveSegment() == nullptr) {

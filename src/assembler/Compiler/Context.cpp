@@ -7,11 +7,6 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
-// All these methods should lock the context..
-Context::Context() {
-
-}
-
 void Context::Clear() {
     segments.clear();
     activeSegment = nullptr;
