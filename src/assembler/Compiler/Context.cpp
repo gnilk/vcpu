@@ -2,6 +2,16 @@
 // Created by gnilk on 07.03.24.
 //
 
+//
+// TO-DO:
+// - MUCH better support for multiple compile units
+//   - Check if .org statements overlap within segment (in case multiple compile units have segment and org statements causing overlaps)
+//   - handle symbol export -> this needs full lexer/ast/compiler support as well - but here we need
+//     - symbols across units => context
+//     - local symbols => unit
+//     [note: the elf write will only care about symbols in the context]
+//
+
 #include "Context.h"
 
 using namespace gnilk;

@@ -99,7 +99,7 @@ Support for the following directives:
 ! syscall, through sys instruction
 ! disassembling (i.e. reconstructing an instruction from op-codes)     
 ! Separate linker step in compiler (refactor it away from the compiler)
-+ refactor segments and their handling...
+! refactor segments and their handling => in context now!
 + compare instructions
 + branching
 + bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
@@ -109,9 +109,10 @@ Support for the following directives:
     + make a linker step (works, but is WIP)
     ! Ability to output a proper memory layout
     - Perhaps output emitter statement as some kind of 'language' (text) - JSON/XML/Other?
-      This can later be fed into the linker step. Which allows for 'streaming' data between these steps.      
+      This can later be fed into the linker step. Which allows for 'streaming' data between these steps.
+    - add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)      
 - linker
-    - Support for multiple compile units
+    + Support for multiple compile units
     - Support for static (within a compile-unit) and exported functions and variables
 - VCPU
     + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)

@@ -23,6 +23,7 @@ DLL_EXPORT int test_context_multiunit(ITesting *t);
 DLL_EXPORT int test_context(ITesting *t) {
     return kTR_Pass;
 }
+
 DLL_EXPORT int test_context_multiunit(ITesting *t) {
     static std::string code[] = {
             {
