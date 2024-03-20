@@ -110,7 +110,7 @@ namespace gnilk {
             kEmitType emitType = kEmitType::kUnknown;
 
             size_t address = 0;
-            uint8_t emitFlags;  // note: 'must' use underlying type in order to OR/AND/etc..
+            uint8_t emitFlags = 0;  // note: 'must' use underlying type in order to OR/AND/etc..
             std::vector<uint8_t> data;
             //EmitData emitData = {};
         };
