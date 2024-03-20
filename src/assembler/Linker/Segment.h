@@ -15,11 +15,11 @@
 
 namespace gnilk {
     namespace assembler {
-        class CompiledUnit;
+        class Context;
 
         // The ELF Writer would call this a 'Section'
         class Segment {
-            friend CompiledUnit;
+            friend Context;
         public:
             // This is what the ELF Writer call's a 'segment'
             class DataChunk {

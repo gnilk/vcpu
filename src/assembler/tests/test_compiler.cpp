@@ -708,9 +708,9 @@ DLL_EXPORT int test_compiler_orgdecl(ITesting *t) {
     auto res = compiler.CompileAndLink(ast);
     TR_ASSERT(t, res);
 
-    auto &unit = compiler.GetCompiledUnit();
+    auto &ctx = compiler.GetContext();
     std::vector<Segment::Ref> segments;
-    unit.GetSegments(segments);
+    ctx.GetSegments(segments);
 
     // NOTE: Don't assert on number of segments - there are 'hidden' segments created for the benefit of the linker...
 

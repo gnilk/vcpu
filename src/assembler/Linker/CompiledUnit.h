@@ -14,6 +14,7 @@
 
 namespace gnilk {
     namespace assembler {
+        class Context;
         // This should represent a single compiler unit
         // Segment handling should be moved out from here -> they belong to the context as they are shared between compiled units
         class CompiledUnit {
@@ -22,39 +23,16 @@ namespace gnilk {
             virtual ~CompiledUnit() = default;
 
             void Clear();
-            bool EnsureChunk();
+            size_t Write(Context &context, const std::vector<uint8_t> &data);
+//            bool WriteByte(Context &context, uint8_t byte);
+//            void ReplaceAt(Context &context, uint64_t offset, uint64_t newValue);
+//            void ReplaceAt(Context &context, uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
 
-            bool CreateEmptySegment(const std::string &name);
-            bool GetOrAddSegment(const std::string &name, uint64_t address);
-            bool SetActiveSegment(const std::string &name);
-            bool HaveSegment(const std::string &name);
-            Segment::Ref GetActiveSegment();
-
-            void MergeAllSegments(std::vector<uint8_t> &out);
-
-            bool MergeSegments(const std::string &dst, const std::string &src);
-
-            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
-
-            const Segment::Ref GetSegment(const std::string segName);
-
-            size_t GetSegmentEndAddress(const std::string &name);
-            bool WriteByte(uint8_t byte);
-            size_t Write(const std::vector<uint8_t> &data);
-            void ReplaceAt(uint64_t offset, uint64_t newValue);
-            void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
-
-            void SetBaseAddress(uint64_t address);
-            uint64_t GetBaseAddress();
-            uint64_t GetCurrentWriteAddress();
-
-            const std::vector<uint8_t> &Data();
-        protected:
-            uint64_t baseAddress = 0x0;
-            std::unordered_map<std::string, Segment::Ref> segments;
-            Segment::Ref activeSegment = nullptr;
+            uint64_t GetCurrentWriteAddress(Context &context);
+            // temp?
+            const std::vector<uint8_t> &Data(Context &context);
+        private:
         };
-
     }
 }
 

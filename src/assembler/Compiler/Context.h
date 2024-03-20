@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Linker/CompiledUnit.h"
+#include "Linker/Segment.h"
 #include "IdentifierRelocatation.h"
 #include "ast/ast.h"
 
@@ -52,9 +53,10 @@ namespace gnilk {
         class Context {
             friend Compiler;
         public:
-            Context() = default;
+            Context();
             virtual ~Context() = default;
 
+            void Clear();
 
             const std::vector<StructDefinition> &StructDefinitions();
 
@@ -79,6 +81,19 @@ namespace gnilk {
 
             void Merge();
 
+            // Segment handling
+            bool EnsureChunk();
+            bool CreateEmptySegment(const std::string &name);
+            bool GetOrAddSegment(const std::string &name, uint64_t address);
+            bool SetActiveSegment(const std::string &name);
+            bool HaveSegment(const std::string &name);
+            Segment::Ref GetActiveSegment();
+            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
+            const Segment::Ref GetSegment(const std::string segName);
+            size_t GetSegmentEndAddress(const std::string &name);
+
+            // TEMP
+            void MergeAllSegments(std::vector<uint8_t> &out);
 
             uint64_t GetCurrentWriteAddress();
             size_t Write(const std::vector<uint8_t> &data);
@@ -90,12 +105,21 @@ namespace gnilk {
             // TEMP:
             std::vector<uint8_t> outputdata;
 
+            // Should be list...
             CompiledUnit unit;
 
+
+            // Segments and chunks are here as they span multiple units..
+            std::unordered_map<std::string, Segment::Ref> segments;
+            Segment::Ref activeSegment = nullptr;
+
+
+            // This is a type-definition - should they always be exported?
             std::vector<StructDefinition> structDefinitions;
-            //std::vector<IdentifierAddressPlaceholder> addressPlaceholders;
+            // FIXME: move to compiled unit
             std::vector<IdentifierAddressPlaceholder::Ref> addressPlaceholders;
             std::unordered_map<std::string, IdentifierAddress> identifierAddresses;
+
             std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
 
         };

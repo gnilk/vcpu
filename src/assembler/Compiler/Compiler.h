@@ -32,9 +32,9 @@ namespace gnilk {
                 linker = newLinker;
             }
 
-            CompiledUnit &GetCompiledUnit() {
+            Context &GetContext() {
                 //return unit;
-                return context.Unit();
+                return context;
             }
 
             const std::vector<uint8_t> &Data() {

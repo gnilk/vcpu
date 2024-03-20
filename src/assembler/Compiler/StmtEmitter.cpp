@@ -148,22 +148,22 @@ bool EmitMetaStatement::Finalize(gnilk::assembler::Context &context) {
     }
 
     // We should probably create chunk here
-    auto currentSegment = context.Unit().GetActiveSegment();
+    auto currentSegment = context.GetActiveSegment();
     currentSegment->CreateChunk(origin);
     return true;
 }
 
 bool EmitMetaStatement::FinalizeSegment(Context &context) {
     if ((segmentName == "text") || (segmentName == "code")) {
-        context.Unit().CreateEmptySegment(".text");
+        context.CreateEmptySegment(".text");
         return true;
     }
     if (segmentName == "data") {
-        context.Unit().CreateEmptySegment(".data");
+        context.CreateEmptySegment(".data");
         return true;
     }
     if (segmentName == "bss") {
-        context.Unit().CreateEmptySegment(".bss");
+        context.CreateEmptySegment(".bss");
         return true;
     }
     return false;
@@ -367,7 +367,7 @@ bool EmitIdentifierStatement::Process(Context &context) {
 bool EmitIdentifierStatement::Finalize(Context &context) {
     // Make sure we have somewhere to place our data
     // This in case someone does '.code' but not .org statement
-    context.Unit().EnsureChunk();
+    context.EnsureChunk();
 
     // The address is the current write point...
     if (!context.HasIdentifierAddress(symbol)) {
@@ -375,19 +375,19 @@ bool EmitIdentifierStatement::Finalize(Context &context) {
         return false;
     }
     auto &ident = context.GetIdentifierAddress(symbol);
-    ident.segment = context.Unit().GetActiveSegment();
+    ident.segment = context.GetActiveSegment();
     if (ident.segment == nullptr) {
         fmt::println(stderr, "Compiler, no active segment!");
         return false;
     }
-    ident.chunk = context.Unit().GetActiveSegment()->CurrentChunk();
+    ident.chunk = context.GetActiveSegment()->CurrentChunk();
     if (ident.chunk == nullptr) {
         fmt::println(stderr, "Compiler, no active 'chunk' in segment {}", ident.segment->Name());
 
         // Create a new chunk at the exact write address
         auto loadAddress = context.GetCurrentWriteAddress();
         ident.segment->CreateChunk(loadAddress);
-        ident.chunk = context.Unit().GetActiveSegment()->CurrentChunk();
+        ident.chunk = context.GetActiveSegment()->CurrentChunk();
         return false;
     }
     // Set the absolute address

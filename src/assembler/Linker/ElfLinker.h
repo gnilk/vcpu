@@ -24,7 +24,7 @@ namespace gnilk {
             ElfLinker() = default;
             virtual ~ElfLinker() = default;
             const std::vector<uint8_t> &Data() override;
-            bool Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) override;
+            bool LinkOld(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) override;
         protected:
             bool WriteElf(CompiledUnit &unit);
 

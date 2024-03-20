@@ -36,13 +36,14 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 
     // Some unit-tests reuse the Compiler instance - this probably not a good idea...
     // Perhaps a specific 'reset' call...
+
     context = Context();
     emitStatements.clear();
 
 //    context.Unit().Clear();
 
     // TEMP!
-    context.Unit().GetOrAddSegment(".text", 0);
+    context.GetOrAddSegment(".text", 0);
 
     // This can now be multi-threaded - fancy, eh?
     size_t idxStmtCounter = 0;

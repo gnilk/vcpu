@@ -11,7 +11,8 @@ const std::vector<uint8_t> &DummyLinker::Data() {
     return linkedData;
 }
 
-bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+bool DummyLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+/*
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
     fmt::println("Segments:");
@@ -145,5 +146,14 @@ bool DummyLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Ident
         memcpy(linkedData.data()+chunk->LoadAddress(), data.data(), data.size());
     }
     return true;
+*/
+    return false;
 
+}
+
+
+////// NEW LINKER IMPL
+bool DummyLinker::Link(Context &contex) {
+
+    return false;
 }

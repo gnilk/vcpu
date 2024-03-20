@@ -18,7 +18,8 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 
 
 
-bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+bool ElfLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+/*
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
 
@@ -51,6 +52,8 @@ bool ElfLinker::Link(CompiledUnit &unit, std::unordered_map<std::string, Identif
 
     WriteElf(unit);
     return true;
+*/
+    return false;
 }
 
 bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
@@ -124,6 +127,7 @@ bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifi
 
 bool ElfLinker::WriteElf(CompiledUnit &unit) {
     // You can't proceed without this function call!
+/*
     elfWriter.create(ELFCLASS64, ELFDATA2LSB );
 
     elfWriter.set_os_abi(ELFOSABI_NONE );
@@ -185,6 +189,8 @@ bool ElfLinker::WriteElf(CompiledUnit &unit) {
     auto szData = strData.size();
 
     elfData.insert(elfData.end(), ptrData, ptrData + szData);
-
     return true;
+*/
+
+    return false;
 }
