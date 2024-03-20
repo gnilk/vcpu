@@ -183,7 +183,7 @@ bool EmitMetaStatement::FinalizeSegment(Context &context) {
         context.Unit().CreateEmptySegment(".bss");
         return true;
     }
-
+    return false;
 }
 
 
@@ -576,7 +576,6 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(Context &context, ast::TwoOpInstrS
     auto opClass = *vcpu::GetOperandFromStr(twoOpInstr->Symbol());
     auto opDesc = *vcpu::GetOpDescFromClass(opClass);
 
-
     EmitOpSize(opSizeAndFamilyCode);
 
     // This can't output opSize..
@@ -608,8 +607,6 @@ bool EmitCodeStatement::EmitOpCodeForSymbol(const std::string &symbol) {
 }
 
 void EmitCodeStatement::EmitOpSize(uint8_t opSize) {
-    // FIXME: this doesn't work - AND should not be part of 'emitData' (no need)
-    // Move 'emitData' to base-class, no point in having a separate structure (right now atleast)
     emitFlags |= kEmitFlags::kEmitOpSize;
     EmitByte(opSize);
 }
