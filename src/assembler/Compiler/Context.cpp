@@ -9,19 +9,27 @@ using namespace gnilk::assembler;
 
 void Context::Clear() {
     segments.clear();
+    units.clear();
     activeSegment = nullptr;
-    // FIXME: Clear list of compiled units..
+}
+
+CompiledUnit &Context::CreateUnit() {
+    units.emplace_back();
+    return units.back();
 }
 
 void Context::AddStructDefinition(const StructDefinition &structDefinition) {
     structDefinitions.push_back(structDefinition);
 }
+
 bool Context::HasConstant(const std::string &name) {
     return constants.contains(name);
 }
+
 void Context::AddConstant(const std::string &name, ast::ConstLiteral::Ref constant) {
     constants[name] = std::move(constant);
 }
+
 ast::ConstLiteral::Ref Context::GetConstant(const std::string &name) {
     return constants[name];
 }
@@ -45,12 +53,15 @@ const StructDefinition &Context::GetStructDefinitionFromTypeName(const std::stri
     fmt::println(stderr, "Compiler, critical error; no struct with type name={}", typeName);
     exit(1);
 }
+
 bool Context::HasIdentifierAddress(const std::string &ident) {
     return identifierAddresses.contains(ident);
 }
+
 void Context::AddIdentifierAddress(const std::string &ident, const IdentifierAddress &idAddress) {
     identifierAddresses[ident] = idAddress;
 }
+
 IdentifierAddress &Context::GetIdentifierAddress(const std::string &ident) {
     return identifierAddresses[ident];
 }
@@ -59,12 +70,13 @@ void Context::AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &add
     addressPlaceholders.push_back(addressPlaceholder);
 }
 
-
 size_t Context::Write(const std::vector<uint8_t> &data) {
-    auto nWritten = unit.Write(*this, data);
+    if (!EnsureChunk()) {
+        return 0;
+    }
+    auto nWritten = CurrentUnit().Write(*this, data);
     return nWritten;
 }
-
 
 void Context::Merge() {
     // Make sure this is empty...
@@ -123,6 +135,11 @@ bool Context::GetOrAddSegment(const std::string &name, uint64_t address) {
 }
 
 bool Context::CreateEmptySegment(const std::string &name) {
+    if (HaveSegment(name)) {
+        activeSegment = segments[name];
+        return true;
+    }
+
     auto segment = std::make_shared<Segment>(name);
     segments[name] = segment;
     activeSegment = segment;
@@ -149,7 +166,7 @@ uint64_t Context::GetCurrentWriteAddress() {
         return 0;
     }
     if (activeSegment->currentChunk == nullptr) {
-        fmt::println(stderr, "Compiler, no chunk in active segment {}", activeSegment->Name());
+        // if no chunk - we ship back zero - as we will create one on first write...
         return 0;
     }
     return activeSegment->currentChunk->GetCurrentWriteAddress();

@@ -94,42 +94,54 @@ DLL_EXPORT int test_compiler_linksimple(ITesting* t) {
 
 
 DLL_EXPORT int test_compiler_move_immediate(ITesting *t) {
-    Parser parser;
-    Compiler compiler;
+    {
+        Parser parser;
+        Compiler compiler;
+        // move.b d0, 0x45
+        static std::vector<uint8_t> expectedCase1 = {0x20, 0x00, 0x03, 0x01, 0x45};
+        auto prg = parser.ProduceAST("move.b d0,0x45");
+        auto res = compiler.CompileAndLink(prg);
+        TR_ASSERT(t, res);
+        auto binary = compiler.Data();
+        TR_ASSERT(t, binary == expectedCase1);
+        binary.clear();
+    }
 
-    // move.b d0, 0x45
-    static std::vector<uint8_t> expectedCase1 = {0x20,0x00,0x03,0x01, 0x45};
-    auto prg = parser.ProduceAST("move.b d0,0x45");
-    auto res = compiler.CompileAndLink(prg);
-    TR_ASSERT(t, res);
-    auto binary = compiler.Data();
-    TR_ASSERT(t, binary == expectedCase1);
-    binary.clear();
+    {
+        // move.w d0, 0x4433
+        Parser parser;
+        Compiler compiler;
+        static std::vector<uint8_t> expectedCase2 = {0x20, 0x01, 0x03, 0x01, 0x44, 0x33};
+        auto prg = parser.ProduceAST("move.w d0, 0x4433");
+        TR_ASSERT(t, compiler.CompileAndLink(prg));
+        auto &binary = compiler.Data();
+        TR_ASSERT(t, binary == expectedCase2);
+    }
 
-    // move.w d0, 0x4433
-    static std::vector<uint8_t> expectedCase2 = {0x20,0x01,0x03,0x01, 0x44,0x33};
-    prg = parser.ProduceAST("move.w d0, 0x4433");
-    TR_ASSERT(t, compiler.CompileAndLink(prg));
-    binary = compiler.Data();
-    TR_ASSERT(t, binary == expectedCase2);
-
-    // move.d d0, 0x44332211
-    static std::vector<uint8_t> expectedCase3 = {0x20,0x02,0x03,0x01, 0x44,0x33,0x22,0x11};
-    prg = parser.ProduceAST("move.d d0, 0x44332211");
-    TR_ASSERT(t, compiler.CompileAndLink(prg));
-    binary = compiler.Data();
-    TR_ASSERT(t, binary == expectedCase3);
+    {
+        // move.d d0, 0x44332211
+        Parser parser;
+        Compiler compiler;
+        static std::vector<uint8_t> expectedCase3 = {0x20, 0x02, 0x03, 0x01, 0x44, 0x33, 0x22, 0x11};
+        auto prg = parser.ProduceAST("move.d d0, 0x44332211");
+        TR_ASSERT(t, compiler.CompileAndLink(prg));
+        auto &binary = compiler.Data();
+        TR_ASSERT(t, binary == expectedCase3);
+    }
 
     // LWORD currently not supported by AST tree...
 
     // Different register
-
     // move.b d2, 0x44
-    static std::vector<uint8_t> expectedCase4 = {0x20,0x00,0x23,0x01, 0x44};
-    prg = parser.ProduceAST("move.b d2, 0x44");
-    TR_ASSERT(t, compiler.CompileAndLink(prg));
-    binary = compiler.Data();
-    TR_ASSERT(t, binary == expectedCase4);
+    {
+        Parser parser;
+        Compiler compiler;
+        static std::vector<uint8_t> expectedCase4 = {0x20,0x00,0x23,0x01, 0x44};
+        auto prg = parser.ProduceAST("move.b d2, 0x44");
+        TR_ASSERT(t, compiler.CompileAndLink(prg));
+        auto &binary = compiler.Data();
+        TR_ASSERT(t, binary == expectedCase4);
+    }
 
     return kTR_Pass;
 }
@@ -146,10 +158,10 @@ DLL_EXPORT int test_compiler_move_reg2reg(ITesting *t) {
         {"move.b d2, d5"},
     };
 
-    Parser parser;
-    Compiler compiler;
 
     for(int i=0;i<code.size();i++) {
+        Parser parser;
+        Compiler compiler;
         auto ast = parser.ProduceAST(code[i]);
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.CompileAndLink(ast));
@@ -181,10 +193,10 @@ DLL_EXPORT int test_compiler_move_relative(ITesting *t) {
         {"move.w d0, (a0 + d3)"},
     };
 
-    Parser parser;
-    Compiler compiler;
 
     for(int i=0;i<code.size();i++) {
+        Parser parser;
+        Compiler compiler;
         auto ast = parser.ProduceAST(code[i]);
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.CompileAndLink(ast));
@@ -214,10 +226,10 @@ DLL_EXPORT int test_compiler_move_control(ITesting *t) {
         {"move.l d0, cr0"},
     };
 
-    Parser parser;
-    Compiler compiler;
 
     for(int i=0;i<code.size();i++) {
+        Parser parser;
+        Compiler compiler;
         auto ast = parser.ProduceAST(code[i]);
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.CompileAndLink(ast));
@@ -241,10 +253,10 @@ DLL_EXPORT int test_compiler_add_immediate(ITesting *t) {
         {"add.w d0, 0x4433"},
     };
 
-    Parser parser;
-    Compiler compiler;
 
     for(int i=0;i<code.size();i++) {
+        Parser parser;
+        Compiler compiler;
         auto ast = parser.ProduceAST(code[i]);
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.CompileAndLink(ast));
@@ -296,9 +308,9 @@ DLL_EXPORT int test_compiler_push(ITesting *t) {
         {"push.w    d1"},
         {"push.d    d2"},
     };
-    Parser parser;
-    Compiler compiler;
     for(size_t i=0;i<codes.size();i++) {
+        Parser parser;
+        Compiler compiler;
         auto ast = parser.ProduceAST(codes[i]);
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.CompileAndLink(ast));
@@ -329,9 +341,9 @@ DLL_EXPORT int test_compiler_pop(ITesting *t) {
         {"pop.w     d1"},
         {"pop.b     d2"},
   };
-    Parser parser;
-    Compiler compiler;
     for(size_t i=0;i<codes.size();i++) {
+        Parser parser;
+        Compiler compiler;
         auto ast = parser.ProduceAST(codes[i]);
         TR_ASSERT(t, ast != nullptr);
         TR_ASSERT(t, compiler.CompileAndLink(ast));
@@ -721,9 +733,9 @@ DLL_EXPORT int test_compiler_orgdecl(ITesting *t) {
         auto &s = segments[idxSeg];
         printf("  Name=%s\n", s->Name().c_str());
         auto &chunks = s->DataChunks();
+        printf("  Chunks, num=%d\n", (int)chunks.size());
         TR_ASSERT(t, chunks.size() == 3);
 
-        printf("  Chunks, num=%d\n", (int)chunks.size());
         for (int idxChunk=0;idxChunk<chunks.size();idxChunk++) {
             auto &c = chunks[idxChunk];
             if (s->Name() == ".text") {

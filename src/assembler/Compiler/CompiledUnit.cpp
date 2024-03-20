@@ -46,7 +46,7 @@ uint64_t CompiledUnit::GetCurrentWriteAddress(Context &context) {
         return 0;
     }
     if (context.GetActiveSegment()->CurrentChunk()) {
-        fmt::println(stderr, "Compiler, no chunk in active segment {}", context.GetActiveSegment()->Name());
+        // if no chunk we supply one on first write, this just means no explicit .org statement
         return 0;
     }
     return context.GetActiveSegment()->CurrentChunk()->GetCurrentWriteAddress();

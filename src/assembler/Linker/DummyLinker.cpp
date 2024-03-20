@@ -160,14 +160,6 @@ bool DummyLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Id
 
 ////// NEW LINKER IMPL
 bool DummyLinker::Link(Context &context) {
-    auto &unit = context.Unit();
-
-    // This will produce a flat binary...
-    for(auto stmt : unit.GetEmitStatements()) {
-        auto ofsBefore = context.Data().size();
-        stmt->Finalize(context);
-        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, context.Data().size());
-    }
 
     // Now merge to one big blob...
     context.Merge();

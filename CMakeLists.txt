@@ -76,11 +76,12 @@ list(APPEND commonsrc src/common/UnicodeHelper.cpp src/common/UnicodeHelper.h)
 #
 # Assembler unit test src
 #
+list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
+list(APPEND asmtestsrc src/assembler/tests/test_context.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_lexer.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_parser.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_segment.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_stmtemitter.cpp)
-list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 
 
 # test library for vcpu

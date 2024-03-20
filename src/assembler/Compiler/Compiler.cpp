@@ -24,6 +24,8 @@ using namespace gnilk;
 using namespace gnilk::assembler;
 
 bool Compiler::CompileAndLink(ast::Program::Ref program) {
+    // Make sure we operate on a clean context - if someone is reusing the instance...
+    context = Context();
     if (!Compile(program)) {
         return false;
     }
@@ -32,18 +34,25 @@ bool Compiler::CompileAndLink(ast::Program::Ref program) {
 
 bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 
-    // Some unit-tests reuse the Compiler instance - this probably not a good idea...
-    // Perhaps a specific 'reset' call...
+    //context.GetOrAddSegment(".text", 0);
+    context.CreateEmptySegment(".text");
 
-    context = Context();
-    context.GetOrAddSegment(".text", 0);
-
-    auto &unit = context.Unit();
+    // Create the unit
+    auto &unit = context.CreateUnit();
+    // Process all statements within our unit...
     for(auto &statement : program->Body()) {
         if (!unit.ProcessASTStatement(context, statement)) {
             return false;
         }
     }
+
+    // FIXME: this should be in unit...
+    for(auto stmt : unit.GetEmitStatements()) {
+        auto ofsBefore = context.Data().size();
+        stmt->Finalize(context);
+        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, context.Data().size());
+    }
+
 
     return true;
 }

@@ -75,8 +75,13 @@ namespace gnilk {
             }
             void AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder);
 
-            CompiledUnit &Unit() {
-                return unit;
+            CompiledUnit &CreateUnit();
+            const std::vector<CompiledUnit> &GetUnits() {
+                return units;
+            }
+
+            CompiledUnit &CurrentUnit() {
+                return units.back();
             }
 
             void Merge();
@@ -106,8 +111,8 @@ namespace gnilk {
             std::vector<uint8_t> outputdata;
 
             // Should be list...
-            CompiledUnit unit;
-
+            //CompiledUnit unit;
+            std::vector<CompiledUnit> units;
 
             // Segments and chunks are here as they span multiple units..
             std::unordered_map<std::string, Segment::Ref> segments;
