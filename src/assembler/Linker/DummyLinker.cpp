@@ -17,7 +17,7 @@ const std::vector<uint8_t> &DummyLinker::Data() {
     return linkedData;
 }
 
-bool DummyLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+bool DummyLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
 /*
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
@@ -167,7 +167,7 @@ bool DummyLinker::Link(Context &context) {
     fmt::println("Relocate symbols");
     // Relocate symbols, this should all be done in the linker
     auto &data = context.Data();
-    for(auto &[symbol, identifier] : context.GetIdentifierAddresses()) {
+    for(auto &[symbol, identifier] : context.GetIdentifiers()) {
         fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
         for(auto &resolvePoint : identifier.resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);

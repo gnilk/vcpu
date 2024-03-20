@@ -68,6 +68,35 @@ namespace gnilk {
             std::string text;
         };
 
+        class ExportStatement : public Statement {
+        public:
+            using Ref = std::shared_ptr<ExportStatement>;
+        public:
+            ExportStatement() : Statement(NodeType::kExportStatement) {
+
+            }
+
+            explicit ExportStatement(const std::string &identifier) :
+                Statement(NodeType::kExportStatement),
+                ident(identifier) {
+
+            }
+
+            const std::string &Identifier() {
+                return ident;
+            }
+
+            void Dump() override {
+                WriteLine("Export/Public Statement");
+                Indent();
+                WriteLine("Identifier: {}", ident);
+                Unindent();
+                Unindent();
+            }
+        protected:
+            std::string ident;
+        };
+
         class StructStatement : public Statement {
         public:
             using Ref = std::shared_ptr<StructStatement>;

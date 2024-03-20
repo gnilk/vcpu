@@ -42,6 +42,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_addtovar(ITesting *t);
     DLL_EXPORT int test_compiler_cmpbne(ITesting *t);
     DLL_EXPORT int test_compiler_lea_labelseg(ITesting *t);
+    DLL_EXPORT int test_compiler_export(ITesting *t);
 }
 
 DLL_EXPORT int test_compiler(ITesting *t) {
@@ -836,6 +837,29 @@ DLL_EXPORT int test_compiler_lea_labelseg(ITesting *t) {
     TR_ASSERT(t, res == true);
     auto binary = compiler.Data();
 //    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_compiler_export(ITesting *t) {
+    std::string code={
+        ".code\n"\
+        ".org 0\n"\
+        "export myfunc\n"\
+        "call myfunc\n "\
+        "ret\n"\
+        "myfunc:\n"\
+        "move.l d0,0x4711\n"\
+        "ret\n"\
+    };
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(code);
+    TR_ASSERT(t, ast != nullptr);
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res == true);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, compiler.GetContext().HasExport("myfunc"));
 
     return kTR_Pass;
 

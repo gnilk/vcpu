@@ -64,15 +64,32 @@ const StructDefinition &Context::GetStructDefinitionFromTypeName(const std::stri
     exit(1);
 }
 
-bool Context::HasIdentifierAddress(const std::string &ident) {
+
+bool Context::HasExport(const std::string &ident) {
+    return publicIdentifiers.contains(ident);
+}
+
+void Context::AddExport(const std::string &ident) {
+    publicIdentifiers[ident] = {};
+}
+
+Identifier &Context::GetExport(const std::string &ident) {
+    return publicIdentifiers[ident];
+}
+
+
+//
+// Private identifiers, FIXME: Move to compileunit
+//
+bool Context::HasIdentifier(const std::string &ident) {
     return identifierAddresses.contains(ident);
 }
 
-void Context::AddIdentifierAddress(const std::string &ident, const IdentifierAddress &idAddress) {
+void Context::AddIdentifier(const std::string &ident, const Identifier &idAddress) {
     identifierAddresses[ident] = idAddress;
 }
 
-IdentifierAddress &Context::GetIdentifierAddress(const std::string &ident) {
+Identifier &Context::GetIdentifier(const std::string &ident) {
     return identifierAddresses[ident];
 }
 

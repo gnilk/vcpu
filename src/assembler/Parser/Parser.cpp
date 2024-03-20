@@ -57,6 +57,8 @@ ast::Statement::Ref Parser::ParseStatement() {
             return ParseReservationStatement();
         case TokenType::LineComment :
             return ParseLineComment();
+        case TokenType::Public :
+            return ParseExport();
         case TokenType::Struct :
             return ParseStruct();
         case TokenType::Const :
@@ -134,6 +136,20 @@ ast::Statement::Ref Parser::ParseReservationStatement() {
 
     return std::make_shared<ast::ReservationStatement>(std::dynamic_pointer_cast<ast::Identifier>(identifier), opSize.opSize, numToReserve);
 }
+
+ast::Statement::Ref Parser::ParseExport() {
+    Eat();
+    if (At().type != TokenType::Identifier) {
+        fmt::println(stderr, "Parser, Identifier expected after public or export, got {}", At().value);
+        return nullptr;
+    }
+    auto &identifier = At().value;
+    auto stmt = std::make_shared<ast::ExportStatement>(identifier);
+    Eat();
+
+    return stmt;
+}
+
 
 ast::Statement::Ref Parser::ParseMetaStatement() {
     Eat();
@@ -293,7 +309,6 @@ ast::Statement::Ref Parser::ParseArrayDeclaration(vcpu::OperandSize opSize) {
 
     return array;
 }
-
 
 ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
     // Check if this is a proper instruction

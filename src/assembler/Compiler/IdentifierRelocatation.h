@@ -32,7 +32,8 @@ namespace gnilk {
             bool isRelative;
             size_t placeholderAddress;
         };
-        struct IdentifierAddress {
+
+        struct Identifier {
             Segment::Ref segment = nullptr;;
             Segment::DataChunk::Ref chunk = nullptr;
             uint64_t absoluteAddress = 0;

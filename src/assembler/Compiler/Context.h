@@ -66,13 +66,23 @@ namespace gnilk {
             void AddConstant(const std::string &name, ast::ConstLiteral::Ref constant);
             ast::ConstLiteral::Ref GetConstant(const std::string &name);
 
-            // FIXME: Once emitters are 'working' drop 'Address' for this...
-            bool HasIdentifierAddress(const std::string &ident);
-            void AddIdentifierAddress(const std::string &ident, const IdentifierAddress &idAddress);
-            IdentifierAddress &GetIdentifierAddress(const std::string &ident);
-            const std::unordered_map<std::string, IdentifierAddress> &GetIdentifierAddresses() {
+            bool HasExport(const std::string &ident);
+            void AddExport(const std::string &ident);
+            Identifier &GetExport(const std::string &ident);
+            const std::unordered_map<std::string, Identifier> &GetExports() {
+                return publicIdentifiers;
+            }
+
+
+
+            bool HasIdentifier(const std::string &ident);
+            void AddIdentifier(const std::string &ident, const Identifier &idAddress);
+            Identifier &GetIdentifier(const std::string &ident);
+            const std::unordered_map<std::string, Identifier> &GetIdentifiers() {
                 return identifierAddresses;
             }
+
+
             void AddAddressPlaceholder(const IdentifierAddressPlaceholder::Ref &addressPlaceholder);
 
             CompiledUnit &CreateUnit();
@@ -118,12 +128,15 @@ namespace gnilk {
             std::unordered_map<std::string, Segment::Ref> segments;
             Segment::Ref activeSegment = nullptr;
 
+            std::unordered_map<std::string, Identifier> publicIdentifiers;
+
 
             // This is a type-definition - should they always be exported?
             std::vector<StructDefinition> structDefinitions;
+
             // FIXME: move to compiled unit
             std::vector<IdentifierAddressPlaceholder::Ref> addressPlaceholders;
-            std::unordered_map<std::string, IdentifierAddress> identifierAddresses;
+            std::unordered_map<std::string, Identifier> identifierAddresses;
 
             std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
 

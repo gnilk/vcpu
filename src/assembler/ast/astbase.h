@@ -55,7 +55,9 @@ namespace gnilk {
             kStructLiteral,
             kIdentifier,
 
+            // 30
             kDeRefExpression,
+            kExportStatement,
 
             kLogicalExpression,
             kUnaryExpression,

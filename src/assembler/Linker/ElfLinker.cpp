@@ -18,7 +18,7 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 
 
 
-bool ElfLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+bool ElfLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
 /*
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
@@ -56,7 +56,7 @@ bool ElfLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Iden
     return false;
 }
 
-bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::string, IdentifierAddress> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
     for(auto &placeHolder : addressPlaceholders) {
         if (!identifierAddresses.contains(placeHolder->ident)) {
             fmt::println(stderr, "Unknown identifier: {}", placeHolder->ident);
@@ -74,7 +74,7 @@ bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::
     return true;
 }
 
-bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder) {
+bool ElfLinker::RelocateRelative(CompiledUnit &unit, Identifier &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder) {
     if (placeHolder->segment != identifierAddr.segment) {
         fmt::println(stderr, "Relative addressing only within same segment! - check: {}", placeHolder->ident);
         return false;
@@ -101,7 +101,7 @@ bool ElfLinker::RelocateRelative(CompiledUnit &unit, IdentifierAddress &identifi
     return true;
 }
 
-bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, IdentifierAddress &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder) {
+bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, Identifier &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder) {
     auto placeHolderChunk = placeHolder->segment->ChunkFromAddress(placeHolder->address);
     auto identChunk = identifierAddr.segment->ChunkFromAddress(identifierAddr.absoluteAddress);
 

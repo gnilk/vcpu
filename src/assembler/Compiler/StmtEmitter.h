@@ -32,6 +32,7 @@ namespace gnilk {
             kRelocationPoint,
             kIdentifier,
             kStruct,
+            kExport,
         };
 
 //        // Remove this
@@ -130,6 +131,17 @@ namespace gnilk {
             bool isOrigin = false;
             size_t origin = 0;
             std::string segmentName;
+        };
+
+        class EmitExportStatement : public EmitStatementBase {
+        public:
+            EmitExportStatement();
+            virtual ~EmitExportStatement() = default;
+
+            bool Process(Context &context) override;
+            bool Finalize(Context &context) override;
+        protected:
+            std::string identifier;
         };
 
         class EmitCommentStatement : public EmitStatementBase {

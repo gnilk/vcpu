@@ -20,6 +20,7 @@ namespace gnilk {
 
         Struct,         // Struct declaration
         Const,          // Const declaration
+        Public,         // Public declaration
         Reservation,    // Data Reservation 'rs.<op size>'
         Declaration,    // Data Declaration 'dc.<op size>'
         String,

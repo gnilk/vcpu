@@ -43,6 +43,7 @@ namespace gnilk {
 
             ast::Statement::Ref ParseConst();
             ast::Statement::Ref ParseStruct();
+            ast::Statement::Ref ParseExport();
             ast::Statement::Ref ParseReservationStatement();
             ast::Statement::Ref ParseMetaStatement();
             ast::Statement::Ref ParseLineComment();
@@ -53,7 +54,6 @@ namespace gnilk {
             ast::Statement::Ref ParseInstruction();
             ast::Statement::Ref ParseOneOpInstruction(const std::string &symbol);
             ast::Statement::Ref ParseTwoOpInstruction(const std::string &symbol);
-
             ast::Expression::Ref ParseExpression();
             ast::Expression::Ref ParseAdditiveExpression();
             ast::Expression::Ref ParseMultiplicativeExpression();

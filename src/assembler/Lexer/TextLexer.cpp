@@ -55,6 +55,8 @@ const Context &gnilk::GetLexerContext() {
 */
         {"struct", TokenType::Struct},
         {"const", TokenType::Const},
+        {"public", TokenType::Public},  // make a symbol public - i.e outside the compile unit
+        {"export", TokenType::Public},  // alias for public
 
         // Size operands
         {"b", TokenType::OpSize},

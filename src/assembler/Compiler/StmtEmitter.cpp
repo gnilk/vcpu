@@ -37,6 +37,8 @@ EmitStatementBase::Ref EmitStatementBase::Create(ast::Statement::Ref statement) 
         ref = std::make_shared<EmitCodeStatement>();
     } else if (statement->Kind() == ast::NodeType::kCommentStatement){
         ref = std::make_shared<EmitCommentStatement>();
+    } else if (statement->Kind() == ast::NodeType::kExportStatement) {
+        ref = std::make_shared<EmitExportStatement>();
     } else {
         fmt::println("StateEmitter - {} - not handled", ast::NodeTypeToString(statement->Kind()));
     }
@@ -170,6 +172,24 @@ bool EmitMetaStatement::FinalizeSegment(Context &context) {
     return false;
 }
 
+EmitExportStatement::EmitExportStatement() {
+    emitType = kEmitType::kExport;
+}
+
+bool EmitExportStatement::Process(Context &context) {
+    auto expStatement = std::dynamic_pointer_cast<ast::ExportStatement>(statement);
+    identifier = expStatement->Identifier();
+    return true;
+}
+
+bool EmitExportStatement::Finalize(Context &context) {
+    if (context.HasExport(identifier)) {
+        fmt::println(stderr, "Compiler, symbol {} already in exported",identifier);
+        return false;
+    }
+    context.AddExport(identifier);
+    return true;
+}
 
 EmitCommentStatement::EmitCommentStatement() {
     emitType = kEmitType::kComment;
@@ -371,11 +391,11 @@ bool EmitIdentifierStatement::Finalize(Context &context) {
     context.EnsureChunk();
 
     // The address is the current write point...
-    if (!context.HasIdentifierAddress(symbol)) {
+    if (!context.HasIdentifier(symbol)) {
         fmt::println(stderr, "Compiler, No such identifier '{}'", symbol);
         return false;
     }
-    auto &ident = context.GetIdentifierAddress(symbol);
+    auto &ident = context.GetIdentifier(symbol);
     ident.segment = context.GetActiveSegment();
     if (ident.segment == nullptr) {
         fmt::println(stderr, "Compiler, no active segment!");
@@ -403,7 +423,7 @@ bool EmitIdentifierStatement::ProcessIdentifier(Context &context, ast::Identifie
 
 
     // Need to register here so we can bail early
-    if (context.HasIdentifierAddress(identifier->Symbol())) {
+    if (context.HasIdentifier(identifier->Symbol())) {
         fmt::println(stderr,"Identifier {} already in use - can't use duplicate identifiers!", identifier->Symbol());
         return false;
     }
@@ -415,9 +435,9 @@ bool EmitIdentifierStatement::ProcessIdentifier(Context &context, ast::Identifie
     // Actually we just need to make sure it is registered...
     // Not quite sure all of this is needed just yet..
     // As we now have a more linear view of the meta data..
-    IdentifierAddress idAddress = {};
+    Identifier idAddress = {};
 
-    context.AddIdentifierAddress(identifier->Symbol(), idAddress);
+    context.AddIdentifier(identifier->Symbol(), idAddress);
     return true;
 }
 
@@ -493,11 +513,11 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::Context &context) {
     // Here we have quite a few things to do - need to change relocation stuff
     if (haveIdentifier) {
         // Add this identifier to the list of resolve points..
-        if (!context.HasIdentifierAddress(symbol)) {
+        if (!context.HasIdentifier(symbol)) {
             fmt::println(stderr, "Missing identifer '{}'", symbol);
             return false;
         }
-        auto &identifier = context.GetIdentifierAddress(symbol);
+        auto &identifier = context.GetIdentifier(symbol);
         identifier.resolvePoints.push_back({
             .opSize = opSize,
             .isRelative = isRelative,
@@ -867,12 +887,12 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(Context &context, ast::Identifi
         // no op.size were given
         // FIXME: Compute distance - how?
 
-        if (!context.HasIdentifierAddress(identifier->Symbol())) {
+        if (!context.HasIdentifier(identifier->Symbol())) {
             fmt::println(stderr, "Compiler, Identifier not found - can't compute jump length...");
             return false;
         } else {
             fmt::println("Compiler, warning - realtive address instr. detected without operand size specification - trying to deduce");
-            auto idAddress = context.GetIdentifierAddress(identifier->Symbol()); // identifierAddresses[identifier->Symbol()];
+            auto idAddress = context.GetIdentifier(identifier->Symbol()); // identifierAddresses[identifier->Symbol()];
             // We are ahead...
             auto dist = (context.GetCurrentWriteAddress() - idAddress.absoluteAddress);
             if (dist < 255) {
