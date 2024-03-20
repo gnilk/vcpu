@@ -136,25 +136,8 @@ bool EmitMetaStatement::ProcessMetaStatement(Context &context, ast::MetaStatemen
         isOrigin = true;
         return true;
     }
-    segmentName = stmt->Symbol();
-/*
-        // TODO: move this out of here - we are not dealing with segment creation just yet
-        auto seg = context.Unit().GetActiveSegment();
-        if ((seg->CurrentChunk()->Size() == 0) && (seg->CurrentChunk()->LoadAddress() == numArg->Value())) {
-            fmt::println("Compiler, Skipping new chunk - same load-address and it's empty (would create duplicate)");
-            return true;
-        }
-        if ((numArg->Value() > seg->CurrentChunk()->LoadAddress()) && (numArg->Value() < (seg->CurrentChunk()->LoadAddress() + seg->CurrentChunk()->Size()))) {
-            fmt::println(stderr, "Compiler, .org directive overlaps with existing chunk!");
-            return false;
-        }
 
-        fmt::println("Compiler, In segment {} - creating new chunk at addr {}", seg->Name(), numArg->Value());
-        seg->CreateChunk(numArg->Value());
-
-        return true;
-    }
-    */
+    // Not origin - we are segment, so just store this...
     segmentName = stmt->Symbol();
     return true;
 }
