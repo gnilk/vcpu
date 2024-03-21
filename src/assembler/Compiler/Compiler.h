@@ -41,6 +41,14 @@ namespace gnilk {
                 //return linker->Data();
                 return context.Data();
             }
+
+            double GetCompileDurationMS() {
+                return msCompileDuration;
+            }
+            double GetLinkDurationMS() {
+                return msLinkDuration;
+            }
+
         protected:
 
 
@@ -51,6 +59,8 @@ namespace gnilk {
             bool IsOpSizeDeferred();
             void EmitOpSize(uint8_t opSize);
         private:
+            double msCompileDuration = 0.0;
+            double msLinkDuration = 0.0;
             Context context;
             BaseLinker *linker = nullptr;
 

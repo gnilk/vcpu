@@ -18,6 +18,8 @@
 #include "Linker/DummyLinker.h"
 #include "Linker/ElfLinker.h"
 
+#include "DurationTimer.h"
+
 #include "StmtEmitter.h"
 
 using namespace gnilk;
@@ -34,11 +36,13 @@ bool Compiler::CompileAndLink(ast::Program::Ref program) {
 
 bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 
+    DurationTimer timer;
     //context.GetOrAddSegment(".text", 0);
     context.CreateEmptySegment(".text");
 
     // Create the unit
     auto &unit = context.CreateUnit();
+
     // Process all statements within our unit...
     for(auto &statement : program->Body()) {
         if (!unit.ProcessASTStatement(context, statement)) {
@@ -46,13 +50,12 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
         }
     }
 
-    // FIXME: this should be in unit...
-    for(auto stmt : unit.GetEmitStatements()) {
-        auto ofsBefore = context.Data().size();
-        stmt->Finalize(context);
-        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, context.Data().size());
+    // Finalize and generate data to context.
+    if (!unit.EmitData(context)) {
+        return false;
     }
 
+    msCompileDuration = timer.Sample();
 
     return true;
 }
@@ -67,7 +70,10 @@ bool Compiler::Link() {
         static DummyLinker dummyLinker;
         linker = &dummyLinker;
     }
-    return linker->Link(context);
+    DurationTimer timer;
+    auto result = linker->Link(context);
+    msLinkDuration = timer.Sample();
+    return result;
 }
 
 

@@ -138,6 +138,8 @@ bool CompileData(const std::string &outFilename, const std::string_view &srcData
     if (!compiler.CompileAndLink(ast)) {
         return false;
     }
+    fmt::println("Compile took {} milliseconds", compiler.GetCompileDurationMS());
+    fmt::println("Link took {} milliseconds", compiler.GetLinkDurationMS());
 
     return SaveCompiledData(outFilename, compiler.Data());
 }

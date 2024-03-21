@@ -15,6 +15,7 @@ void CompiledUnit::Clear() {
     emitStatements.clear();
 }
 
+// Process the AST tree create emit statement which is a sort of intermediate compile step
 bool CompiledUnit::ProcessASTStatement(Context &context, ast::Statement::Ref statement) {
     auto stmtEmitter = EmitStatementBase::Create(statement);
     if (stmtEmitter == nullptr) {
@@ -24,6 +25,18 @@ bool CompiledUnit::ProcessASTStatement(Context &context, ast::Statement::Ref sta
     }
     stmtEmitter->Process(context);
     emitStatements.push_back(stmtEmitter);
+    return true;
+}
+
+// Process all statements and emit the data, this will actually produce the byte code
+bool CompiledUnit::EmitData(Context &context) {
+    for(auto stmt : GetEmitStatements()) {
+        auto ofsBefore = context.Data().size();
+        if (!stmt->Finalize(context)) {
+            return false;
+        }
+        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, context.Data().size());
+    }
     return true;
 }
 

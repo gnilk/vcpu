@@ -29,6 +29,7 @@ namespace gnilk {
             void Clear();
 
             bool ProcessASTStatement(Context &context, ast::Statement::Ref statement);
+            bool EmitData(Context &context);
 
             size_t Write(Context &context, const std::vector<uint8_t> &data);
 
