@@ -223,7 +223,9 @@ bool EmitDataStatement::Process(gnilk::assembler::Context &context) {
 }
 
 bool EmitDataStatement::Finalize(gnilk::assembler::Context &context) {
-    if (!context.Write(data)) {
+    // Data statement is also 'const' declaration - they have no data, so check if we are empty before executing
+    // write. As write returns num-bytes written, which is zero for const declarations...
+    if (!data.empty() && !context.Write(data)) {
         return false;
     }
     return true;
