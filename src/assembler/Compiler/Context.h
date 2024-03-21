@@ -10,77 +10,34 @@
 
 #include "CompiledUnit.h"
 #include "Linker/Segment.h"
-#include "IdentifierRelocatation.h"
+#include "Identifiers.h"
 #include "ast/ast.h"
 
 
 namespace gnilk {
     namespace assembler {
 
-        struct StructMember {
-            std::string ident;
-            size_t offset;
-            size_t byteSize;
-            ast::Statement::Ref declarationStatement;
-        };
-
-        struct StructDefinition {
-            size_t NumMembers() const {
-                return members.size();
-            }
-            const StructMember &GetMemberAt(size_t idx) const {
-                return members[idx];
-            }
-            const StructMember &GetMember(const std::string &name) const {
-                auto member = std::find_if(members.begin(), members.end(), [&name](const StructMember &member) {
-                    return (member.ident == name);
-                });
-                return *member;
-            }
-            bool HasMember(const std::string &name) const {
-                auto member = std::find_if(members.begin(), members.end(), [&name](const StructMember &member) {
-                    return (member.ident == name);
-                });
-                return (member != members.end());
-            }
-
-            std::string ident;
-            size_t byteSize;
-            std::vector<StructMember> members;
-        };
-
-        class Context {
+        class Context : public IPublicIdentifiers {
         public:
             Context() = default;
             virtual ~Context() = default;
 
             void Clear();
 
-            const std::vector<StructDefinition> &StructDefinitions();
 
-            bool HasStructDefinintion(const std::string &typeName);
-            void AddStructDefinition(const StructDefinition &structDefinition);
-            const StructDefinition &GetStructDefinitionFromTypeName(const std::string &typeName);
-
-            bool HasConstant(const std::string &name);
-            void AddConstant(const std::string &name, ast::ConstLiteral::Ref constant);
-            ast::ConstLiteral::Ref GetConstant(const std::string &name);
-
-            bool HasExport(const std::string &ident);
-            void AddExport(const std::string &ident);
-            Identifier &GetExport(const std::string &ident);
-            const std::unordered_map<std::string, Identifier> &GetExports() {
+            // IPublicIdentifiers
+            bool HasExport(const std::string &ident) override;
+            void AddExport(const std::string &ident) override;
+            Identifier &GetExport(const std::string &ident) override;
+            const std::unordered_map<std::string, Identifier> &GetExports() override {
                 return publicIdentifiers;
             }
 
+            bool HasStructDefinintion(const std::string &typeName) override;
+            void AddStructDefinition(const StructDefinition &structDefinition) override;
+            const StructDefinition &GetStructDefinitionFromTypeName(const std::string &typeName) override;
+            const std::vector<StructDefinition> &StructDefinitions() override;
 
-
-            bool HasIdentifier(const std::string &ident);
-            void AddIdentifier(const std::string &ident, const Identifier &idAddress);
-            Identifier &GetIdentifier(const std::string &ident);
-            const std::unordered_map<std::string, Identifier> &GetIdentifiers() {
-                return identifierAddresses;
-            }
 
 
             CompiledUnit &CreateUnit();
@@ -89,6 +46,9 @@ namespace gnilk {
             }
 
             CompiledUnit &CurrentUnit() {
+                if (units.empty()) {
+                    return CreateUnit();
+                }
                 return units.back();
             }
 
@@ -97,7 +57,7 @@ namespace gnilk {
             // Segment handling
             bool EnsureChunk();
             bool CreateEmptySegment(const std::string &name);
-            bool GetOrAddSegment(const std::string &name, uint64_t address);
+            bool GetOrAddSegment(const std::string &name);
             bool SetActiveSegment(const std::string &name);
             bool HaveSegment(const std::string &name);
             Segment::Ref GetActiveSegment();
@@ -130,12 +90,6 @@ namespace gnilk {
             std::vector<StructDefinition> structDefinitions;
             // identifiers explicitly marked for export goes here...
             std::unordered_map<std::string, Identifier> publicIdentifiers;
-
-
-
-            // FIXME: move to compiled unit
-            std::unordered_map<std::string, Identifier> identifierAddresses;
-            std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
 
         };
 

@@ -15,7 +15,7 @@
 
 namespace gnilk {
     namespace assembler {
-        class Context;
+        class CompiledUnit;
         // The type of 'Emitter' Statement is depending on the ast::Statement::Kind - so we will need a 'factory' method..
         // which is called from the HL compiler and then the emitter is processed. Once all emitters have processed they are finalized.
         // Finalization basically merges the data points into a flat list which is processed by the linker..
@@ -58,8 +58,8 @@ namespace gnilk {
 
             static EmitStatementBase::Ref Create(ast::Statement::Ref statement);
 
-            virtual bool Process(Context &context) { return false; }
-            virtual bool Finalize(Context &context) { return false; }
+            virtual bool Process(CompiledUnit &unit) { return false; }
+            virtual bool Finalize(CompiledUnit &unit) { return false; }
 
             kEmitType Kind() {
                 return emitType;
@@ -79,9 +79,9 @@ namespace gnilk {
             };
 
             // Evaluation stuff - here?
-            ast::Literal::Ref EvaluateConstantExpression(Context &context, ast::Expression::Ref expression);
-            ast::Literal::Ref EvaluateBinaryExpression(Context &context, ast::BinaryExpression::Ref expression);
-            ast::Literal::Ref EvaluateMemberExpression(Context &context, ast::MemberExpression::Ref expression);
+            ast::Literal::Ref EvaluateConstantExpression(CompiledUnit &unit, ast::Expression::Ref expression);
+            ast::Literal::Ref EvaluateBinaryExpression(CompiledUnit &unit, ast::BinaryExpression::Ref expression);
+            ast::Literal::Ref EvaluateMemberExpression(CompiledUnit &unit, ast::MemberExpression::Ref expression);
 
             const std::vector<uint8_t> &Data() {
                 return data;
@@ -122,11 +122,11 @@ namespace gnilk {
             EmitMetaStatement();
             virtual ~EmitMetaStatement() = default;
 
-            bool Process(Context &context) override;
-            bool Finalize(Context &context) override;
+            bool Process(CompiledUnit &context) override;
+            bool Finalize(CompiledUnit &context) override;
         protected:
-            bool FinalizeSegment(Context &context);
-            bool ProcessMetaStatement(Context &context, ast::MetaStatement::Ref stmt);
+            bool FinalizeSegment(CompiledUnit &context);
+            bool ProcessMetaStatement(CompiledUnit &context, ast::MetaStatement::Ref stmt);
         private:
             bool isOrigin = false;
             size_t origin = 0;
@@ -138,8 +138,8 @@ namespace gnilk {
             EmitExportStatement();
             virtual ~EmitExportStatement() = default;
 
-            bool Process(Context &context) override;
-            bool Finalize(Context &context) override;
+            bool Process(CompiledUnit &context) override;
+            bool Finalize(CompiledUnit &context) override;
         protected:
             std::string identifier;
         };
@@ -149,8 +149,8 @@ namespace gnilk {
             EmitCommentStatement();
             virtual ~EmitCommentStatement() = default;
 
-            bool Process(Context &context) override;
-            bool Finalize(Context &context) override;
+            bool Process(CompiledUnit &context) override;
+            bool Finalize(CompiledUnit &context) override;
         protected:
             std::string text;
         };
@@ -160,14 +160,14 @@ namespace gnilk {
             EmitDataStatement();
             virtual ~EmitDataStatement() = default;
 
-            bool Process(Context &context) override;
-            bool Finalize(Context &context) override;
+            bool Process(CompiledUnit &context) override;
+            bool Finalize(CompiledUnit &context) override;
         protected:
-            bool ProcessConstLiteral(Context &context, ast::ConstLiteral::Ref stmt);
-            bool ProcessArrayLiteral(gnilk::assembler::Context &context, ast::ArrayLiteral::Ref stmt);
+            bool ProcessConstLiteral(CompiledUnit &context, ast::ConstLiteral::Ref stmt);
+            bool ProcessArrayLiteral(CompiledUnit &context, ast::ArrayLiteral::Ref stmt);
             bool ProcessStringLiteral(vcpu::OperandSize opSize, ast::StringLiteral::Ref strLiteral);
             bool ProcessNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
-            bool ProcessStructLiteral(Context &context, ast::StructLiteral::Ref stmt);
+            bool ProcessStructLiteral(CompiledUnit &context, ast::StructLiteral::Ref stmt);
         private:
             std::vector<EmitStatementBase::Ref> structMemberStatements;
         };
@@ -177,10 +177,10 @@ namespace gnilk {
             EmitIdentifierStatement();
             virtual ~EmitIdentifierStatement() = default;
 
-            bool Process(Context &context) override;
-            bool Finalize(Context &context) override;
+            bool Process(CompiledUnit &context) override;
+            bool Finalize(CompiledUnit &context) override;
         protected:
-            bool ProcessIdentifier(Context &context, ast::Identifier::Ref identifier);
+            bool ProcessIdentifier(CompiledUnit &context, ast::Identifier::Ref identifier);
         protected:
             std::string symbol;
 
@@ -191,10 +191,10 @@ namespace gnilk {
             EmitStructStatement();
             virtual ~EmitStructStatement() = default;
 
-            bool Process(Context &context) override;
-            bool Finalize(Context &context) override;
+            bool Process(CompiledUnit &context) override;
+            bool Finalize(CompiledUnit &context) override;
         protected:
-            bool ProcessStructStatement(Context &context, ast::StructStatement::Ref stmt);
+            bool ProcessStructStatement(CompiledUnit &context, ast::StructStatement::Ref stmt);
 
 
         };
@@ -203,25 +203,25 @@ namespace gnilk {
         public:
             EmitCodeStatement();
             virtual ~EmitCodeStatement() = default;
-            bool Process(Context &context) override;
-            bool Finalize(Context &context) override;
+            bool Process(CompiledUnit &context) override;
+            bool Finalize(CompiledUnit &context) override;
 
         protected:
             bool ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt);
-            bool ProcessOneOpInstrStmt(Context &context, ast::OneOpInstrStatment::Ref stmt);
-            bool ProcessTwoOpInstrStmt(Context &context, ast::TwoOpInstrStatment::Ref stmt);
+            bool ProcessOneOpInstrStmt(CompiledUnit &context, ast::OneOpInstrStatment::Ref stmt);
+            bool ProcessTwoOpInstrStmt(CompiledUnit &context, ast::TwoOpInstrStatment::Ref stmt);
 
             bool EmitOpCodeForSymbol(const std::string &symbol);
             void EmitOpSize(uint8_t opSize);
             void EmitRegMode(uint8_t regMode);
-            bool EmitInstrOperand(Context &context, vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
+            bool EmitInstrOperand(CompiledUnit &context, vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
             bool EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral);
             bool EmitRegisterLiteralWithAddrMode(ast::RegisterLiteral::Ref regLiteral, uint8_t addrMode);
-            bool EmitDereference(Context &context, ast::DeReferenceExpression::Ref expression);
-            bool EmitLabelAddress(Context &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
-            bool EmitRelativeLabelAddress(Context &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
+            bool EmitDereference(CompiledUnit &context, ast::DeReferenceExpression::Ref expression);
+            bool EmitLabelAddress(CompiledUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
+            bool EmitRelativeLabelAddress(CompiledUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
 
 
         private:

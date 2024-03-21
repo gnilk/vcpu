@@ -46,7 +46,7 @@ DLL_EXPORT int test_stmtemitter_data_byte(ITesting *t) {
     for(auto &stmt : ast->Body()) {
         auto emitter = EmitStatementBase::Create(stmt);
         TR_ASSERT(t, emitter != nullptr);
-        emitter->Process(context);
+        emitter->Process(context.CurrentUnit());
         emitters.push_back(emitter);
     }
 

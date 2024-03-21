@@ -2,7 +2,8 @@
 // Created by gnilk on 10.03.2024.
 //
 
-#include "Context.h"
+#include "CompiledUnit.h"
+#include "Identifiers.h"
 #include "StmtEmitter.h"
 
 //
@@ -117,11 +118,11 @@ EmitMetaStatement::EmitMetaStatement() {
     emitType = kEmitType::kMeta;
 }
 
-bool EmitMetaStatement::Process(Context &context) {
+bool EmitMetaStatement::Process(CompiledUnit &context) {
     return ProcessMetaStatement(context, std::dynamic_pointer_cast<ast::MetaStatement>(statement));
 }
 
-bool EmitMetaStatement::ProcessMetaStatement(Context &context, ast::MetaStatement::Ref stmt) {
+bool EmitMetaStatement::ProcessMetaStatement(CompiledUnit &context, ast::MetaStatement::Ref stmt) {
 
     if (stmt->Symbol() == "org") {
         auto arg = stmt->Argument();
@@ -145,7 +146,7 @@ bool EmitMetaStatement::ProcessMetaStatement(Context &context, ast::MetaStatemen
     return true;
 }
 
-bool EmitMetaStatement::Finalize(gnilk::assembler::Context &context) {
+bool EmitMetaStatement::Finalize(gnilk::assembler::CompiledUnit &context) {
     if (!isOrigin) {
         return FinalizeSegment(context);
     }
@@ -156,7 +157,7 @@ bool EmitMetaStatement::Finalize(gnilk::assembler::Context &context) {
     return true;
 }
 
-bool EmitMetaStatement::FinalizeSegment(Context &context) {
+bool EmitMetaStatement::FinalizeSegment(CompiledUnit &context) {
     if ((segmentName == "text") || (segmentName == "code")) {
         context.CreateEmptySegment(".text");
         return true;
@@ -176,13 +177,13 @@ EmitExportStatement::EmitExportStatement() {
     emitType = kEmitType::kExport;
 }
 
-bool EmitExportStatement::Process(Context &context) {
+bool EmitExportStatement::Process(CompiledUnit &context) {
     auto expStatement = std::dynamic_pointer_cast<ast::ExportStatement>(statement);
     identifier = expStatement->Identifier();
     return true;
 }
 
-bool EmitExportStatement::Finalize(Context &context) {
+bool EmitExportStatement::Finalize(CompiledUnit &context) {
     if (context.HasExport(identifier)) {
         fmt::println(stderr, "Compiler, symbol {} already in exported",identifier);
         return false;
@@ -195,13 +196,13 @@ EmitCommentStatement::EmitCommentStatement() {
     emitType = kEmitType::kComment;
 }
 
-bool EmitCommentStatement::Process(gnilk::assembler::Context &context) {
+bool EmitCommentStatement::Process(gnilk::assembler::CompiledUnit &context) {
     auto cmtStatement = std::dynamic_pointer_cast<ast::LineComment>(statement);
     text = cmtStatement->Text();
     return true;
 }
 
-bool EmitCommentStatement::Finalize(gnilk::assembler::Context &context) {
+bool EmitCommentStatement::Finalize(gnilk::assembler::CompiledUnit &context) {
     return true;
 }
 
@@ -213,7 +214,7 @@ EmitDataStatement::EmitDataStatement() {
     emitType = kEmitType::kData;
 }
 
-bool EmitDataStatement::Process(gnilk::assembler::Context &context) {
+bool EmitDataStatement::Process(gnilk::assembler::CompiledUnit &context) {
     if (statement->Kind() == ast::NodeType::kConstLiteral) {
         return ProcessConstLiteral(context, std::dynamic_pointer_cast<ast::ConstLiteral>(statement));
     } else if (statement->Kind() == ast::NodeType::kStructLiteral) {
@@ -222,7 +223,7 @@ bool EmitDataStatement::Process(gnilk::assembler::Context &context) {
     return ProcessArrayLiteral(context, std::dynamic_pointer_cast<ast::ArrayLiteral>(statement));
 }
 
-bool EmitDataStatement::Finalize(gnilk::assembler::Context &context) {
+bool EmitDataStatement::Finalize(gnilk::assembler::CompiledUnit &context) {
     // Data statement is also 'const' declaration - they have no data, so check if we are empty before executing
     // write. As write returns num-bytes written, which is zero for const declarations...
     if (!data.empty() && !context.Write(data)) {
@@ -231,7 +232,7 @@ bool EmitDataStatement::Finalize(gnilk::assembler::Context &context) {
     return true;
 }
 
-bool EmitDataStatement::ProcessArrayLiteral(gnilk::assembler::Context &context, ast::ArrayLiteral::Ref stmt) {
+bool EmitDataStatement::ProcessArrayLiteral(gnilk::assembler::CompiledUnit &context, ast::ArrayLiteral::Ref stmt) {
     auto opSize = stmt->OpSize();
     auto &array = stmt->Array();
 
@@ -279,7 +280,7 @@ bool EmitDataStatement::ProcessNumericLiteral(vcpu::OperandSize opSize, ast::Num
     return false;
 }
 
-bool EmitDataStatement::ProcessConstLiteral(Context &context, ast::ConstLiteral::Ref stmt) {
+bool EmitDataStatement::ProcessConstLiteral(CompiledUnit &context, ast::ConstLiteral::Ref stmt) {
 
     if (context.HasConstant(stmt->Ident())) {
         fmt::println(stderr, "Compiler, const with name '{}' already defined", stmt->Ident());
@@ -289,7 +290,7 @@ bool EmitDataStatement::ProcessConstLiteral(Context &context, ast::ConstLiteral:
     return true;
 }
 
-bool EmitDataStatement::ProcessStructLiteral(Context &context, ast::StructLiteral::Ref stmt) {
+bool EmitDataStatement::ProcessStructLiteral(CompiledUnit &context, ast::StructLiteral::Ref stmt) {
 
     size_t szExpected = 0;
     if (!context.HasStructDefinintion(stmt->StructTypeName())) {
@@ -383,11 +384,11 @@ EmitIdentifierStatement::EmitIdentifierStatement() {
     emitType = kEmitType::kIdentifier;
 }
 
-bool EmitIdentifierStatement::Process(Context &context) {
+bool EmitIdentifierStatement::Process(CompiledUnit &context) {
     return ProcessIdentifier(context, std::dynamic_pointer_cast<ast::Identifier>(statement));
 }
 
-bool EmitIdentifierStatement::Finalize(Context &context) {
+bool EmitIdentifierStatement::Finalize(CompiledUnit &context) {
     // Make sure we have somewhere to place our data
     // This in case someone does '.code' but not .org statement
     context.EnsureChunk();
@@ -426,7 +427,7 @@ bool EmitIdentifierStatement::Finalize(Context &context) {
 }
 
 
-bool EmitIdentifierStatement::ProcessIdentifier(Context &context, ast::Identifier::Ref identifier) {
+bool EmitIdentifierStatement::ProcessIdentifier(CompiledUnit &context, ast::Identifier::Ref identifier) {
     uint64_t ipNow = GetCurrentAddress();
 
 
@@ -452,13 +453,13 @@ bool EmitIdentifierStatement::ProcessIdentifier(Context &context, ast::Identifie
 EmitStructStatement::EmitStructStatement() : EmitStatementBase() {
     emitType = kEmitType::kStruct;
 }
-bool EmitStructStatement::Process(gnilk::assembler::Context &context) {
+bool EmitStructStatement::Process(gnilk::assembler::CompiledUnit &context) {
     return ProcessStructStatement(context, std::dynamic_pointer_cast<ast::StructStatement>(statement));
 }
-bool EmitStructStatement::Finalize(gnilk::assembler::Context &context) {
+bool EmitStructStatement::Finalize(gnilk::assembler::CompiledUnit &context) {
     return true;
 }
-bool EmitStructStatement::ProcessStructStatement(Context &context, ast::StructStatement::Ref stmt) {
+bool EmitStructStatement::ProcessStructStatement(CompiledUnit &context, ast::StructStatement::Ref stmt) {
 
     auto &members = stmt->Declarations();
     size_t nBytes = 0;
@@ -506,7 +507,7 @@ EmitCodeStatement::EmitCodeStatement() {
     emitType = kEmitType::kCode;
 }
 
-bool EmitCodeStatement::Process(gnilk::assembler::Context &context) {
+bool EmitCodeStatement::Process(gnilk::assembler::CompiledUnit &context) {
     if(statement->Kind() == ast::NodeType::kNoOpInstrStatement) {
         return ProcessNoOpInstrStmt(std::dynamic_pointer_cast<ast::NoOpInstrStatment>(statement));
     } else if (statement->Kind() == ast::NodeType::kOneOpInstrStatement) {
@@ -517,7 +518,7 @@ bool EmitCodeStatement::Process(gnilk::assembler::Context &context) {
     return false;
 }
 
-bool EmitCodeStatement::Finalize(gnilk::assembler::Context &context) {
+bool EmitCodeStatement::Finalize(gnilk::assembler::CompiledUnit &context) {
     // Here we have quite a few things to do - need to change relocation stuff
     if (haveIdentifier) {
         // Add this identifier to the list of resolve points..
@@ -545,7 +546,7 @@ bool EmitCodeStatement::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
 }
 
 
-bool EmitCodeStatement::ProcessOneOpInstrStmt(Context &context, ast::OneOpInstrStatment::Ref stmt) {
+bool EmitCodeStatement::ProcessOneOpInstrStmt(CompiledUnit &context, ast::OneOpInstrStatment::Ref stmt) {
     if (!EmitOpCodeForSymbol(stmt->Symbol())) {
         return false;
     }
@@ -570,7 +571,7 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(Context &context, ast::OneOpInstrS
     return true;
 }
 
-bool EmitCodeStatement::ProcessTwoOpInstrStmt(Context &context, ast::TwoOpInstrStatment::Ref twoOpInstr) {
+bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompiledUnit &context, ast::TwoOpInstrStatment::Ref twoOpInstr) {
     if (twoOpInstr->Symbol() == "lea") {
         int breakme = 1;
     }
@@ -628,7 +629,7 @@ void EmitCodeStatement::EmitRegMode(uint8_t regMode) {
     EmitByte(regMode);
 }
 
-bool EmitCodeStatement::EmitInstrOperand(Context &context, vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
+bool EmitCodeStatement::EmitInstrOperand(CompiledUnit &context, vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
 
     // If this is an identifier - check if it is actually a constant and work out the actual value - recursively
     if (operandExp->Kind() == ast::NodeType::kIdentifier) {
@@ -749,7 +750,7 @@ bool EmitCodeStatement::EmitRegisterLiteralWithAddrMode(ast::RegisterLiteral::Re
 }
 
 // This is a bit hairy - to say the least
-bool EmitCodeStatement::EmitDereference(Context &context, ast::DeReferenceExpression::Ref expression) {
+bool EmitCodeStatement::EmitDereference(CompiledUnit &context, ast::DeReferenceExpression::Ref expression) {
 
     auto deref = EvaluateConstantExpression(context, expression->GetDeRefExp());
 
@@ -840,7 +841,7 @@ bool EmitCodeStatement::EmitDereference(Context &context, ast::DeReferenceExpres
     return false;
 }
 
-bool EmitCodeStatement::EmitLabelAddress(Context &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
+bool EmitCodeStatement::EmitLabelAddress(CompiledUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
     // This is an absolute jump
@@ -881,7 +882,7 @@ bool EmitCodeStatement::EmitLabelAddress(Context &context, ast::Identifier::Ref 
     return true;
 }
 
-bool EmitCodeStatement::EmitRelativeLabelAddress(Context &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
+bool EmitCodeStatement::EmitRelativeLabelAddress(CompiledUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
     // This a relative jump
@@ -970,7 +971,7 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(Context &context, ast::Identifi
 //
 // Evaluate a constant expression...
 //
-ast::Literal::Ref EmitStatementBase::EvaluateConstantExpression(Context &context, ast::Expression::Ref expression) {
+ast::Literal::Ref EmitStatementBase::EvaluateConstantExpression(CompiledUnit &context, ast::Expression::Ref expression) {
     switch (expression->Kind()) {
         case ast::NodeType::kNumericLiteral :
             return std::dynamic_pointer_cast<ast::Literal>(expression);
@@ -1005,7 +1006,7 @@ ast::Literal::Ref EmitStatementBase::EvaluateConstantExpression(Context &context
     return {};
 }
 
-ast::Literal::Ref EmitStatementBase::EvaluateBinaryExpression(Context &context, ast::BinaryExpression::Ref expression) {
+ast::Literal::Ref EmitStatementBase::EvaluateBinaryExpression(CompiledUnit &context, ast::BinaryExpression::Ref expression) {
     auto lhs = EvaluateConstantExpression(context, expression->Left());
     auto rhs = EvaluateConstantExpression(context, expression->Right());
     if ((lhs->Kind() == ast::NodeType::kRegisterLiteral) && (rhs->Kind() == ast::NodeType::kRegisterLiteral)) {
@@ -1055,7 +1056,7 @@ ast::Literal::Ref EmitStatementBase::EvaluateBinaryExpression(Context &context, 
     return nullptr;
 }
 
-ast::Literal::Ref EmitStatementBase::EvaluateMemberExpression(Context &context, ast::MemberExpression::Ref expression) {
+ast::Literal::Ref EmitStatementBase::EvaluateMemberExpression(CompiledUnit &context, ast::MemberExpression::Ref expression) {
     auto &ident = expression->Ident();
     // Try find the structure matching the name
     if (!context.HasStructDefinintion(ident->Symbol())) {

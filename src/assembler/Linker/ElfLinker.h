@@ -15,7 +15,7 @@
 
 
 // FIXME: This should not be here
-#include "Compiler/IdentifierRelocatation.h"
+#include "Compiler/Identifiers.h"
 
 namespace gnilk {
     namespace assembler {

@@ -13,6 +13,7 @@
 //
 
 #include "Context.h"
+#include "CompiledUnit.h"
 
 using namespace gnilk;
 using namespace gnilk::assembler;
@@ -32,19 +33,6 @@ void Context::AddStructDefinition(const StructDefinition &structDefinition) {
     structDefinitions.push_back(structDefinition);
 }
 
-bool Context::HasConstant(const std::string &name) {
-    return constants.contains(name);
-}
-
-void Context::AddConstant(const std::string &name, ast::ConstLiteral::Ref constant) {
-    constants[name] = std::move(constant);
-}
-
-ast::ConstLiteral::Ref Context::GetConstant(const std::string &name) {
-    return constants[name];
-}
-
-
 bool Context::HasStructDefinintion(const std::string &typeName) {
     for(auto &structDef : structDefinitions) {
         if (structDef.ident == typeName) {
@@ -63,6 +51,9 @@ const StructDefinition &Context::GetStructDefinitionFromTypeName(const std::stri
     fmt::println(stderr, "Compiler, critical error; no struct with type name={}", typeName);
     exit(1);
 }
+const std::vector<StructDefinition> &Context::StructDefinitions() {
+    return structDefinitions;
+}
 
 
 bool Context::HasExport(const std::string &ident) {
@@ -78,27 +69,16 @@ Identifier &Context::GetExport(const std::string &ident) {
 }
 
 
-//
-// Private identifiers
-//
-bool Context::HasIdentifier(const std::string &ident) {
-    return identifierAddresses.contains(ident);
-}
-
-void Context::AddIdentifier(const std::string &ident, const Identifier &idAddress) {
-    identifierAddresses[ident] = idAddress;
-}
-
-Identifier &Context::GetIdentifier(const std::string &ident) {
-    return identifierAddresses[ident];
-}
 
 size_t Context::Write(const std::vector<uint8_t> &data) {
     if (!EnsureChunk()) {
         return 0;
     }
-    auto nWritten = CurrentUnit().Write(*this, data);
-    return nWritten;
+    fmt::println(stderr, "Context::Write - not yet implemented!");
+    exit(1);
+    //auto nWritten = CurrentUnit().Write(*this, data);
+    //return nWritten;
+    return 0;
 }
 
 void Context::Merge() {
@@ -107,18 +87,35 @@ void Context::Merge() {
     MergeAllSegments(outputdata);
 }
 
-// FIXME: Temporary
+// FIXME: Move to linker...
 void Context::MergeAllSegments(std::vector<uint8_t> &out) {
-    // FIXME: This should be an helper
     size_t startAddress = 0;
     size_t endAddress = 0;
-    for(auto [name, seg] : segments) {
-        for(auto chunk : seg->chunks) {
-            if (chunk->EndAddress() > endAddress) {
-                endAddress = chunk->EndAddress();
+
+    // Merge segments across units and copy data...
+    for(auto &unit : units) {
+        std::vector<Segment::Ref> unitSegments;
+        unit.GetSegments(unitSegments);
+        for(auto srcSeg : unitSegments) {
+            GetOrAddSegment(srcSeg->Name());
+            for(auto srcChunk : srcSeg->chunks) {
+                if (srcChunk->LoadAddress() == 0) {
+                    activeSegment->CreateChunk(activeSegment->EndAddress());
+                } else {
+                    activeSegment->CreateChunk(srcChunk->LoadAddress());
+                }
+                activeSegment->currentChunk->Write(srcChunk->Data());
             }
         }
     }
+
+    // Compute full binary end address...
+    for(auto [name, seg] : segments) {
+        if (seg->EndAddress() > endAddress) {
+            endAddress = seg->EndAddress();
+        }
+    }
+
 
     // This should be done in the linker
 
@@ -148,9 +145,9 @@ bool Context::EnsureChunk() {
     activeSegment->CreateChunk(GetCurrentWriteAddress());
     return true;
 }
-bool Context::GetOrAddSegment(const std::string &name, uint64_t address) {
+bool Context::GetOrAddSegment(const std::string &name) {
     if (!segments.contains(name)) {
-        auto segment = std::make_shared<Segment>(name, address);
+        auto segment = std::make_shared<Segment>(name);
         segments[name] = segment;
     }
     activeSegment = segments.at(name);

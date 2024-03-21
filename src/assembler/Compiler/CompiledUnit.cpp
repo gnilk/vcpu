@@ -16,26 +16,30 @@ void CompiledUnit::Clear() {
 }
 
 // Process the AST tree create emit statement which is a sort of intermediate compile step
-bool CompiledUnit::ProcessASTStatement(Context &context, ast::Statement::Ref statement) {
+bool CompiledUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, ast::Statement::Ref statement) {
+    publicHandler = iPublicIdentifiers;
+
     auto stmtEmitter = EmitStatementBase::Create(statement);
     if (stmtEmitter == nullptr) {
         fmt::println(stderr, "Compiler, failed to generate emitter for statement {}", ast::NodeTypeToString(statement->Kind()));
         statement->Dump();
         return false;
     }
-    stmtEmitter->Process(context);
+    stmtEmitter->Process(*this);
     emitStatements.push_back(stmtEmitter);
     return true;
 }
 
 // Process all statements and emit the data, this will actually produce the byte code
-bool CompiledUnit::EmitData(Context &context) {
+bool CompiledUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
+    CreateEmptySegment(".text");
+
     for(auto stmt : GetEmitStatements()) {
-        auto ofsBefore = context.Data().size();
-        if (!stmt->Finalize(context)) {
+        auto ofsBefore = GetCurrentWriteAddress();
+        if (!stmt->Finalize(*this)) {
             return false;
         }
-        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, context.Data().size());
+        fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, GetCurrentWriteAddress());
     }
     return true;
 }
@@ -87,6 +91,7 @@ bool CompiledUnit::SetActiveSegment(const std::string &name) {
     }
     return true;
 }
+
 bool CompiledUnit::HaveSegment(const std::string &name) {
     return segments.contains(name);
 }
@@ -118,16 +123,14 @@ size_t CompiledUnit::GetSegmentEndAddress(const std::string &name) {
     return segments.at(name)->EndAddress();
 }
 
-
-
-size_t CompiledUnit::Write(Context &context, const std::vector<uint8_t> &data) {
-    if (context.GetActiveSegment() == nullptr) {
+size_t CompiledUnit::Write(const std::vector<uint8_t> &data) {
+    if (GetActiveSegment() == nullptr) {
         return 0;
     }
-    auto segment = context.GetActiveSegment();
-    if (segment->CurrentChunk() == nullptr) {
+    if (!EnsureChunk()) {
         return 0;
     }
+    auto segment = GetActiveSegment();
     auto nWritten = segment->CurrentChunk()->Write(data);
 
     return nWritten;
@@ -145,11 +148,42 @@ uint64_t CompiledUnit::GetCurrentWriteAddress() {
     return activeSegment->currentChunk->GetCurrentWriteAddress();
 }
 
-// FIXME: REmove this!
-const std::vector<uint8_t> &CompiledUnit::Data(Context &context) {
-    if (!context.GetOrAddSegment("link_out", 0x00)) {
-        static std::vector<uint8_t> empty = {};
-        return empty;
-    }
-    return context.GetActiveSegment()->CurrentChunk()->Data();
+const std::vector<uint8_t> &CompiledUnit::Data() {
+//    if (!context.GetOrAddSegment("link_out", 0x00)) {
+//        static std::vector<uint8_t> empty = {};
+//        return empty;
+//    }
+//    return context.GetActiveSegment()->CurrentChunk()->Data();
+    return outputdata;
+
+}
+
+//
+// Constants
+//
+bool CompiledUnit::HasConstant(const std::string &name) {
+    return constants.contains(name);
+}
+
+void CompiledUnit::AddConstant(const std::string &name, ast::ConstLiteral::Ref constant) {
+    constants[name] = std::move(constant);
+}
+
+ast::ConstLiteral::Ref CompiledUnit::GetConstant(const std::string &name) {
+    return constants[name];
+}
+
+//
+// Private identifiers
+//
+bool CompiledUnit::HasIdentifier(const std::string &ident) {
+    return identifierAddresses.contains(ident);
+}
+
+void CompiledUnit::AddIdentifier(const std::string &ident, const Identifier &idAddress) {
+    identifierAddresses[ident] = idAddress;
+}
+
+Identifier &CompiledUnit::GetIdentifier(const std::string &ident) {
+    return identifierAddresses[ident];
 }

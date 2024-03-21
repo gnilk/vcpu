@@ -37,21 +37,19 @@ bool Compiler::CompileAndLink(ast::Program::Ref program) {
 bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 
     DurationTimer timer;
-    //context.GetOrAddSegment(".text", 0);
-    context.CreateEmptySegment(".text");
 
     // Create the unit
     auto &unit = context.CreateUnit();
 
     // Process all statements within our unit...
     for(auto &statement : program->Body()) {
-        if (!unit.ProcessASTStatement(context, statement)) {
+        if (!unit.ProcessASTStatement(&context, statement)) {
             return false;
         }
     }
 
     // Finalize and generate data to context.
-    if (!unit.EmitData(context)) {
+    if (!unit.EmitData(&context)) {
         return false;
     }
 

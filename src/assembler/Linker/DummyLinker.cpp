@@ -164,10 +164,11 @@ bool DummyLinker::Link(Context &context) {
     // Now merge to one big blob...
     context.Merge();
 
-    fmt::println("Relocate symbols");
+
+    fmt::println("Relocate exported symbols");
     // Relocate symbols, this should all be done in the linker
     auto &data = context.Data();
-    for(auto &[symbol, identifier] : context.GetIdentifiers()) {
+    for(auto &[symbol, identifier] : context.GetExports()) {
         fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
         for(auto &resolvePoint : identifier.resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
