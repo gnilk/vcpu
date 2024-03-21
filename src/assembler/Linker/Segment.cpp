@@ -197,8 +197,16 @@ void Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::Ope
             data[offset++] = (newValue>>8 & 0xff);
             data[offset++] = (newValue & 0xff);
             break;
-        default:
-            return;
+        case vcpu::OperandSize::Long :
+            data[offset++] = (newValue>>56 & 0xff);
+            data[offset++] = (newValue>>48 & 0xff);
+            data[offset++] = (newValue>>40 & 0xff);
+            data[offset++] = (newValue>>32 & 0xff);
+            data[offset++] = (newValue>>24 & 0xff);
+            data[offset++] = (newValue>>16 & 0xff);
+            data[offset++] = (newValue>>8 & 0xff);
+            data[offset++] = (newValue & 0xff);
+            break;
     }
 }
 

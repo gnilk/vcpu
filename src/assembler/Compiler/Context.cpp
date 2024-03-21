@@ -18,6 +18,9 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
+static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t newValue, vcpu::OperandSize opSize);
+
+
 void Context::Clear() {
     segments.clear();
     units.clear();
@@ -105,6 +108,29 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
                     activeSegment->CreateChunk(srcChunk->LoadAddress());
                 }
                 activeSegment->currentChunk->Write(srcChunk->Data());
+
+                // Now - relocate local variables within this chunk...
+                auto loadAddress = activeSegment->currentChunk->LoadAddress();
+                for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
+                    // Relocate all within this chunk...
+                    if (identifier.chunk != srcChunk) {
+                        continue;
+                    }
+                    fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
+                    for(auto &resolvePoint : identifier.resolvePoints) {
+                        fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
+                        if (!resolvePoint.isRelative) {
+                            activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier.absoluteAddress, resolvePoint.opSize);
+                        } else {
+                            int64_t offset = static_cast<int64_t>(identifier.absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
+                            if (offset < 0) {
+                                offset -= 1;
+                            }
+                            activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize);
+                        }
+                    }
+
+                }
             }
         }
     }
@@ -223,3 +249,39 @@ size_t Context::GetSegmentEndAddress(const std::string &name) {
     return segments.at(name)->EndAddress();
 }
 
+
+
+////////
+static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t newValue, vcpu::OperandSize opSize) {
+    if (data.size() < vcpu::ByteSizeOfOperandSize(opSize)) {
+        return;
+    }
+    if (offset > (data.size() - vcpu::ByteSizeOfOperandSize(opSize))) {
+        return;
+    }
+    switch(opSize) {
+        case vcpu::OperandSize::Byte :
+            data[offset++] = (newValue & 0xff);
+            break;
+        case vcpu::OperandSize::Word :
+            data[offset++] = (newValue>>8 & 0xff);
+            data[offset++] = (newValue & 0xff);
+            break;
+        case vcpu::OperandSize::DWord :
+            data[offset++] = (newValue>>24 & 0xff);
+            data[offset++] = (newValue>>16 & 0xff);
+            data[offset++] = (newValue>>8 & 0xff);
+            data[offset++] = (newValue & 0xff);
+            break;
+        case vcpu::OperandSize::Long :
+            data[offset++] = (newValue>>56 & 0xff);
+            data[offset++] = (newValue>>48 & 0xff);
+            data[offset++] = (newValue>>40 & 0xff);
+            data[offset++] = (newValue>>32 & 0xff);
+            data[offset++] = (newValue>>24 & 0xff);
+            data[offset++] = (newValue>>16 & 0xff);
+            data[offset++] = (newValue>>8 & 0xff);
+            data[offset++] = (newValue & 0xff);
+            return;
+    }
+}
