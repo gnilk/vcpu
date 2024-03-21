@@ -13,6 +13,8 @@
 #include "StmtEmitter.h"
 #include "InstructionSet.h"
 #include "Linker/Segment.h"
+#include "IdentifierRelocatation.h"
+
 
 namespace gnilk {
     namespace assembler {
@@ -33,14 +35,32 @@ namespace gnilk {
 
             size_t Write(Context &context, const std::vector<uint8_t> &data);
 
-            uint64_t GetCurrentWriteAddress(Context &context);
             const std::vector<EmitStatementBase::Ref> &GetEmitStatements() {
                 return emitStatements;
             }
             // temp?
             const std::vector<uint8_t> &Data(Context &context);
+
+            // Segment handling
+            bool EnsureChunk();
+            bool CreateEmptySegment(const std::string &name);
+            bool GetOrAddSegment(const std::string &name, uint64_t address);
+            bool SetActiveSegment(const std::string &name);
+            bool HaveSegment(const std::string &name);
+            Segment::Ref GetActiveSegment();
+            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
+            const Segment::Ref GetSegment(const std::string segName);
+            size_t GetSegmentEndAddress(const std::string &name);
+            uint64_t GetCurrentWriteAddress();
+
         private:
             std::vector<EmitStatementBase::Ref> emitStatements;
+
+            std::unordered_map<std::string, Segment::Ref> segments;
+            Segment::Ref activeSegment = nullptr;
+
+            std::unordered_map<std::string, Identifier> identifierAddresses;
+            std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
         };
     }
 }

@@ -40,6 +40,86 @@ bool CompiledUnit::EmitData(Context &context) {
     return true;
 }
 
+//
+bool CompiledUnit::EnsureChunk() {
+    if (activeSegment == nullptr) {
+        fmt::println(stderr, "Compiler, need at least an active segment");
+        return false;
+    }
+    if (activeSegment->currentChunk != nullptr) {
+        return true;
+    }
+    activeSegment->CreateChunk(GetCurrentWriteAddress());
+    return true;
+}
+bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
+    if (!segments.contains(name)) {
+        auto segment = std::make_shared<Segment>(name, address);
+        segments[name] = segment;
+    }
+    activeSegment = segments.at(name);
+    return true;
+}
+
+bool CompiledUnit::CreateEmptySegment(const std::string &name) {
+    if (HaveSegment(name)) {
+        activeSegment = segments[name];
+        return true;
+    }
+
+    auto segment = std::make_shared<Segment>(name);
+    segments[name] = segment;
+    activeSegment = segment;
+    return true;
+}
+
+bool CompiledUnit::SetActiveSegment(const std::string &name) {
+    if (!segments.contains(name)) {
+        return false;
+    }
+    activeSegment = segments.at(name);
+    if (activeSegment->currentChunk == nullptr) {
+        if (activeSegment->chunks.empty()) {
+            fmt::println(stderr, "Linker, Compiled unit can't link - no data!");
+            return false;
+        }
+        activeSegment->currentChunk =  activeSegment->chunks[0];
+    }
+    return true;
+}
+bool CompiledUnit::HaveSegment(const std::string &name) {
+    return segments.contains(name);
+}
+
+const Segment::Ref CompiledUnit::GetSegment(const std::string segName) {
+    if (!segments.contains(segName)) {
+        return nullptr;
+    }
+    return segments.at(segName);
+}
+
+size_t CompiledUnit::GetSegments(std::vector<Segment::Ref> &outSegments) {
+    for(auto [k, v] : segments) {
+        outSegments.push_back(v);
+    }
+    return outSegments.size();
+}
+
+
+Segment::Ref CompiledUnit::GetActiveSegment() {
+    return activeSegment;
+}
+
+
+size_t CompiledUnit::GetSegmentEndAddress(const std::string &name) {
+    if (!segments.contains(name)) {
+        return 0;
+    }
+    return segments.at(name)->EndAddress();
+}
+
+
+
 size_t CompiledUnit::Write(Context &context, const std::vector<uint8_t> &data) {
     if (context.GetActiveSegment() == nullptr) {
         return 0;
@@ -53,18 +133,19 @@ size_t CompiledUnit::Write(Context &context, const std::vector<uint8_t> &data) {
     return nWritten;
 }
 
-uint64_t CompiledUnit::GetCurrentWriteAddress(Context &context) {
-    if (context.GetActiveSegment() == nullptr) {
+uint64_t CompiledUnit::GetCurrentWriteAddress() {
+    if (activeSegment == nullptr) {
         fmt::println(stderr, "Compiler, not active segment!!");
         return 0;
     }
-    if (context.GetActiveSegment()->CurrentChunk()) {
-        // if no chunk we supply one on first write, this just means no explicit .org statement
+    if (activeSegment->currentChunk == nullptr) {
+        // if no chunk - we ship back zero - as we will create one on first write...
         return 0;
     }
-    return context.GetActiveSegment()->CurrentChunk()->GetCurrentWriteAddress();
+    return activeSegment->currentChunk->GetCurrentWriteAddress();
 }
 
+// FIXME: REmove this!
 const std::vector<uint8_t> &CompiledUnit::Data(Context &context) {
     if (!context.GetOrAddSegment("link_out", 0x00)) {
         static std::vector<uint8_t> empty = {};
