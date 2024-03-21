@@ -28,7 +28,10 @@ namespace gnilk {
                 friend Segment;
             public:
                 using Ref = std::shared_ptr<DataChunk>;
-
+            protected:
+                static const uint64_t LOAD_ADDR_APPEND = std::numeric_limits<uint64_t>::max();
+                //static const uint64_t LOAD_ADDR_APPEND = 0;
+            public:
                 DataChunk() = default;
                 virtual ~DataChunk() = default;
 
@@ -37,6 +40,7 @@ namespace gnilk {
                 const std::vector<uint8_t> &Data() const;
                 const void *DataPtr() const;
                 size_t Size() const;
+                bool IsLoadAddressAppend() const;
                 uint64_t LoadAddress() const;
                 uint64_t EndAddress() const;
                 void SetLoadAddress(uint64_t newLoadAddress);
@@ -48,7 +52,7 @@ namespace gnilk {
 
                 uint64_t GetCurrentWriteAddress();
             protected:
-                uint64_t loadAddress = 0;
+                uint64_t loadAddress = LOAD_ADDR_APPEND;
                 std::vector<uint8_t> data;
             };
 

@@ -65,14 +65,16 @@ namespace gnilk {
             const Segment::Ref GetSegment(const std::string segName);
             size_t GetSegmentEndAddress(const std::string &name);
 
-            // TEMP
-            void MergeAllSegments(std::vector<uint8_t> &out);
 
             uint64_t GetCurrentWriteAddress();
-            size_t Write(const std::vector<uint8_t> &data);
             std::vector<uint8_t> &Data() {
                 return outputdata;
             }
+        protected:
+            // TEMP
+            size_t Write(const std::vector<uint8_t> &data);
+            void MergeAllSegments(std::vector<uint8_t> &out);
+            void ReloacteChunkFromUnit(CompiledUnit &unit, Segment::DataChunk::Ref srcChunk);
 
         protected:
             // TEMP:

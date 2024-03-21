@@ -77,11 +77,7 @@ size_t Context::Write(const std::vector<uint8_t> &data) {
     if (!EnsureChunk()) {
         return 0;
     }
-    fmt::println(stderr, "Context::Write - not yet implemented!");
-    exit(1);
-    //auto nWritten = CurrentUnit().Write(*this, data);
-    //return nWritten;
-    return 0;
+    return activeSegment->currentChunk->Write(data);
 }
 
 void Context::Merge() {
@@ -100,37 +96,23 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
         std::vector<Segment::Ref> unitSegments;
         unit.GetSegments(unitSegments);
         for(auto srcSeg : unitSegments) {
+            // Make sure we have this segment
             GetOrAddSegment(srcSeg->Name());
             for(auto srcChunk : srcSeg->chunks) {
-                if (srcChunk->LoadAddress() == 0) {
+                // Create out own chunk at the correct address - chunk merging comes later
+                if (srcChunk->IsLoadAddressAppend()) {
+                    // No load-address given  - just append
+                    // FIXME: We should check overlap here!
                     activeSegment->CreateChunk(activeSegment->EndAddress());
                 } else {
+                    // Load address given, create chunk at this specific load address
+                    // FIXME: We should check overlap here!
                     activeSegment->CreateChunk(srcChunk->LoadAddress());
                 }
-                activeSegment->currentChunk->Write(srcChunk->Data());
 
-                // Now - relocate local variables within this chunk...
-                auto loadAddress = activeSegment->currentChunk->LoadAddress();
-                for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
-                    // Relocate all within this chunk...
-                    if (identifier.chunk != srcChunk) {
-                        continue;
-                    }
-                    fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
-                    for(auto &resolvePoint : identifier.resolvePoints) {
-                        fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
-                        if (!resolvePoint.isRelative) {
-                            activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier.absoluteAddress, resolvePoint.opSize);
-                        } else {
-                            int64_t offset = static_cast<int64_t>(identifier.absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
-                            if (offset < 0) {
-                                offset -= 1;
-                            }
-                            activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize);
-                        }
-                    }
-
-                }
+                // Write data to it...
+                Write(srcChunk->Data());
+                ReloacteChunkFromUnit(unit, srcChunk);
             }
         }
     }
@@ -157,7 +139,31 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
     }
 }
 
+// Relocates the active chunk from unit::<seg>::chunk
+void Context::ReloacteChunkFromUnit(CompiledUnit &unit, Segment::DataChunk::Ref srcChunk) {
+    // relocate local variables within this chunk...
+    auto loadAddress = activeSegment->currentChunk->LoadAddress();
+    for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
+        // Relocate all within this chunk...
+        if (identifier.chunk != srcChunk) {
+            continue;
+        }
+        fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
+        for(auto &resolvePoint : identifier.resolvePoints) {
+            fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
+            if (!resolvePoint.isRelative) {
+                activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier.absoluteAddress, resolvePoint.opSize);
+            } else {
+                int64_t offset = static_cast<int64_t>(identifier.absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
+                if (offset < 0) {
+                    offset -= 1;
+                }
+                activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize);
+            }
+        }
 
+    }
+}
 
 //
 bool Context::EnsureChunk() {

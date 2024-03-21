@@ -36,13 +36,21 @@ bool Segment::CreateChunk(uint64_t loadAddress) {
     //    return true;
    // }
 
+   if (loadAddress == 0) {
+       // Perhaps enable this warning later - once we have a proper warning-level system..
+
+       // fmt::println(stderr, "Segment, creating chunk at address 0, switching to 'append' (which is zero for first chunk in a segment)");
+       // fmt::println(stderr, "         if you really intended load-address 0, specify it with '.org 0x0000'");
+       loadAddress = Segment::DataChunk::LOAD_ADDR_APPEND;
+   }
+
     // FIXME: Verify that this load-address is not overlapping with existing chunks
     auto chunk = std::make_shared<Segment::DataChunk>();
     chunk->loadAddress = loadAddress;
     chunks.push_back(chunk);
-    // FIXME: Sort chunks!!!
+    // FIXME: Sort chunks - note: this won't work if the loadAddress == LOAD_ADDR_APPEND
     std::sort(chunks.begin(), chunks.end(),[](const DataChunk::Ref &a, const DataChunk::Ref &b) {
-       return (a->loadAddress < b->loadAddress);
+       return (a->LoadAddress() < b->LoadAddress());
     });
     currentChunk = chunk;
     return true;
@@ -67,7 +75,7 @@ Segment::DataChunk::Ref Segment::ChunkFromAddress(uint64_t address) {
 
 // This should be enough if they are properly sorted!
 uint64_t Segment::StartAddress() {
-    return chunks[0]->loadAddress;
+    return chunks[0]->LoadAddress();
 }
 
 uint64_t Segment::EndAddress() {
@@ -138,11 +146,19 @@ size_t Segment::DataChunk::Size() const {
     return data.size();
 }
 
+bool Segment::DataChunk::IsLoadAddressAppend() const {
+    return (loadAddress == LOAD_ADDR_APPEND);
+}
+
+// THIS WILL TRANSLATE the loadAddress - DO NOT USE if you wish to check it...
 uint64_t Segment::DataChunk::LoadAddress() const {
+    if (loadAddress == LOAD_ADDR_APPEND) {
+        return 0;
+    }
     return loadAddress;
 }
 uint64_t Segment::DataChunk::EndAddress() const {
-    return loadAddress + data.size();
+    return LoadAddress() + data.size();
 }
 
 
@@ -216,5 +232,5 @@ size_t Segment::DataChunk::Write(const std::vector<uint8_t> &srcData) {
 }
 
 uint64_t Segment::DataChunk::GetCurrentWriteAddress() {
-    return loadAddress + data.size();
+    return LoadAddress() + data.size();
 }
