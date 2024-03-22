@@ -7,12 +7,8 @@
 
 #include <unordered_map>
 #include <vector>
-
 #include "BaseLinker.h"
-
 #include "Compiler/CompiledUnit.h"
-
-// FIXME: This should not be here
 #include "Compiler/Identifiers.h"
 
 namespace gnilk {
