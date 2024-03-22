@@ -35,6 +35,7 @@ bool CompiledUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
     CreateEmptySegment(".text");
 
     for(auto stmt : GetEmitStatements()) {
+        EnsureChunk();
         auto ofsBefore = GetCurrentWriteAddress();
         if (!stmt->Finalize(*this)) {
             return false;
@@ -42,7 +43,7 @@ bool CompiledUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
         fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, GetCurrentWriteAddress());
     }
 
-    // TODO: Update exports from this compile unit
+    // Link exports to their identifiers
     for(auto &expSymbol : exports) {
         if (!HasIdentifier(expSymbol)) {
             fmt::println(stderr, "Compiler, '{}' is exported but not defined/declared (ignored)", expSymbol);
@@ -182,7 +183,10 @@ ast::ConstLiteral::Ref CompiledUnit::GetConstant(const std::string &name) {
 // Private identifiers
 //
 bool CompiledUnit::HasIdentifier(const std::string &ident) {
-    return identifierAddresses.contains(ident);
+    if (identifierAddresses.contains(ident)) {
+        return true;
+    }
+    return publicHandler->HasExport(ident);
 }
 
 void CompiledUnit::AddIdentifier(const std::string &ident, const Identifier &idAddress) {
@@ -190,5 +194,8 @@ void CompiledUnit::AddIdentifier(const std::string &ident, const Identifier &idA
 }
 
 Identifier &CompiledUnit::GetIdentifier(const std::string &ident) {
-    return identifierAddresses[ident];
+    if (identifierAddresses.contains(ident)) {
+        return identifierAddresses[ident];
+    }
+    return publicHandler->GetExport(ident);
 }

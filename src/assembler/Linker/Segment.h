@@ -40,6 +40,7 @@ namespace gnilk {
                 const std::vector<uint8_t> &Data() const;
                 const void *DataPtr() const;
                 size_t Size() const;
+                bool Empty() const;
                 bool IsLoadAddressAppend() const;
                 uint64_t LoadAddress() const;
                 uint64_t EndAddress() const;

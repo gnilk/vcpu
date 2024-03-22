@@ -146,6 +146,10 @@ size_t Segment::DataChunk::Size() const {
     return data.size();
 }
 
+bool Segment::DataChunk::Empty() const {
+    return data.empty();
+}
+
 bool Segment::DataChunk::IsLoadAddressAppend() const {
     return (loadAddress == LOAD_ADDR_APPEND);
 }

@@ -29,8 +29,13 @@ namespace gnilk {
         };
 
         struct IdentifierResolvePoint {
+            Segment::Ref segment = nullptr;
+            Segment::DataChunk::Ref chunk = nullptr;
+
             vcpu::OperandSize opSize;
             bool isRelative;
+
+            // This is relative the chunk load address
             size_t placeholderAddress;
         };
 

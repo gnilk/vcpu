@@ -169,13 +169,18 @@ bool DummyLinker::Link(Context &context) {
     // Relocate symbols, this should all be done in the linker
     auto &data = context.Data();
     for(auto &[symbol, identifier] : context.GetExports()) {
-        fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
+        if (identifier.exportLinkage == nullptr) {
+            fmt::println(stderr, "Exported symbol {} missing underlying declaration!", symbol);
+            return false;
+        }
+        auto identAbsAddress = identifier.exportLinkage->absoluteAddress;
+        fmt::println("  {} @ {:#x}", symbol, identAbsAddress);
         for(auto &resolvePoint : identifier.resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
             if (!resolvePoint.isRelative) {
-                VectorReplaceAt(data, resolvePoint.placeholderAddress, identifier.absoluteAddress, resolvePoint.opSize);
+                VectorReplaceAt(data, resolvePoint.placeholderAddress, identAbsAddress, resolvePoint.opSize);
             } else {
-                int64_t offset = static_cast<int64_t>(identifier.absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
+                int64_t offset = static_cast<int64_t>(identAbsAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
                 if (offset < 0) {
                     offset -= 1;
                 }
@@ -183,6 +188,9 @@ bool DummyLinker::Link(Context &context) {
             }
         }
     }
+
+
+
     return true;
 }
 

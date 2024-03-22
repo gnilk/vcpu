@@ -151,9 +151,15 @@ bool EmitMetaStatement::Finalize(gnilk::assembler::CompiledUnit &context) {
         return FinalizeSegment(context);
     }
 
-    // We should probably create chunk here
+    // Create a new chunk if none-exists or if we are not empty..
     auto currentSegment = context.GetActiveSegment();
-    currentSegment->CreateChunk(origin);
+    if ((currentSegment->CurrentChunk() == nullptr) || (!currentSegment->CurrentChunk()->Empty())) {
+        currentSegment->CreateChunk(origin);
+        return true;
+    }
+
+    // This is an empty - implicitly created - just change the origin address..
+    currentSegment->CurrentChunk()->SetLoadAddress(origin);
     return true;
 }
 
@@ -524,11 +530,19 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::CompiledUnit &context) {
     if (haveIdentifier) {
         // Add this identifier to the list of resolve points..
         if (!context.HasIdentifier(symbol)) {
-            fmt::println(stderr, "Missing identifer '{}'", symbol);
+            fmt::println(stderr, "Compiler, Missing identifer '{}'", symbol);
             return false;
         }
+        auto currentSegment = context.GetActiveSegment();
+        if (currentSegment == nullptr) {
+            fmt::println(stderr, "Compiler, no segment - can't emit code statement");
+            return false;
+        }
+
         auto &identifier = context.GetIdentifier(symbol);
         identifier.resolvePoints.push_back({
+            .segment = currentSegment,
+            .chunk = currentSegment->CurrentChunk(),
             .opSize = opSize,
             .isRelative = isRelative,
             .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,

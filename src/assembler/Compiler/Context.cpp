@@ -91,27 +91,30 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
     size_t startAddress = 0;
     size_t endAddress = 0;
 
+    size_t unitCounter = 0;
+
     // Merge segments across units and copy data...
     for(auto &unit : units) {
+        fmt::println("Merge segments in unit {}", unitCounter);
+        unitCounter += 1;
+
         std::vector<Segment::Ref> unitSegments;
         unit.GetSegments(unitSegments);
         for(auto srcSeg : unitSegments) {
             // Make sure we have this segment
             GetOrAddSegment(srcSeg->Name());
             for(auto srcChunk : srcSeg->chunks) {
-                // Create out own chunk at the correct address - chunk merging comes later
+                // Create out own chunk at the correct address - chunk merging happen later...
                 if (srcChunk->IsLoadAddressAppend()) {
                     // No load-address given  - just append
                     // FIXME: We should check overlap here!
                     activeSegment->CreateChunk(activeSegment->EndAddress());
+
                 } else {
                     // Load address given, create chunk at this specific load address
                     // FIXME: We should check overlap here!
                     activeSegment->CreateChunk(srcChunk->LoadAddress());
                 }
-
-                // Write data to it...
-                Write(srcChunk->Data());
                 ReloacteChunkFromUnit(unit, srcChunk);
             }
         }
@@ -141,6 +144,9 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
 
 // Relocates the active chunk from unit::<seg>::chunk
 void Context::ReloacteChunkFromUnit(CompiledUnit &unit, Segment::DataChunk::Ref srcChunk) {
+    // Write data to it...
+    Write(srcChunk->Data());
+
     // relocate local variables within this chunk...
     auto loadAddress = activeSegment->currentChunk->LoadAddress();
     for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
@@ -148,6 +154,10 @@ void Context::ReloacteChunkFromUnit(CompiledUnit &unit, Segment::DataChunk::Ref 
         if (identifier.chunk != srcChunk) {
             continue;
         }
+        if(identifier.resolvePoints.empty()) {
+            continue;
+        }
+
         fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
         for(auto &resolvePoint : identifier.resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
@@ -161,7 +171,37 @@ void Context::ReloacteChunkFromUnit(CompiledUnit &unit, Segment::DataChunk::Ref 
                 activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize);
             }
         }
+    }
 
+    // Update resolve points for any public identifier (export) belonging to this chunk
+    // Since the chunk might have moved - the resolvePoint (i.e. the point to be modified when resolving identifiers) might have moved
+    // So we need to adjust all of them...
+    for(auto &[symbol, identifier] : publicIdentifiers) {
+        // Do we have resolve points?
+        if (identifier.resolvePoints.empty()) {
+            continue;
+        }
+
+        // Loop through them and find any belonging to this chunk...
+        for(auto &resolvePoint : identifier.resolvePoints) {
+            // exports can't have relative resolve points
+            if (resolvePoint.isRelative) {
+                fmt::println(stderr, "Compiler, exports are not allowed relative lookup addresses");
+                continue;
+            }
+            if (srcChunk != resolvePoint.chunk) {
+                continue;
+            }
+            auto srcLoad = srcChunk->LoadAddress();
+            auto dstLoad = activeSegment->currentChunk->LoadAddress();
+            auto delta = static_cast<int64_t>(dstLoad) - static_cast<int64_t>(srcLoad);
+            // Compute the new placeholder address...
+            auto newPlaceHolderAddress = resolvePoint.placeholderAddress + delta;
+            fmt::println("  srcLoad={}, dstLoad={}, delta={}, oldPlacedHolder={}, newPlaceHolder={}", srcLoad, dstLoad, delta, resolvePoint.placeholderAddress, newPlaceHolderAddress);
+
+            // Move the placeHolder address accordingly
+            resolvePoint.placeholderAddress = newPlaceHolderAddress;
+        }
     }
 }
 
