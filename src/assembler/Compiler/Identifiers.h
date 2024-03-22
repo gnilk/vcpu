@@ -15,6 +15,13 @@
 namespace gnilk {
     namespace assembler {
 
+        // Consider refactoring this...
+        // We have identifiers (or symbols) of various kind (local, exported, etc..) -> one structure should be enough
+        // Exports is an attribute to a symbol...
+        // Resolve points is the place where symbol addresses should be placed when linking
+
+        // Also - Resolve points are currently stored in the compile unit but should probably be stored in the
+        // chunk directly...
         struct IdentifierAddressPlaceholder {
             using Ref = std::shared_ptr<IdentifierAddressPlaceholder>;
 
