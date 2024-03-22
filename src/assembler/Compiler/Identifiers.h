@@ -32,12 +32,14 @@ namespace gnilk {
         };
 
         struct Identifier {
-            Identifier *exportLinkage = nullptr;    // when identifier is exported - this points to the declared identifier
-
             Segment::Ref segment = nullptr;;
             Segment::DataChunk::Ref chunk = nullptr;
             uint64_t absoluteAddress = 0;
             std::vector<IdentifierResolvePoint> resolvePoints;
+        };
+
+        struct ExportIdentifier : public Identifier {
+            Identifier *origIdentifier = nullptr;    // when identifier is exported - this points to the declared identifier
         };
 
         struct StructMember {
@@ -83,8 +85,8 @@ namespace gnilk {
 
             virtual bool HasExport(const std::string &ident) = 0;
             virtual void AddExport(const std::string &ident) = 0;
-            virtual Identifier &GetExport(const std::string &ident) = 0;
-            virtual const std::unordered_map<std::string, Identifier> &GetExports() = 0;
+            virtual ExportIdentifier &GetExport(const std::string &ident) = 0;
+            virtual const std::unordered_map<std::string, ExportIdentifier> &GetExports() = 0;
         };
 
     }

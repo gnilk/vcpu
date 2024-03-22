@@ -53,7 +53,7 @@ bool CompileUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
         auto &expIdent = iPublicIdentifiers->GetExport(expSymbol);
 
         // Link these up
-        expIdent.exportLinkage = &identifier;
+        expIdent.origIdentifier = &identifier;
     }
 
     return true;

@@ -28,11 +28,11 @@ bool DummyLinker::Link(Context &context) {
     // Relocate symbols, this should all be done in the linker
     auto &data = context.Data();
     for(auto &[symbol, identifier] : context.GetExports()) {
-        if (identifier.exportLinkage == nullptr) {
+        if (identifier.origIdentifier == nullptr) {
             fmt::println(stderr, "Exported symbol {} missing underlying declaration!", symbol);
             return false;
         }
-        auto identAbsAddress = identifier.exportLinkage->absoluteAddress;
+        auto identAbsAddress = identifier.origIdentifier->absoluteAddress;
         fmt::println("  {} @ {:#x}", symbol, identAbsAddress);
         for(auto &resolvePoint : identifier.resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);

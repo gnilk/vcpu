@@ -86,10 +86,10 @@ namespace gnilk {
                 // Add to our own list so we can mark exports globally at the end of the unit handling where they do belong
                 exports.push_back(ident);
             }
-            Identifier &GetExport(const std::string &ident) override {
+            ExportIdentifier &GetExport(const std::string &ident) override {
                 return publicHandler->GetExport(ident);
             }
-            const std::unordered_map<std::string, Identifier> &GetExports() override {
+            const std::unordered_map<std::string, ExportIdentifier> &GetExports() override {
                 return publicHandler->GetExports();
             }
 

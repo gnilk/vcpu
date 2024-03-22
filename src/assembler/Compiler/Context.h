@@ -28,9 +28,9 @@ namespace gnilk {
             // IPublicIdentifiers
             bool HasExport(const std::string &ident) override;
             void AddExport(const std::string &ident) override;
-            Identifier &GetExport(const std::string &ident) override;
-            const std::unordered_map<std::string, Identifier> &GetExports() override {
-                return publicIdentifiers;
+            ExportIdentifier &GetExport(const std::string &ident) override;
+            const std::unordered_map<std::string, ExportIdentifier> &GetExports() override {
+                return exportIdentifiers;
             }
 
             bool HasStructDefinintion(const std::string &typeName) override;
@@ -89,7 +89,7 @@ namespace gnilk {
             // This is a type-definition - should they always be exported?
             std::vector<StructDefinition> structDefinitions;
             // identifiers explicitly marked for export goes here...
-            std::unordered_map<std::string, Identifier> publicIdentifiers;
+            std::unordered_map<std::string, ExportIdentifier> exportIdentifiers;
 
         };
 

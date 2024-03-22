@@ -60,15 +60,15 @@ const std::vector<StructDefinition> &Context::StructDefinitions() {
 
 
 bool Context::HasExport(const std::string &ident) {
-    return publicIdentifiers.contains(ident);
+    return exportIdentifiers.contains(ident);
 }
 
 void Context::AddExport(const std::string &ident) {
-    publicIdentifiers[ident] = {};
+    exportIdentifiers[ident] = {};
 }
 
-Identifier &Context::GetExport(const std::string &ident) {
-    return publicIdentifiers[ident];
+ExportIdentifier &Context::GetExport(const std::string &ident) {
+    return exportIdentifiers[ident];
 }
 
 
@@ -172,7 +172,7 @@ void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref s
     // Update resolve points for any public identifier (export) belonging to this chunk
     // Since the chunk might have moved - the resolvePoint (i.e. the point to be modified when resolving identifiers) might have moved
     // So we need to adjust all of them...
-    for(auto &[symbol, identifier] : publicIdentifiers) {
+    for(auto &[symbol, identifier] : exportIdentifiers) {
         // Do we have resolve points?
         if (identifier.resolvePoints.empty()) {
             continue;
