@@ -49,15 +49,6 @@ namespace gnilk {
                 return msLinkDuration;
             }
 
-        protected:
-
-
-            using DeferredOpSizeHandler = std::function<void(uint8_t opSize)>;
-            DeferredOpSizeHandler cbDeferredOpSize = nullptr;
-            void DeferEmitOpSize(DeferredOpSizeHandler emitOpSizeCallback);
-            void ResetDeferEmitOpSize();
-            bool IsOpSizeDeferred();
-            void EmitOpSize(uint8_t opSize);
         private:
             double msCompileDuration = 0.0;
             double msLinkDuration = 0.0;
