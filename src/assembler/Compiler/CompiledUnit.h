@@ -40,8 +40,6 @@ namespace gnilk {
             const std::vector<EmitStatementBase::Ref> &GetEmitStatements() {
                 return emitStatements;
             }
-            // temp?
-            const std::vector<uint8_t> &Data();
 
             // Segment handling
             bool EnsureChunk();
@@ -84,7 +82,9 @@ namespace gnilk {
                 return publicHandler->HasExport(ident);
             }
             void AddExport(const std::string &ident) override {
-                return publicHandler->AddExport(ident);
+                publicHandler->AddExport(ident);
+                // Add to our own list so we can mark exports globally at the end of the unit handling where they do belong
+                exports.push_back(ident);
             }
             Identifier &GetExport(const std::string &ident) override {
                 return publicHandler->GetExport(ident);
@@ -104,6 +104,7 @@ namespace gnilk {
             std::unordered_map<std::string, Segment::Ref> segments;
             Segment::Ref activeSegment = nullptr;
 
+            std::vector<std::string> exports;   // we export these things...
             std::unordered_map<std::string, Identifier> identifierAddresses;
             std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
         };

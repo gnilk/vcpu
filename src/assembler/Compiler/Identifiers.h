@@ -35,10 +35,11 @@ namespace gnilk {
         };
 
         struct Identifier {
+            Identifier *exportLinkage = nullptr;    // when identifier is exported - this points to the declared identifier
+
             Segment::Ref segment = nullptr;;
             Segment::DataChunk::Ref chunk = nullptr;
             uint64_t absoluteAddress = 0;
-            // New emittor stuff
             std::vector<IdentifierResolvePoint> resolvePoints;
         };
 

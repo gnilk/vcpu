@@ -41,6 +41,20 @@ bool CompiledUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
         }
         fmt::println("  Stmt {} kind={}, before={}, after={}", stmt->EmitId(), (int)stmt->Kind(), ofsBefore, GetCurrentWriteAddress());
     }
+
+    // TODO: Update exports from this compile unit
+    for(auto &expSymbol : exports) {
+        if (!HasIdentifier(expSymbol)) {
+            fmt::println(stderr, "Compiler, '{}' is exported but not defined/declared (ignored)", expSymbol);
+            continue;
+        }
+        auto &identifier = GetIdentifier(expSymbol);
+        auto &expIdent = iPublicIdentifiers->GetExport(expSymbol);
+
+        // Link these up
+        expIdent.exportLinkage = &identifier;
+    }
+
     return true;
 }
 
@@ -148,15 +162,6 @@ uint64_t CompiledUnit::GetCurrentWriteAddress() {
     return activeSegment->currentChunk->GetCurrentWriteAddress();
 }
 
-const std::vector<uint8_t> &CompiledUnit::Data() {
-//    if (!context.GetOrAddSegment("link_out", 0x00)) {
-//        static std::vector<uint8_t> empty = {};
-//        return empty;
-//    }
-//    return context.GetActiveSegment()->CurrentChunk()->Data();
-    return outputdata;
-
-}
 
 //
 // Constants

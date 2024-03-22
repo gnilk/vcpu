@@ -188,6 +188,7 @@ bool EmitExportStatement::Finalize(CompiledUnit &context) {
         fmt::println(stderr, "Compiler, symbol {} already in exported",identifier);
         return false;
     }
+
     context.AddExport(identifier);
     return true;
 }
