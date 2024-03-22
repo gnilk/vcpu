@@ -48,7 +48,8 @@ bool Segment::CreateChunk(uint64_t loadAddress) {
     auto chunk = std::make_shared<Segment::DataChunk>();
     chunk->loadAddress = loadAddress;
     chunks.push_back(chunk);
-    // FIXME: Sort chunks - note: this won't work if the loadAddress == LOAD_ADDR_APPEND
+    // Sort chunks based on load-address
+    // Note: If not load address given (i.e. no .org statement) then we just 'append' and the load address we compare to is 0
     std::sort(chunks.begin(), chunks.end(),[](const DataChunk::Ref &a, const DataChunk::Ref &b) {
        return (a->LoadAddress() < b->LoadAddress());
     });

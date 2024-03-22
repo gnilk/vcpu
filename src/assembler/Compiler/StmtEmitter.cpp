@@ -862,8 +862,12 @@ bool EmitCodeStatement::EmitLabelAddress(CompiledUnit &context, ast::Identifier:
     // This is an absolute jump
     regMode |= vcpu::AddressMode::Immediate;
 
-    // FIXME: We need to understand if this is a single-op instruction or two-op instruction
-    //        in case of two-op instr. we can't really do this...
+    // problem?
+    //   We need to understand if this is a single-op instruction or two-op instruction
+    //   in case of two-op instr. we can't really do this...
+    //
+    // FIXME: Try to create a unit test stressing this problem - with mixing operand size (not sure why this should happen)
+    //
     if (!(emitFlags & kEmitOpSize)) {
         EmitOpSize(opSize);
     }
@@ -877,21 +881,6 @@ bool EmitCodeStatement::EmitLabelAddress(CompiledUnit &context, ast::Identifier:
     symbol = identifier->Symbol();
     this->opSize = opSize;
     placeholderAddress = data.size();       // Set address to the location within the instruction
-
-
-    // Not needed
-//    IdentifierAddressPlaceholder::Ref addressPlaceholder = std::make_shared<IdentifierAddressPlaceholder>();
-//    addressPlaceholder->segment = context.Unit().GetActiveSegment();
-//    addressPlaceholder->chunk = context.Unit().GetActiveSegment()->CurrentChunk();
-//
-//    // !!!!!!!!!!!!!!!
-//    // FIXME: This must be resolved later!
-//    // !!!!!!!!!!!!!
-//    addressPlaceholder->address = 0; // static_cast<uint64_t>(context.Unit().GetCurrentWritePtr());
-//    addressPlaceholder->ident = identifier->Symbol();
-//    addressPlaceholder->isRelative = false;
-//    // FIXME: This won't be needed!
-//    context.AddAddressPlaceholder(addressPlaceholder);
 
     EmitLWord(0);   // placeholder
     return true;
@@ -908,8 +897,7 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(CompiledUnit &context, ast::Ide
 //    addressPlaceholder->chunk = context.Unit().GetActiveSegment()->CurrentChunk();
 
     if (opSize == vcpu::OperandSize::Long) {
-        // no op.size were given
-        // FIXME: Compute distance - how?
+        // no op.size were given, let's compute distance
 
         if (!context.HasIdentifier(identifier->Symbol())) {
             fmt::println(stderr, "Compiler, Identifier not found - can't compute jump length...");
@@ -946,25 +934,6 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(CompiledUnit &context, ast::Ide
     // not sure if needed
     //ofsRelative = static_cast<uint64_t>(emitData.data.size()) + vcpu::ByteSizeOfOperandSize(opSize);
     placeholderAddress = data.size();
-
-
-
-//    // !!!!!!!!!!!!!!!
-//    // FIXME: Should be a resolve point here!
-//    // !!!!!!!!!!!!!
-//    addressPlaceholder->address = 0;
-//    addressPlaceholder->ident = identifier->Symbol();
-//    addressPlaceholder->isRelative = true;
-//    addressPlaceholder->opSize = opSize;
-//
-//    // We are always relative to the complete instruction
-//    // Note: could have been relative to the start of the instr. but that would require a state (or caching of the IP) in the cpu
-//    //addressPlaceholder.ofsRelative = static_cast<uint64_t>(context.Unit().GetCurrentWritePtr()) + vcpu::ByteSizeOfOperandSize(opSize);
-//    addressPlaceholder->ofsRelative = static_cast<uint64_t>(emitData.data.size()) + vcpu::ByteSizeOfOperandSize(opSize);
-//
-//    // FIXME: this won't be needed!
-//    context.AddAddressPlaceholder(addressPlaceholder);
-//    //addressPlaceholders.push_back(addressPlaceholder);
 
     switch(opSize) {
         case vcpu::OperandSize::Byte :
