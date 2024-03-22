@@ -17,9 +17,89 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 }
 
 
+bool ElfLinker::Link(gnilk::assembler::Context &context) {
+    return false;
+}
 
-bool ElfLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
+
+bool ElfLinker::WriteElf(CompileUnit &unit) {
+    // You can't proceed without this function call!
 /*
+    elfWriter.create(ELFCLASS64, ELFDATA2LSB );
+
+    elfWriter.set_os_abi(ELFOSABI_NONE );
+    elfWriter.set_type(ET_EXEC );
+    elfWriter.set_machine(EM_68K );
+
+    auto textSeg = unit.GetSegment(".text");
+    if (textSeg == nullptr) {
+        return false;
+    }
+
+    section *elfTextSec = elfWriter.sections.add(".text");
+    elfTextSec->set_type( SHT_PROGBITS );
+    elfTextSec->set_flags( SHF_ALLOC | SHF_EXECINSTR );
+    elfTextSec->set_addr_align( 0x10 );
+    // FIXME...
+    //elfTextSec->set_data((const char *)textSeg->DataPtr(), textSeg->Size());
+
+    segment *elfTextSeg = elfWriter.segments.add();
+    elfTextSeg->set_type(PT_LOAD);
+    // FIXME:
+    elfTextSeg->set_virtual_address(textSeg->StartAddress());
+    elfTextSeg->set_physical_address(textSeg->StartAddress());
+    elfTextSeg->set_flags(PF_X | PF_R);
+    elfTextSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
+    elfTextSeg->add_section(elfTextSec, elfTextSec->get_addr_align());
+
+    auto dataSeg = unit.GetSegment(".data");
+    // FIXME: this is not an error...
+    if (dataSeg == nullptr) {
+        fmt::println(stderr,"ElfLinker, no data segment!");
+        return false;
+    }
+    section *elfDataSec = elfWriter.sections.add(".data");
+    elfDataSec->set_type(SHT_PROGBITS);
+    elfDataSec->set_flags(SHF_ALLOC | SHF_WRITE);
+    elfDataSec->set_addr_align(0x04);   // verify!
+    elfDataSec->set_data((const char *)dataSeg->CurrentChunk()->DataPtr(), dataSeg->CurrentChunk()->Size());
+
+    segment *elfDataSeg = elfWriter.segments.add();
+    elfDataSeg->set_type(PT_LOAD);
+    elfDataSeg->set_virtual_address(dataSeg->StartAddress());
+    elfDataSeg->set_physical_address(dataSeg->StartAddress());
+    elfDataSeg->set_flags(PF_W | PF_R);
+    elfDataSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
+    elfDataSeg->add_section(elfDataSec, elfDataSec->get_addr_align());
+
+    elfWriter.set_entry(elfTextSeg->get_virtual_address());
+
+    // Save this to a 'stringstream' (CPP Streams are: @#$!@$!@#)
+    std::ostringstream outStream(std::ios_base::binary | std::ios_base::out);
+    elfWriter.save(outStream);
+    outStream.flush();
+
+    // Convert the 'string' to a vector of bytes...
+    // This can be an array - but that's a refactoring for another day...
+    auto strData = outStream.rdbuf()->str();
+    auto ptrData = strData.data();
+    auto szData = strData.size();
+
+    elfData.insert(elfData.end(), ptrData, ptrData + szData);
+    return true;
+*/
+
+    return false;
+}
+
+
+/////////
+//
+// This is the old linker code - before all refactoring took place, keeping it here until this one has been updated
+// as it actually worked
+//
+/*
+bool ElfLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
     std::vector<Segment::Ref> segments;
     unit.GetSegments(segments);
 
@@ -52,8 +132,6 @@ bool ElfLinker::LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Iden
 
     WriteElf(unit);
     return true;
-*/
-    return false;
 }
 
 bool ElfLinker::RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) {
@@ -124,73 +202,4 @@ bool ElfLinker::RelocateAbsolute(CompiledUnit &unit, Identifier &identifierAddr,
 
     return true;
 }
-
-bool ElfLinker::WriteElf(CompiledUnit &unit) {
-    // You can't proceed without this function call!
-/*
-    elfWriter.create(ELFCLASS64, ELFDATA2LSB );
-
-    elfWriter.set_os_abi(ELFOSABI_NONE );
-    elfWriter.set_type(ET_EXEC );
-    elfWriter.set_machine(EM_68K );
-
-    auto textSeg = unit.GetSegment(".text");
-    if (textSeg == nullptr) {
-        return false;
-    }
-
-    section *elfTextSec = elfWriter.sections.add(".text");
-    elfTextSec->set_type( SHT_PROGBITS );
-    elfTextSec->set_flags( SHF_ALLOC | SHF_EXECINSTR );
-    elfTextSec->set_addr_align( 0x10 );
-    // FIXME...
-    //elfTextSec->set_data((const char *)textSeg->DataPtr(), textSeg->Size());
-
-    segment *elfTextSeg = elfWriter.segments.add();
-    elfTextSeg->set_type(PT_LOAD);
-    // FIXME:
-    elfTextSeg->set_virtual_address(textSeg->StartAddress());
-    elfTextSeg->set_physical_address(textSeg->StartAddress());
-    elfTextSeg->set_flags(PF_X | PF_R);
-    elfTextSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
-    elfTextSeg->add_section(elfTextSec, elfTextSec->get_addr_align());
-
-    auto dataSeg = unit.GetSegment(".data");
-    // FIXME: this is not an error...
-    if (dataSeg == nullptr) {
-        fmt::println(stderr,"ElfLinker, no data segment!");
-        return false;
-    }
-    section *elfDataSec = elfWriter.sections.add(".data");
-    elfDataSec->set_type(SHT_PROGBITS);
-    elfDataSec->set_flags(SHF_ALLOC | SHF_WRITE);
-    elfDataSec->set_addr_align(0x04);   // verify!
-    elfDataSec->set_data((const char *)dataSeg->CurrentChunk()->DataPtr(), dataSeg->CurrentChunk()->Size());
-
-    segment *elfDataSeg = elfWriter.segments.add();
-    elfDataSeg->set_type(PT_LOAD);
-    elfDataSeg->set_virtual_address(dataSeg->StartAddress());
-    elfDataSeg->set_physical_address(dataSeg->StartAddress());
-    elfDataSeg->set_flags(PF_W | PF_R);
-    elfDataSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
-    elfDataSeg->add_section(elfDataSec, elfDataSec->get_addr_align());
-
-    elfWriter.set_entry(elfTextSeg->get_virtual_address());
-
-    // Save this to a 'stringstream' (CPP Streams are: @#$!@$!@#)
-    std::ostringstream outStream(std::ios_base::binary | std::ios_base::out);
-    elfWriter.save(outStream);
-    outStream.flush();
-
-    // Convert the 'string' to a vector of bytes...
-    // This can be an array - but that's a refactoring for another day...
-    auto strData = outStream.rdbuf()->str();
-    auto ptrData = strData.data();
-    auto szData = strData.size();
-
-    elfData.insert(elfData.end(), ptrData, ptrData + szData);
-    return true;
 */
-
-    return false;
-}

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "CompiledUnit.h"
+#include "CompileUnit.h"
 #include "Linker/Segment.h"
 #include "Identifiers.h"
 #include "ast/ast.h"
@@ -40,49 +40,47 @@ namespace gnilk {
 
 
 
-            CompiledUnit &CreateUnit();
-            const std::vector<CompiledUnit> &GetUnits() {
+            CompileUnit &CreateUnit();
+            const std::vector<CompileUnit> &GetUnits() {
                 return units;
             }
 
-            CompiledUnit &CurrentUnit() {
+            CompileUnit &CurrentUnit() {
                 if (units.empty()) {
                     return CreateUnit();
                 }
                 return units.back();
             }
-
             void Merge();
+            // linker requires write access here - we should probably refactor so that output is supplied to merge...
+            std::vector<uint8_t> &Data() {
+                return outputData;
+            }
+            // Used by unit tests...
+            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
 
-            // Segment handling
+            // Merge helpers
+        protected:
+            void MergeAllSegments(std::vector<uint8_t> &out);
+            void ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            size_t Write(const std::vector<uint8_t> &data);
+
+        protected:
+            // Segment handling, not exposed - these are only used during the merge process...
             bool EnsureChunk();
             bool CreateEmptySegment(const std::string &name);
             bool GetOrAddSegment(const std::string &name);
             bool SetActiveSegment(const std::string &name);
             bool HaveSegment(const std::string &name);
             Segment::Ref GetActiveSegment();
-            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
             const Segment::Ref GetSegment(const std::string segName);
             size_t GetSegmentEndAddress(const std::string &name);
 
-
             uint64_t GetCurrentWriteAddress();
-            std::vector<uint8_t> &Data() {
-                return outputdata;
-            }
-        protected:
-            // TEMP
-            size_t Write(const std::vector<uint8_t> &data);
-            void MergeAllSegments(std::vector<uint8_t> &out);
-            void ReloacteChunkFromUnit(CompiledUnit &unit, Segment::DataChunk::Ref srcChunk);
 
         protected:
-            // TEMP:
-            std::vector<uint8_t> outputdata;
-
-            // Should be list...
-            //CompiledUnit unit;
-            std::vector<CompiledUnit> units;
+            std::vector<uint8_t> outputData;
+            std::vector<CompileUnit> units;
 
             // Segments and chunks are here as they span multiple units..
             std::unordered_map<std::string, Segment::Ref> segments;

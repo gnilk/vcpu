@@ -10,7 +10,7 @@
 #include "Context.h"
 #include "InstructionSet.h"
 #include "ast/ast.h"
-#include "CompiledUnit.h"
+#include "CompileUnit.h"
 #include "Identifiers.h"
 #include "Linker/BaseLinker.h"
 #include "StmtEmitter.h"

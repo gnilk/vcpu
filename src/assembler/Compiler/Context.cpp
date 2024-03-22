@@ -13,7 +13,7 @@
 //
 
 #include "Context.h"
-#include "CompiledUnit.h"
+#include "CompileUnit.h"
 
 using namespace gnilk;
 using namespace gnilk::assembler;
@@ -27,7 +27,7 @@ void Context::Clear() {
     activeSegment = nullptr;
 }
 
-CompiledUnit &Context::CreateUnit() {
+CompileUnit &Context::CreateUnit() {
     units.emplace_back();
     return units.back();
 }
@@ -82,11 +82,10 @@ size_t Context::Write(const std::vector<uint8_t> &data) {
 
 void Context::Merge() {
     // Make sure this is empty...
-    outputdata.clear();
-    MergeAllSegments(outputdata);
+    outputData.clear();
+    MergeAllSegments(outputData);
 }
 
-// FIXME: Move to linker...
 void Context::MergeAllSegments(std::vector<uint8_t> &out) {
     size_t startAddress = 0;
     size_t endAddress = 0;
@@ -127,9 +126,6 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
         }
     }
 
-
-    // This should be done in the linker
-
     // Calculate the size of final binary imasge
     auto szFinalData = endAddress - startAddress;
     out.resize(szFinalData);
@@ -143,7 +139,7 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
 }
 
 // Relocates the active chunk from unit::<seg>::chunk
-void Context::ReloacteChunkFromUnit(CompiledUnit &unit, Segment::DataChunk::Ref srcChunk) {
+void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
     // Write data to it...
     Write(srcChunk->Data());
 

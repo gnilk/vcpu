@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 #include "BaseLinker.h"
-#include "Compiler/CompiledUnit.h"
+#include "Compiler/CompileUnit.h"
 #include "Compiler/Identifiers.h"
 
 namespace gnilk {
@@ -18,10 +18,8 @@ namespace gnilk {
             DummyLinker() = default;
             virtual ~DummyLinker() = default;
 
-            const std::vector<uint8_t> &Data() override;
-            bool LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) override;
             bool Link(Context &context) override;
-
+            const std::vector<uint8_t> &Data() override;
         private:
             std::vector<uint8_t> linkedData;
         };

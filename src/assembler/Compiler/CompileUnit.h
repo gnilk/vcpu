@@ -23,12 +23,12 @@ namespace gnilk {
 
         // This should represent a single compiler unit
         // Segment handling should be moved out from here -> they belong to the context as they are shared between compiled units
-        class CompiledUnit : public IPublicIdentifiers {
+        class CompileUnit : public IPublicIdentifiers {
         public:
-            using Ref = std::shared_ptr<CompiledUnit>;
+            using Ref = std::shared_ptr<CompileUnit>;
         public:
-            CompiledUnit() = default;
-            virtual ~CompiledUnit() = default;
+            CompileUnit() = default;
+            virtual ~CompileUnit() = default;
 
             void Clear();
 

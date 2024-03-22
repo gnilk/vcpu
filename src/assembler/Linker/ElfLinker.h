@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "BaseLinker.h"
-#include "Compiler/CompiledUnit.h"
+#include "Compiler/CompileUnit.h"
 
 #include "elfio/elfio.hpp"
 
@@ -23,14 +23,11 @@ namespace gnilk {
         public:
             ElfLinker() = default;
             virtual ~ElfLinker() = default;
-            const std::vector<uint8_t> &Data() override;
-            bool LinkOld(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders) override;
-        protected:
-            bool WriteElf(CompiledUnit &unit);
 
-            bool RelocateIdentifiers(CompiledUnit &unit, std::unordered_map<std::string, Identifier> &identifierAddresses, std::vector<IdentifierAddressPlaceholder::Ref> &addressPlaceholders);
-            bool RelocateRelative(CompiledUnit &unit, Identifier &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder);
-            bool RelocateAbsolute(CompiledUnit &unit, Identifier &identifierAddr, IdentifierAddressPlaceholder::Ref &placeHolder);
+            bool Link(Context &context) override;
+            const std::vector<uint8_t> &Data() override;
+        protected:
+            bool WriteElf(CompileUnit &unit);
         private:
             std::vector<uint8_t> elfData;
             ELFIO::elfio elfWriter;

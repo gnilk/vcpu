@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 #include "InstructionSet.h"
-#include "CompiledUnit.h"
+#include "CompileUnit.h"
 
 #include "elfio/elfio.hpp"
 #include "Linker/DummyLinker.h"

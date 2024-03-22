@@ -10,7 +10,7 @@
 
 #include "Compiler/Compiler.h"
 #include "Compiler/Context.h"
-#include "Compiler/CompiledUnit.h"
+#include "Compiler/CompileUnit.h"
 #include "HexDump.h"
 
 using namespace gnilk::assembler;

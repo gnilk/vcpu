@@ -5,18 +5,18 @@
 
 #include <memory>
 #include <unordered_map>
-#include "CompiledUnit.h"
+#include "CompileUnit.h"
 #include "Compiler/Context.h"
 
 using namespace gnilk;
 using namespace gnilk::assembler;
 
-void CompiledUnit::Clear() {
+void CompileUnit::Clear() {
     emitStatements.clear();
 }
 
 // Process the AST tree create emit statement which is a sort of intermediate compile step
-bool CompiledUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, ast::Statement::Ref statement) {
+bool CompileUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, ast::Statement::Ref statement) {
     publicHandler = iPublicIdentifiers;
 
     auto stmtEmitter = EmitStatementBase::Create(statement);
@@ -31,7 +31,7 @@ bool CompiledUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, a
 }
 
 // Process all statements and emit the data, this will actually produce the byte code
-bool CompiledUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
+bool CompileUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
     CreateEmptySegment(".text");
 
     for(auto stmt : GetEmitStatements()) {
@@ -60,7 +60,7 @@ bool CompiledUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
 }
 
 //
-bool CompiledUnit::EnsureChunk() {
+bool CompileUnit::EnsureChunk() {
     if (activeSegment == nullptr) {
         fmt::println(stderr, "Compiler, need at least an active segment");
         return false;
@@ -71,7 +71,7 @@ bool CompiledUnit::EnsureChunk() {
     activeSegment->CreateChunk(GetCurrentWriteAddress());
     return true;
 }
-bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
+bool CompileUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
     if (!segments.contains(name)) {
         auto segment = std::make_shared<Segment>(name, address);
         segments[name] = segment;
@@ -80,7 +80,7 @@ bool CompiledUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
     return true;
 }
 
-bool CompiledUnit::CreateEmptySegment(const std::string &name) {
+bool CompileUnit::CreateEmptySegment(const std::string &name) {
     if (HaveSegment(name)) {
         activeSegment = segments[name];
         return true;
@@ -92,7 +92,7 @@ bool CompiledUnit::CreateEmptySegment(const std::string &name) {
     return true;
 }
 
-bool CompiledUnit::SetActiveSegment(const std::string &name) {
+bool CompileUnit::SetActiveSegment(const std::string &name) {
     if (!segments.contains(name)) {
         return false;
     }
@@ -107,18 +107,18 @@ bool CompiledUnit::SetActiveSegment(const std::string &name) {
     return true;
 }
 
-bool CompiledUnit::HaveSegment(const std::string &name) {
+bool CompileUnit::HaveSegment(const std::string &name) {
     return segments.contains(name);
 }
 
-const Segment::Ref CompiledUnit::GetSegment(const std::string segName) {
+const Segment::Ref CompileUnit::GetSegment(const std::string segName) {
     if (!segments.contains(segName)) {
         return nullptr;
     }
     return segments.at(segName);
 }
 
-size_t CompiledUnit::GetSegments(std::vector<Segment::Ref> &outSegments) {
+size_t CompileUnit::GetSegments(std::vector<Segment::Ref> &outSegments) {
     for(auto [k, v] : segments) {
         outSegments.push_back(v);
     }
@@ -126,19 +126,19 @@ size_t CompiledUnit::GetSegments(std::vector<Segment::Ref> &outSegments) {
 }
 
 
-Segment::Ref CompiledUnit::GetActiveSegment() {
+Segment::Ref CompileUnit::GetActiveSegment() {
     return activeSegment;
 }
 
 
-size_t CompiledUnit::GetSegmentEndAddress(const std::string &name) {
+size_t CompileUnit::GetSegmentEndAddress(const std::string &name) {
     if (!segments.contains(name)) {
         return 0;
     }
     return segments.at(name)->EndAddress();
 }
 
-size_t CompiledUnit::Write(const std::vector<uint8_t> &data) {
+size_t CompileUnit::Write(const std::vector<uint8_t> &data) {
     if (GetActiveSegment() == nullptr) {
         return 0;
     }
@@ -151,7 +151,7 @@ size_t CompiledUnit::Write(const std::vector<uint8_t> &data) {
     return nWritten;
 }
 
-uint64_t CompiledUnit::GetCurrentWriteAddress() {
+uint64_t CompileUnit::GetCurrentWriteAddress() {
     if (activeSegment == nullptr) {
         fmt::println(stderr, "Compiler, not active segment!!");
         return 0;
@@ -167,33 +167,33 @@ uint64_t CompiledUnit::GetCurrentWriteAddress() {
 //
 // Constants
 //
-bool CompiledUnit::HasConstant(const std::string &name) {
+bool CompileUnit::HasConstant(const std::string &name) {
     return constants.contains(name);
 }
 
-void CompiledUnit::AddConstant(const std::string &name, ast::ConstLiteral::Ref constant) {
+void CompileUnit::AddConstant(const std::string &name, ast::ConstLiteral::Ref constant) {
     constants[name] = std::move(constant);
 }
 
-ast::ConstLiteral::Ref CompiledUnit::GetConstant(const std::string &name) {
+ast::ConstLiteral::Ref CompileUnit::GetConstant(const std::string &name) {
     return constants[name];
 }
 
 //
 // Private identifiers
 //
-bool CompiledUnit::HasIdentifier(const std::string &ident) {
+bool CompileUnit::HasIdentifier(const std::string &ident) {
     if (identifierAddresses.contains(ident)) {
         return true;
     }
     return publicHandler->HasExport(ident);
 }
 
-void CompiledUnit::AddIdentifier(const std::string &ident, const Identifier &idAddress) {
+void CompileUnit::AddIdentifier(const std::string &ident, const Identifier &idAddress) {
     identifierAddresses[ident] = idAddress;
 }
 
-Identifier &CompiledUnit::GetIdentifier(const std::string &ident) {
+Identifier &CompileUnit::GetIdentifier(const std::string &ident) {
     if (identifierAddresses.contains(ident)) {
         return identifierAddresses[ident];
     }

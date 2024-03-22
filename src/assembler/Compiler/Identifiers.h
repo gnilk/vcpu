@@ -20,21 +20,6 @@ namespace gnilk {
         // Exports is an attribute to a symbol...
         // Resolve points is the place where symbol addresses should be placed when linking
 
-        // Also - Resolve points are currently stored in the compile unit but should probably be stored in the
-        // chunk directly...
-        struct IdentifierAddressPlaceholder {
-            using Ref = std::shared_ptr<IdentifierAddressPlaceholder>;
-
-            std::string ident;
-            Segment::Ref segment = nullptr;
-            Segment::DataChunk::Ref chunk = nullptr;
-            uint64_t address;
-            // For relative jump
-            bool isRelative;
-            vcpu::OperandSize opSize;
-            uint64_t ofsRelative;   // Offset to compute from..
-        };
-
         struct IdentifierResolvePoint {
             Segment::Ref segment = nullptr;
             Segment::DataChunk::Ref chunk = nullptr;
@@ -87,7 +72,8 @@ namespace gnilk {
             std::vector<StructMember> members;
         };
 
-
+        // Interface to access public members - these are generally exported symbols implemented by Context and CompileUnit
+        // Mainly since I have a circular dependency between them...
         class IPublicIdentifiers {
         public:
             virtual bool HasStructDefinintion(const std::string &typeName) = 0;

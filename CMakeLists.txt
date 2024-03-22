@@ -63,7 +63,7 @@ list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h
 
 
 list(APPEND asmsrc src/assembler/Linker/BaseLinker.cpp src/assembler/Linker/BaseLinker.h)
-list(APPEND asmsrc src/assembler/Compiler/CompiledUnit.cpp src/assembler/Compiler/CompiledUnit.h)
+list(APPEND asmsrc src/assembler/Compiler/CompileUnit.cpp src/assembler/Compiler/CompileUnit.h)
 list(APPEND asmsrc src/assembler/Linker/DummyLinker.cpp src/assembler/Linker/DummyLinker.h)
 list(APPEND asmsrc src/assembler/Linker/ElfLinker.cpp src/assembler/Linker/ElfLinker.h)
 list(APPEND asmsrc src/assembler/Linker/Segment.cpp src/assembler/Linker/Segment.h)
