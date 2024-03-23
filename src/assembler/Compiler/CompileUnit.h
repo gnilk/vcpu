@@ -64,6 +64,16 @@ namespace gnilk {
                 return identifierAddresses;
             }
 
+            void AddExportToExportList(const std::string &ident) {
+                exports.push_back(ident);
+            }
+            ExportIdentifier::Ref AddImplicitExport(const std::string &ident) {
+                publicHandler->AddExport(ident);
+                exports.push_back(ident);
+                return publicHandler->GetExport(ident);
+            }
+
+
         public: // IPublicIdentifiers
             // This is just a proxy so we have a nicer interface in the EmitStatement classes...
             bool HasStructDefinintion(const std::string &typeName) override {
@@ -86,9 +96,7 @@ namespace gnilk {
                 // Add to our own list so we can mark exports globally at the end of the unit handling where they do belong
                 exports.push_back(ident);
             }
-            void AddForwardDeclExport(const std::string &ident) {
-                exports.push_back(ident);
-            }
+
             ExportIdentifier::Ref GetExport(const std::string &ident) override {
                 return publicHandler->GetExport(ident);
             }

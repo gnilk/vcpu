@@ -186,6 +186,7 @@ EmitExportStatement::EmitExportStatement() {
 bool EmitExportStatement::Process(CompileUnit &context) {
     auto expStatement = std::dynamic_pointer_cast<ast::ExportStatement>(statement);
     identifier = expStatement->Identifier();
+    context.AddExport(identifier);
     return true;
 }
 
@@ -198,8 +199,6 @@ bool EmitExportStatement::Finalize(CompileUnit &context) {
         if (expIdent->origIdentifier == nullptr) {
             // Update the name - it is never set through forward declaration...
             expIdent->name = identifier;
-            // We still need to add this to the export list..
-            context.AddForwardDeclExport(identifier);
             return true;
         }
         fmt::println(stderr, "Compiler, symbol {} already exported", identifier);
@@ -545,34 +544,28 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::CompileUnit &context) {
             fmt::println(stderr, "Compiler, no segment - can't emit code statement");
             return false;
         }
+        Identifier::Ref identifier = nullptr;
 
         if (context.HasIdentifier(symbol)) {
             // Local symbol, this symbol is added to the identifier list during Processing of the statement
-            auto identifier = context.GetIdentifier(symbol);
-            identifier->resolvePoints.push_back({
-                                                       .segment = currentSegment,
-                                                       .chunk = currentSegment->CurrentChunk(),
-                                                       .opSize = opSize,
-                                                       .isRelative = isRelative,
-                                                       .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
-                                               });
+            identifier = context.GetIdentifier(symbol);
 
         } else if (context.HasExport(symbol)) {
             // exported symbol from another already processed compile-unit
             // this has been added to the context.export list by the processing of the other compile unit...
-            auto identifier = context.GetExport(symbol);
-            identifier->resolvePoints.push_back({
-                                                       .segment = currentSegment,
-                                                       .chunk = currentSegment->CurrentChunk(),
-                                                       .opSize = opSize,
-                                                       .isRelative = isRelative,
-                                                       .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
-                                               });
+            identifier = context.GetExport(symbol);
         } else {
             // previously unknown symbol, we assume this is an implicit forward declaration...
-            fmt::println(stderr, "Compiler, implicit forward declaration of exports not yet supported!");
-            return false;
+            identifier = context.AddImplicitExport(symbol);
         }
+        identifier->resolvePoints.push_back({
+                                                    .segment = currentSegment,
+                                                    .chunk = currentSegment->CurrentChunk(),
+                                                    .opSize = opSize,
+                                                    .isRelative = isRelative,
+                                                    .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
+                                            });
+
 
     }
 
