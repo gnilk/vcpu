@@ -192,10 +192,11 @@ void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref s
     // Update resolve points for any public identifier (export) belonging to this chunk
     // Since the chunk might have moved - the resolvePoint (i.e. the point to be modified when resolving identifiers) might have moved
     // So we need to adjust all of them...
-    for(auto &[symbol, identifier] : exportIdentifiers) {
-        // Do we have resolve points?
-        if (identifier->resolvePoints.empty()) {
-            continue;
+    for(auto &[symbol, identifier] : unit.GetImports()) {
+        auto exportedIdentifier = GetExport(symbol);
+        if (exportedIdentifier == nullptr) {
+            fmt::println(stderr, "Compiler, No such symbol {}", symbol);
+            return;
         }
 
         // Loop through them and find any belonging to this chunk...
@@ -215,8 +216,13 @@ void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref s
             auto newPlaceHolderAddress = resolvePoint.placeholderAddress + delta;
             fmt::println("  srcLoad={}, dstLoad={}, delta={}, oldPlacedHolder={}, newPlaceHolder={}", srcLoad, dstLoad, delta, resolvePoint.placeholderAddress, newPlaceHolderAddress);
 
-            // Move the placeHolder address accordingly
-            resolvePoint.placeholderAddress = newPlaceHolderAddress;
+            // the old 'import' resolve point is only used by the compile-unit
+            // instead we compute it on a per unit per import and add it to the correct export
+            // so when linking we only care about the full export table and all things it points to...
+
+            IdentifierResolvePoint newResolvePoint = resolvePoint;
+            newResolvePoint.placeholderAddress = newPlaceHolderAddress;
+            exportedIdentifier->resolvePoints.push_back(newResolvePoint);
         }
     }
 }

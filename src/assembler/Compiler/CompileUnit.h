@@ -64,9 +64,24 @@ namespace gnilk {
                 return identifierAddresses;
             }
 
+            ImportIdentifier::Ref AddImport(const std::string ident) {
+                auto import = std::make_shared<ImportIdentifier>();
+                import->name = ident;
+                imports[ident] = import;
+                return import;
+            }
+            std::unordered_map<std::string, ImportIdentifier::Ref> &GetImports() {
+                return imports;
+            }
+
+            bool IsExportLocal(const std::string &ident) {
+                return (std::find(exports.begin(), exports.end(), ident) != exports.end());
+            }
+
             void AddExportToExportList(const std::string &ident) {
                 exports.push_back(ident);
             }
+
             ExportIdentifier::Ref AddImplicitExport(const std::string &ident) {
                 publicHandler->AddExport(ident);
                 exports.push_back(ident);
@@ -116,6 +131,9 @@ namespace gnilk {
             Segment::Ref activeSegment = nullptr;
 
             std::vector<std::string> exports;   // we export these things...
+            std::unordered_map<std::string, ImportIdentifier::Ref> imports; // we import these things...
+
+            // Is this used???
             std::unordered_map<std::string, Identifier::Ref> identifierAddresses;
             std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
         };

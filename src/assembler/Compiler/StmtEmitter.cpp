@@ -550,13 +550,14 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::CompileUnit &context) {
             // Local symbol, this symbol is added to the identifier list during Processing of the statement
             identifier = context.GetIdentifier(symbol);
 
-        } else if (context.HasExport(symbol)) {
-            // exported symbol from another already processed compile-unit
-            // this has been added to the context.export list by the processing of the other compile unit...
-            identifier = context.GetExport(symbol);
+        } else if (context.HasExport(symbol) && context.IsExportLocal(symbol)) {
+            // In case this unit holds the export - we treat it as a regular identifier
+            identifier = context.GetIdentifier(symbol);
+
         } else {
             // previously unknown symbol, we assume this is an implicit forward declaration...
-            identifier = context.AddImplicitExport(symbol);
+            // this is actually not an export - this is an import for this module!
+            identifier = context.AddImport(symbol);
         }
         identifier->resolvePoints.push_back({
                                                     .segment = currentSegment,

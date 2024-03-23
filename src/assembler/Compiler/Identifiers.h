@@ -52,6 +52,11 @@ namespace gnilk {
             Identifier::Ref origIdentifier = nullptr;    // when identifier is exported - this points to the declared identifier
         };
 
+        // I should probably clean these up a bit...
+        struct ImportIdentifier : public Identifier {
+            using Ref = std::shared_ptr<ImportIdentifier>;
+        };
+
         struct StructMember {
             std::string ident;
             size_t offset;

@@ -52,7 +52,7 @@ bool CompileUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
         auto identifier = GetIdentifier(expSymbol);
         auto expIdent = iPublicIdentifiers->GetExport(expSymbol);
 
-        // Link these up
+        // Link these up, this is used in the linker to find the right identifier descriptor...
         expIdent->origIdentifier = identifier;
     }
 

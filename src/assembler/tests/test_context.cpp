@@ -19,9 +19,10 @@ extern "C" {
 DLL_EXPORT int test_context(ITesting *t);
 DLL_EXPORT int test_context_multiunit_simple(ITesting *t);
 DLL_EXPORT int test_context_multiunit_orgstmt(ITesting *t);
-DLL_EXPORT int test_context_multiunit_useexport(ITesting *t);
-DLL_EXPORT int test_context_multiunit_callunit(ITesting *t);
-DLL_EXPORT int test_context_multiunit_dualcall(ITesting *t);
+DLL_EXPORT int test_context_multiunit_export_use(ITesting *t);
+DLL_EXPORT int test_context_multiunit_export_simple(ITesting *t);
+DLL_EXPORT int test_context_multiunit_export_implicit(ITesting *t);
+DLL_EXPORT int test_context_multiunit_export_unknown(ITesting *t);
 }
 
 DLL_EXPORT int test_context(ITesting *t) {
@@ -92,7 +93,7 @@ DLL_EXPORT int test_context_multiunit_orgstmt(ITesting *t) {
 
     return kTR_Pass;
 }
-DLL_EXPORT int test_context_multiunit_useexport(ITesting *t) {
+DLL_EXPORT int test_context_multiunit_export_use(ITesting *t) {
     static std::string code[] = {
             {
                     ".code\n" \
@@ -126,7 +127,7 @@ DLL_EXPORT int test_context_multiunit_useexport(ITesting *t) {
 
 }
 
-DLL_EXPORT int test_context_multiunit_callunit(ITesting *t) {
+DLL_EXPORT int test_context_multiunit_export_simple(ITesting *t) {
     static std::string code[] = {
             {
                     ".code\n" \
@@ -171,7 +172,46 @@ DLL_EXPORT int test_context_multiunit_callunit(ITesting *t) {
 
 }
 
-DLL_EXPORT int test_context_multiunit_dualcall(ITesting *t) {
+DLL_EXPORT int test_context_multiunit_export_unknown(ITesting *t) {
+    static std::string code[] = {
+            {
+                    ".code\n" \
+                    "export myfunc\n"\
+                    "move.l d1, 0x4711\n"\
+                    ".org 0x100\n"\
+                    "myfunc:\n"\
+                    "move.l d0, 0x4712\n"\
+                    "ret\n"\
+            },
+            {
+                    ".code\n" \
+                    ".org 0x200\n"\
+                    "call no_such_func\n"\
+                    "ret\n"
+            },
+
+    };
+
+    Compiler compiler;
+    Parser parser;
+
+    auto ast1 = parser.ProduceAST(code[0]);
+    TR_ASSERT(t, ast1 != nullptr);
+    // Here we just reuse the .code segment and append code at the current write point...
+    auto ast2 = parser.ProduceAST(code[1]);
+    TR_ASSERT(t, ast2 != nullptr);
+    TR_ASSERT(t, compiler.Compile(ast1));
+    TR_ASSERT(t, compiler.Compile(ast2));
+    // This shouldn't link - as there is no export for 'no_such_func'
+    TR_ASSERT(t, !compiler.Link());
+
+    return kTR_Pass;
+
+}
+
+
+
+DLL_EXPORT int test_context_multiunit_export_implicit(ITesting *t) {
     static std::string code[] = {
             {
                     ".code\n" \

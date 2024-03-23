@@ -29,7 +29,7 @@ bool DummyLinker::Link(Context &context) {
     auto &data = context.Data();
     for(auto &[symbol, identifier] : context.GetExports()) {
         if (identifier->origIdentifier == nullptr) {
-            fmt::println(stderr, "Exported symbol {} missing underlying declaration!", symbol);
+            fmt::println(stderr, "Linker, No such symbol '{}'", symbol);
             return false;
         }
         auto identAbsAddress = identifier->origIdentifier->absoluteAddress;
