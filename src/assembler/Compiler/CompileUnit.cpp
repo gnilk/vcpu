@@ -49,11 +49,11 @@ bool CompileUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
             fmt::println(stderr, "Compiler, '{}' is exported but not defined/declared (ignored)", expSymbol);
             continue;
         }
-        auto &identifier = GetIdentifier(expSymbol);
-        auto &expIdent = iPublicIdentifiers->GetExport(expSymbol);
+        auto identifier = GetIdentifier(expSymbol);
+        auto expIdent = iPublicIdentifiers->GetExport(expSymbol);
 
         // Link these up
-        expIdent.origIdentifier = &identifier;
+        expIdent->origIdentifier = identifier;
     }
 
     return true;
@@ -186,16 +186,19 @@ bool CompileUnit::HasIdentifier(const std::string &ident) {
     if (identifierAddresses.contains(ident)) {
         return true;
     }
-    return publicHandler->HasExport(ident);
+    return false;
 }
 
 void CompileUnit::AddIdentifier(const std::string &ident, const Identifier &idAddress) {
-    identifierAddresses[ident] = idAddress;
+    identifierAddresses[ident] = std::make_shared<Identifier>(idAddress);
+    // Since we send them in as const...
+    identifierAddresses[ident]->name = ident;
 }
 
-Identifier &CompileUnit::GetIdentifier(const std::string &ident) {
+
+Identifier::Ref CompileUnit::GetIdentifier(const std::string &ident) {
     if (identifierAddresses.contains(ident)) {
         return identifierAddresses[ident];
     }
-    return publicHandler->GetExport(ident);
+    return nullptr;
 }

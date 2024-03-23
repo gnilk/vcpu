@@ -49,6 +49,7 @@ ast::Statement::Ref Parser::ParseStatement() {
     switch(At().type) {
         case TokenType::Dot :
             return ParseMetaStatement();
+        case TokenType::MetaKeyword :       // Meta keyword should ALWAYS be proceeded with a dot - if not, this is not a meta
         case TokenType::Identifier :
             return ParseIdentifierOrInstr();
         case TokenType::Declaration :
@@ -153,8 +154,8 @@ ast::Statement::Ref Parser::ParseExport() {
 
 ast::Statement::Ref Parser::ParseMetaStatement() {
     Eat();
-    if (At().type != TokenType::Identifier) {
-        fmt::println(stderr,"Parser, Identifier expected in meta statement; .<meta>, got: {}", At().value);
+    if (At().type != TokenType::MetaKeyword) {
+        fmt::println(stderr,"Parser, Meta Keyword expected in meta statement; .<meta>, got: {}", At().value);
         return nullptr;
     }
     auto &symbol = At().value;
@@ -475,8 +476,8 @@ ast::Expression::Ref Parser::ParsePrimaryExpression() {
             return ast::StringLiteral::Create(Eat().value);
         case TokenType::Identifier : {
                 auto ident = ast::Identifier::Create(Eat().value);
-                if (At().type == TokenType::Dot) {
-                    // we have a struct?
+                // Make sure next after dot is another identifier so we don't have meta statement...
+                if ((At().type == TokenType::Dot) && (Peek().type == TokenType::Identifier)) {
                     Eat();
                     auto member = ParsePrimaryExpression();
                     return ast::MemberExpression::Create(ident, member);

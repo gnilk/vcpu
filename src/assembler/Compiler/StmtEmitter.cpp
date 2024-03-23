@@ -191,8 +191,18 @@ bool EmitExportStatement::Process(CompileUnit &context) {
 
 bool EmitExportStatement::Finalize(CompileUnit &context) {
     if (context.HasExport(identifier)) {
-        fmt::println(stderr, "Compiler, symbol {} already in exported",identifier);
-        return false;
+        auto expIdent = context.GetExport(identifier);
+        // We had this export already - but not origIdentifier yet - so this is most likely a forward declaration
+        // i.e. we first call a unit that use the export, but we have not yet compiled the unit which exports it
+        // the linker will check this later - the compiler can't...
+        if (expIdent->origIdentifier == nullptr) {
+            // Update the name - it is never set through forward declaration...
+            expIdent->name = identifier;
+            // We still need to add this to the export list..
+            context.AddForwardDeclExport(identifier);
+            return true;
+        }
+        fmt::println(stderr, "Compiler, symbol {} already exported", identifier);
     }
 
     context.AddExport(identifier);
@@ -305,8 +315,12 @@ bool EmitDataStatement::ProcessStructLiteral(CompileUnit &context, ast::StructLi
         return false;
     }
 
-    auto &structDef = context.GetStructDefinitionFromTypeName(stmt->StructTypeName());
-    szExpected = structDef.byteSize;
+    auto structDef = context.GetStructDefinitionFromTypeName(stmt->StructTypeName());
+    if (structDef == nullptr) {
+        fmt::println(stderr, "Compiler, critical error; no struct with type name={}", stmt->StructTypeName());
+        return false;
+    }
+    szExpected = structDef->byteSize;
 
     // Reserve the amount of bytes we need
     data.reserve(szExpected);
@@ -315,11 +329,11 @@ bool EmitDataStatement::ProcessStructLiteral(CompileUnit &context, ast::StructLi
     size_t szOffset = 0;
     size_t idxMember = 0;
     for (auto &m : stmt->Members()) {
-        if (idxMember > structDef.NumMembers()) {
+        if (idxMember > structDef->NumMembers()) {
             fmt::println(stderr,"Compiler, declaring too many members");
             break;
         }
-        auto &structDefMember = structDef.GetMemberAt(idxMember);
+        auto &structDefMember = structDef->GetMemberAt(idxMember);
         fmt::println("Assigning to struct member '{}'", structDefMember.ident);
 
         auto memberEmitter = EmitStatementBase::Create(m);
@@ -405,30 +419,30 @@ bool EmitIdentifierStatement::Finalize(CompileUnit &context) {
         fmt::println(stderr, "Compiler, No such identifier '{}'", symbol);
         return false;
     }
-    auto &ident = context.GetIdentifier(symbol);
-    ident.segment = context.GetActiveSegment();
-    if (ident.segment == nullptr) {
+    auto ident = context.GetIdentifier(symbol);
+    ident->segment = context.GetActiveSegment();
+    if (ident->segment == nullptr) {
         fmt::println(stderr, "Compiler, no active segment!");
         return false;
     }
-    ident.chunk = context.GetActiveSegment()->CurrentChunk();
-    if (ident.chunk == nullptr) {
-        fmt::println(stderr, "Compiler, no active 'chunk' in segment {}", ident.segment->Name());
+    ident->chunk = context.GetActiveSegment()->CurrentChunk();
+    if (ident->chunk == nullptr) {
+        fmt::println(stderr, "Compiler, no active 'chunk' in segment {}", ident->segment->Name());
 
         // Create a new chunk at the exact write address
         auto loadAddress = context.GetCurrentWriteAddress();
-        ident.segment->CreateChunk(loadAddress);
-        ident.chunk = context.GetActiveSegment()->CurrentChunk();
+        ident->segment->CreateChunk(loadAddress);
+        ident->chunk = context.GetActiveSegment()->CurrentChunk();
         return false;
     }
     // Set the absolute address
-    ident.absoluteAddress = context.GetCurrentWriteAddress();
-    fmt::println("EmitIdentifier, {} @ {}", symbol, ident.absoluteAddress);
+    ident->absoluteAddress = context.GetCurrentWriteAddress();
+    fmt::println("EmitIdentifier, {} @ {}", symbol, ident->absoluteAddress);
     // Update the export - this way we create a shortcut when the linker kicks in and wants to write out the
     // symbol table for all exports...
     if (context.HasExport(symbol)) {
         auto identExport = context.GetExport(symbol);
-        identExport.absoluteAddress = ident.absoluteAddress;
+        identExport->absoluteAddress = ident->absoluteAddress;
     }
     return true;
 }
@@ -437,9 +451,8 @@ bool EmitIdentifierStatement::Finalize(CompileUnit &context) {
 bool EmitIdentifierStatement::ProcessIdentifier(CompileUnit &context, ast::Identifier::Ref identifier) {
     uint64_t ipNow = GetCurrentAddress();
 
-
     // Need to register here so we can bail early
-    if (context.HasIdentifier(identifier->Symbol())) {
+    if (context.HasIdentifier(identifier->Symbol()) && !context.HasExport(identifier->Symbol())) {
         fmt::println(stderr,"Identifier {} already in use - can't use duplicate identifiers!", identifier->Symbol());
         return false;
     }
@@ -526,27 +539,41 @@ bool EmitCodeStatement::Process(gnilk::assembler::CompileUnit &context) {
 }
 
 bool EmitCodeStatement::Finalize(gnilk::assembler::CompileUnit &context) {
-    // Here we have quite a few things to do - need to change relocation stuff
     if (haveIdentifier) {
-        // Add this identifier to the list of resolve points..
-        if (!context.HasIdentifier(symbol)) {
-            fmt::println(stderr, "Compiler, Missing identifer '{}'", symbol);
-            return false;
-        }
         auto currentSegment = context.GetActiveSegment();
         if (currentSegment == nullptr) {
             fmt::println(stderr, "Compiler, no segment - can't emit code statement");
             return false;
         }
 
-        auto &identifier = context.GetIdentifier(symbol);
-        identifier.resolvePoints.push_back({
-            .segment = currentSegment,
-            .chunk = currentSegment->CurrentChunk(),
-            .opSize = opSize,
-            .isRelative = isRelative,
-            .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
-        });
+        if (context.HasIdentifier(symbol)) {
+            // Local symbol, this symbol is added to the identifier list during Processing of the statement
+            auto identifier = context.GetIdentifier(symbol);
+            identifier->resolvePoints.push_back({
+                                                       .segment = currentSegment,
+                                                       .chunk = currentSegment->CurrentChunk(),
+                                                       .opSize = opSize,
+                                                       .isRelative = isRelative,
+                                                       .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
+                                               });
+
+        } else if (context.HasExport(symbol)) {
+            // exported symbol from another already processed compile-unit
+            // this has been added to the context.export list by the processing of the other compile unit...
+            auto identifier = context.GetExport(symbol);
+            identifier->resolvePoints.push_back({
+                                                       .segment = currentSegment,
+                                                       .chunk = currentSegment->CurrentChunk(),
+                                                       .opSize = opSize,
+                                                       .isRelative = isRelative,
+                                                       .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
+                                               });
+        } else {
+            // previously unknown symbol, we assume this is an implicit forward declaration...
+            fmt::println(stderr, "Compiler, implicit forward declaration of exports not yet supported!");
+            return false;
+        }
+
     }
 
     if (!context.Write(data)) {
@@ -902,7 +929,7 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, ast::Iden
             fmt::println("Compiler, warning - realtive address instr. detected without operand size specification - trying to deduce");
             auto idAddress = context.GetIdentifier(identifier->Symbol()); // identifierAddresses[identifier->Symbol()];
             // We are ahead...
-            auto dist = (context.GetCurrentWriteAddress() - idAddress.absoluteAddress);
+            auto dist = (context.GetCurrentWriteAddress() - idAddress->absoluteAddress);
             if (dist < 255) {
                 fmt::println("Compiler, warning - changing from unspecfied to byte (dist={})", dist);
                 opSize = vcpu::OperandSize::Byte;
@@ -1044,7 +1071,7 @@ ast::Literal::Ref EmitStatementBase::EvaluateMemberExpression(CompileUnit &conte
         return nullptr;
     }
 
-    auto &structDef = context.GetStructDefinitionFromTypeName(ident->Symbol());
+    auto structDef = context.GetStructDefinitionFromTypeName(ident->Symbol());
 
     // Make sure out member is an identifier (this should always be the case - but ergo - it isn't)
     if (expression->Member()->Kind() != ast::NodeType::kIdentifier) {
@@ -1055,11 +1082,11 @@ ast::Literal::Ref EmitStatementBase::EvaluateMemberExpression(CompileUnit &conte
     // Now, find the struct member
     auto identMember = std::dynamic_pointer_cast<ast::Identifier>(expression->Member());
     auto memberName = identMember->Symbol();
-    if (!structDef.HasMember(identMember->Symbol())) {
-        fmt::println(stderr, "Compiler, no member in struct {} named {}", structDef.ident, identMember->Symbol());
+    if (!structDef->HasMember(identMember->Symbol())) {
+        fmt::println(stderr, "Compiler, no member in struct {} named {}", structDef->ident, identMember->Symbol());
         return nullptr;
     }
-    auto &structMember = structDef.GetMember(identMember->Symbol());
+    auto &structMember = structDef->GetMember(identMember->Symbol());
 
     // Here we simply create a numeric literal of the offset to the struct member
     // Now, this is not quite the best way to do this - since we would like to verify/check

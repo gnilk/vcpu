@@ -20,6 +20,8 @@ DLL_EXPORT int test_context(ITesting *t);
 DLL_EXPORT int test_context_multiunit_simple(ITesting *t);
 DLL_EXPORT int test_context_multiunit_orgstmt(ITesting *t);
 DLL_EXPORT int test_context_multiunit_useexport(ITesting *t);
+DLL_EXPORT int test_context_multiunit_callunit(ITesting *t);
+DLL_EXPORT int test_context_multiunit_dualcall(ITesting *t);
 }
 
 DLL_EXPORT int test_context(ITesting *t) {
@@ -119,6 +121,100 @@ DLL_EXPORT int test_context_multiunit_useexport(ITesting *t) {
 
     auto &data = compiler.Data();
     TR_ASSERT(t, !data.empty());
+
+    return kTR_Pass;
+
+}
+
+DLL_EXPORT int test_context_multiunit_callunit(ITesting *t) {
+    static std::string code[] = {
+            {
+                    ".code\n" \
+                    "export myfunc\n"\
+                    "move.l d1, 0x4711\n"\
+                    ".org 0x100\n"\
+                    "myfunc:\n"\
+                    "move.l d0, 0x4712\n"\
+                    "ret\n"\
+            },
+            {
+                    ".code\n" \
+                    ".org 0x200\n"\
+                    "call myfunc\n"\
+                    "ret\n"
+            },
+
+    };
+
+    Compiler compiler;
+    Parser parser;
+
+    auto ast1 = parser.ProduceAST(code[0]);
+    TR_ASSERT(t, ast1 != nullptr);
+    // Here we just reuse the .code segment and append code at the current write point...
+    auto ast2 = parser.ProduceAST(code[1]);
+    TR_ASSERT(t, ast2 != nullptr);
+    TR_ASSERT(t, compiler.Compile(ast1));
+    TR_ASSERT(t, compiler.Compile(ast2));
+    TR_ASSERT(t, compiler.Link());
+
+    auto &data = compiler.Data();
+    TR_ASSERT(t, !data.empty());
+    TR_ASSERT(t, data.size() > 200);
+
+    printf("Binary Size: %d\n", (int)data.size());
+    HexDump::ToConsole(data.data()+0, 16);
+    HexDump::ToConsole(data.data()+0x100, 16);
+    HexDump::ToConsole(data.data()+0x200, 16);
+
+    return kTR_Pass;
+
+}
+
+DLL_EXPORT int test_context_multiunit_dualcall(ITesting *t) {
+    static std::string code[] = {
+            {
+                    ".code\n" \
+                    "export myfunc\n"\
+                    "call mymain\n"\
+                    ".org 0x100\n"\
+                    "myfunc:\n"\
+                    "move.l d0, 0x4712\n"\
+                    "ret\n"\
+            },
+            {
+                    ".code\n" \
+                    ".org 0x200\n"\
+                    "export mymain\n"\
+                    "mymain:\n"\
+                    "call myfunc\n"\
+                    "ret\n"
+            },
+
+    };
+
+    Compiler compiler;
+    Parser parser;
+
+    auto ast1 = parser.ProduceAST(code[0]);
+    TR_ASSERT(t, ast1 != nullptr);
+    // Here we just reuse the .code segment and append code at the current write point...
+    auto ast2 = parser.ProduceAST(code[1]);
+    TR_ASSERT(t, ast2 != nullptr);
+    ast1->Dump();
+    ast2->Dump();
+    TR_ASSERT(t, compiler.Compile(ast1));
+    TR_ASSERT(t, compiler.Compile(ast2));
+    TR_ASSERT(t, compiler.Link());
+
+    auto &data = compiler.Data();
+    TR_ASSERT(t, !data.empty());
+    TR_ASSERT(t, data.size() > 200);
+
+    printf("Binary Size: %d\n", (int)data.size());
+    HexDump::ToConsole(data.data()+0, 16);
+    HexDump::ToConsole(data.data()+0x100, 16);
+    HexDump::ToConsole(data.data()+0x200, 16);
 
     return kTR_Pass;
 

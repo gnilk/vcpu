@@ -25,6 +25,7 @@ namespace gnilk {
         Declaration,    // Data Declaration 'dc.<op size>'
         String,
         Identifier,
+        MetaKeyword,        // Meta keyword
         // Registers
         DataReg,
         AddressReg,

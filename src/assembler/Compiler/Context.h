@@ -28,15 +28,15 @@ namespace gnilk {
             // IPublicIdentifiers
             bool HasExport(const std::string &ident) override;
             void AddExport(const std::string &ident) override;
-            ExportIdentifier &GetExport(const std::string &ident) override;
-            const std::unordered_map<std::string, ExportIdentifier> &GetExports() override {
+            ExportIdentifier::Ref GetExport(const std::string &ident) override;
+            const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() override {
                 return exportIdentifiers;
             }
 
             bool HasStructDefinintion(const std::string &typeName) override;
             void AddStructDefinition(const StructDefinition &structDefinition) override;
-            const StructDefinition &GetStructDefinitionFromTypeName(const std::string &typeName) override;
-            const std::vector<StructDefinition> &StructDefinitions() override;
+            const StructDefinition::Ref GetStructDefinitionFromTypeName(const std::string &typeName) override;
+            const std::vector<StructDefinition::Ref> &StructDefinitions() override;
 
 
 
@@ -87,9 +87,9 @@ namespace gnilk {
             Segment::Ref activeSegment = nullptr;
 
             // This is a type-definition - should they always be exported?
-            std::vector<StructDefinition> structDefinitions;
+            std::vector<StructDefinition::Ref> structDefinitions;
             // identifiers explicitly marked for export goes here...
-            std::unordered_map<std::string, ExportIdentifier> exportIdentifiers;
+            std::unordered_map<std::string, ExportIdentifier::Ref> exportIdentifiers;
 
         };
 

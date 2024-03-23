@@ -59,8 +59,8 @@ namespace gnilk {
 
             bool HasIdentifier(const std::string &ident);
             void AddIdentifier(const std::string &ident, const Identifier &idAddress);
-            Identifier &GetIdentifier(const std::string &ident);
-            const std::unordered_map<std::string, Identifier> &GetIdentifiers() {
+            Identifier::Ref GetIdentifier(const std::string &ident);
+            const std::unordered_map<std::string, Identifier::Ref> &GetIdentifiers() {
                 return identifierAddresses;
             }
 
@@ -72,10 +72,10 @@ namespace gnilk {
             void AddStructDefinition(const StructDefinition &structDefinition) override {
                 return publicHandler->AddStructDefinition(structDefinition);
             }
-            const StructDefinition &GetStructDefinitionFromTypeName(const std::string &typeName) override {
+            const StructDefinition::Ref GetStructDefinitionFromTypeName(const std::string &typeName) override {
                 return publicHandler->GetStructDefinitionFromTypeName(typeName);
             }
-            const std::vector<StructDefinition> &StructDefinitions() override {
+            const std::vector<StructDefinition::Ref> &StructDefinitions() override {
                 return publicHandler->StructDefinitions();
             }
             bool HasExport(const std::string &ident) override {
@@ -86,10 +86,13 @@ namespace gnilk {
                 // Add to our own list so we can mark exports globally at the end of the unit handling where they do belong
                 exports.push_back(ident);
             }
-            ExportIdentifier &GetExport(const std::string &ident) override {
+            void AddForwardDeclExport(const std::string &ident) {
+                exports.push_back(ident);
+            }
+            ExportIdentifier::Ref GetExport(const std::string &ident) override {
                 return publicHandler->GetExport(ident);
             }
-            const std::unordered_map<std::string, ExportIdentifier> &GetExports() override {
+            const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() override {
                 return publicHandler->GetExports();
             }
 
@@ -105,7 +108,7 @@ namespace gnilk {
             Segment::Ref activeSegment = nullptr;
 
             std::vector<std::string> exports;   // we export these things...
-            std::unordered_map<std::string, Identifier> identifierAddresses;
+            std::unordered_map<std::string, Identifier::Ref> identifierAddresses;
             std::unordered_map<std::string, ast::ConstLiteral::Ref> constants;
         };
     }

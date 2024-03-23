@@ -33,28 +33,27 @@ CompileUnit &Context::CreateUnit() {
 }
 
 void Context::AddStructDefinition(const StructDefinition &structDefinition) {
-    structDefinitions.push_back(structDefinition);
+    structDefinitions.push_back(std::make_shared<StructDefinition>(structDefinition));
 }
 
 bool Context::HasStructDefinintion(const std::string &typeName) {
     for(auto &structDef : structDefinitions) {
-        if (structDef.ident == typeName) {
+        if (structDef->ident == typeName) {
             return true;
         }
     }
     return false;
 }
-const StructDefinition &Context::GetStructDefinitionFromTypeName(const std::string &typeName) {
-    for(auto &structDef : structDefinitions) {
-        if (structDef.ident == typeName) {
+const StructDefinition::Ref Context::GetStructDefinitionFromTypeName(const std::string &typeName) {
+    for(auto structDef : structDefinitions) {
+        if (structDef->ident == typeName) {
             return structDef;
         }
     }
     // Should never be reached - throw something???
-    fmt::println(stderr, "Compiler, critical error; no struct with type name={}", typeName);
-    exit(1);
+    return nullptr;
 }
-const std::vector<StructDefinition> &Context::StructDefinitions() {
+const std::vector<StructDefinition::Ref> &Context::StructDefinitions() {
     return structDefinitions;
 }
 
@@ -64,14 +63,35 @@ bool Context::HasExport(const std::string &ident) {
 }
 
 void Context::AddExport(const std::string &ident) {
-    exportIdentifiers[ident] = {};
+
+    // I would like to do '{ .name = ident }' but I can't... not sure why...  can't manage to find a google to match my need...
+    if (exportIdentifiers.contains(ident)) {
+        auto expIdent = exportIdentifiers[ident];
+        if (expIdent->origIdentifier != nullptr) {
+            fmt::println(stderr, "Compiler, export {} already exists!", ident);
+            return;
+        }
+        if (expIdent->name.empty()) {
+            expIdent->name = ident;
+        }
+        return;
+    }
+
+    auto exportIdentifier = std::make_shared<ExportIdentifier>();
+    exportIdentifier->name = ident;
+
+    exportIdentifiers[ident] = exportIdentifier;
 }
 
-ExportIdentifier &Context::GetExport(const std::string &ident) {
+ExportIdentifier::Ref Context::GetExport(const std::string &ident) {
+    // This is a forward declaration, we don't have it in the public x-unit list, so we create it
+    // will set the 'origIdentifier' in the Export to nullptr which should be filled out when merging units
+    if (!exportIdentifiers.contains(ident)) {
+        fmt::println("Compiler, forward declare export '{}'", ident);
+        AddExport(ident);
+    }
     return exportIdentifiers[ident];
 }
-
-
 
 size_t Context::Write(const std::vector<uint8_t> &data) {
     if (!EnsureChunk()) {
@@ -147,20 +167,20 @@ void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref s
     auto loadAddress = activeSegment->currentChunk->LoadAddress();
     for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
         // Relocate all within this chunk...
-        if (identifier.chunk != srcChunk) {
+        if (identifier->chunk != srcChunk) {
             continue;
         }
-        if(identifier.resolvePoints.empty()) {
+        if(identifier->resolvePoints.empty()) {
             continue;
         }
 
-        fmt::println("  {} @ {:#x}", symbol, identifier.absoluteAddress);
-        for(auto &resolvePoint : identifier.resolvePoints) {
+        fmt::println("  {} @ {:#x}", symbol, identifier->absoluteAddress);
+        for(auto &resolvePoint : identifier->resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
             if (!resolvePoint.isRelative) {
-                activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier.absoluteAddress, resolvePoint.opSize);
+                activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier->absoluteAddress, resolvePoint.opSize);
             } else {
-                int64_t offset = static_cast<int64_t>(identifier.absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
+                int64_t offset = static_cast<int64_t>(identifier->absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
                 if (offset < 0) {
                     offset -= 1;
                 }
@@ -174,12 +194,12 @@ void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref s
     // So we need to adjust all of them...
     for(auto &[symbol, identifier] : exportIdentifiers) {
         // Do we have resolve points?
-        if (identifier.resolvePoints.empty()) {
+        if (identifier->resolvePoints.empty()) {
             continue;
         }
 
         // Loop through them and find any belonging to this chunk...
-        for(auto &resolvePoint : identifier.resolvePoints) {
+        for(auto &resolvePoint : identifier->resolvePoints) {
             // exports can't have relative resolve points
             if (resolvePoint.isRelative) {
                 fmt::println(stderr, "Compiler, exports are not allowed relative lookup addresses");

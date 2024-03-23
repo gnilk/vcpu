@@ -31,15 +31,25 @@ namespace gnilk {
             size_t placeholderAddress;
         };
 
+        // This is a public identifier in a compile unit - it is only reachable within the compile unit.
+        // IF an identifier should be accessable across compile units it must be marked explicitly as 'export'.
         struct Identifier {
+            using Ref = std::shared_ptr<Identifier>;
+
+            std::string name;
             Segment::Ref segment = nullptr;;
             Segment::DataChunk::Ref chunk = nullptr;
             uint64_t absoluteAddress = 0;
             std::vector<IdentifierResolvePoint> resolvePoints;
         };
 
+        // inherit from identifier - this is used to gain access to the resolve points
+        // an exported identifier is resolved last - and has it's own set of resolve points which are
+        // tracked across compile-units within the same context...
         struct ExportIdentifier : public Identifier {
-            Identifier *origIdentifier = nullptr;    // when identifier is exported - this points to the declared identifier
+            using Ref = std::shared_ptr<ExportIdentifier>;
+
+            Identifier::Ref origIdentifier = nullptr;    // when identifier is exported - this points to the declared identifier
         };
 
         struct StructMember {
@@ -50,9 +60,13 @@ namespace gnilk {
         };
 
         struct StructDefinition {
+            using Ref = std::shared_ptr<StructDefinition>;
+
             size_t NumMembers() const {
                 return members.size();
             }
+            // This is more or less fine - assuming we never go outside the vector
+            // However, if rewriting everything to use pointers maybe we should for these two as well
             const StructMember &GetMemberAt(size_t idx) const {
                 return members[idx];
             }
@@ -79,14 +93,15 @@ namespace gnilk {
         class IPublicIdentifiers {
         public:
             virtual bool HasStructDefinintion(const std::string &typeName) = 0;
+            // keep this as reference - we will make a copy - but perhaps doesn't matter if it is trivial copyable...
             virtual void AddStructDefinition(const StructDefinition &structDefinition) = 0;
-            virtual const StructDefinition &GetStructDefinitionFromTypeName(const std::string &typeName) = 0;
-            virtual const std::vector<StructDefinition> &StructDefinitions() = 0;
+            virtual const StructDefinition::Ref GetStructDefinitionFromTypeName(const std::string &typeName) = 0;
+            virtual const std::vector<StructDefinition::Ref> &StructDefinitions() = 0;
 
             virtual bool HasExport(const std::string &ident) = 0;
             virtual void AddExport(const std::string &ident) = 0;
-            virtual ExportIdentifier &GetExport(const std::string &ident) = 0;
-            virtual const std::unordered_map<std::string, ExportIdentifier> &GetExports() = 0;
+            virtual ExportIdentifier::Ref GetExport(const std::string &ident) = 0;
+            virtual const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() = 0;
         };
 
     }

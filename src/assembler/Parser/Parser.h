@@ -27,8 +27,23 @@ namespace gnilk {
             __inline bool Done() {
                 return (At().type == TokenType::EoF || it == tokens.end());
             }
+            __inline bool CanPrev() {
+                if (it != tokens.begin()) return true;
+                return false;
+            }
+            __inline const Token &Prev() {
+                return *(it-1);
+            }
             __inline const Token &At() {
                 return *it;
+            }
+            __inline bool CanPeek() {
+                if (it != tokens.end()) return true;
+                return false;
+            }
+            __inline const Token &Peek() {
+                // Note: this might not always work!!
+                return *(it + 1);
             }
             __inline const Token &Eat() {
                 auto &current= At();
