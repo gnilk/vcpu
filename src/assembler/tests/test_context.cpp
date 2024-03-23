@@ -93,6 +93,10 @@ DLL_EXPORT int test_context_multiunit_orgstmt(ITesting *t) {
 
     return kTR_Pass;
 }
+
+//
+// Using an exported variable
+//
 DLL_EXPORT int test_context_multiunit_export_use(ITesting *t) {
     static std::string code[] = {
             {
@@ -127,6 +131,9 @@ DLL_EXPORT int test_context_multiunit_export_use(ITesting *t) {
 
 }
 
+//
+// Simple export. First unit exports a symbol, second unit calls the symbol
+//
 DLL_EXPORT int test_context_multiunit_export_simple(ITesting *t) {
     static std::string code[] = {
             {
@@ -172,6 +179,10 @@ DLL_EXPORT int test_context_multiunit_export_simple(ITesting *t) {
 
 }
 
+//
+// Test of unknown symbol - in one unit we export something and in the other unit we use something else
+// this leads to a linker error
+//
 DLL_EXPORT int test_context_multiunit_export_unknown(ITesting *t) {
     static std::string code[] = {
             {
@@ -209,8 +220,12 @@ DLL_EXPORT int test_context_multiunit_export_unknown(ITesting *t) {
 
 }
 
-
-
+//
+// Implicit exports. We are calling before the export has been declared.
+// The compiler will see that the symbol (mymain) is not in the export list nor in the local identifier list
+// it will then add an import..  When merging the units the import/export list is also merged (and updated) and when
+// the fully merged code hits the linker it resolves it properly...
+//
 DLL_EXPORT int test_context_multiunit_export_implicit(ITesting *t) {
     static std::string code[] = {
             {
