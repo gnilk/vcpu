@@ -110,7 +110,7 @@ Support for the following directives:
     ! Ability to output a proper memory layout
     - Perhaps output emitter statement as some kind of 'language' (text) - JSON/XML/Other?
       This can later be fed into the linker step. Which allows for 'streaming' data between these steps.
-    + add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)
+    ! add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)
     - Consider using name-mangling for private symbols..      
 - linker
     + Support for multiple compile units
