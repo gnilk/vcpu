@@ -20,15 +20,19 @@ const std::vector<uint8_t> &DummyLinker::Data() {
 }
 
 // Link data in a context
-bool DummyLinker::Link(Context &context) {
+bool DummyLinker::Link(const Context &context) {
 
     // Now merge to one big blob...
-    Merge(context);
+    if (!Merge(context)) {
+        return false;
+    }
 
 
     fmt::println("Relocate exported symbols");
+
+
     // Relocate symbols, this should all be done in the linker
-    auto &data = context.Data();
+    auto &data = destContext.Data();
     for(auto &[symbol, identifier] : context.GetExports()) {
         if (identifier->origIdentifier == nullptr) {
             fmt::println(stderr, "Linker, No such symbol '{}'", symbol);
@@ -56,14 +60,14 @@ bool DummyLinker::Link(Context &context) {
 }
 
 // Merge stuff in the context
-void DummyLinker::Merge(Context &context) {
+bool DummyLinker::Merge(const Context &context) {
     // Make sure this is empty...
     linkedData.clear();
-    MergeAllSegments(context);
+    return MergeAllSegments(context);
 }
 
 // Merge all segments
-void DummyLinker::MergeAllSegments(Context &sourceContext) {
+bool DummyLinker::MergeAllSegments(const Context &sourceContext) {
     size_t startAddress = 0;
     size_t endAddress = 0;
 
@@ -91,7 +95,10 @@ void DummyLinker::MergeAllSegments(Context &sourceContext) {
                     // FIXME: We should check overlap here!
                     destContext.GetActiveSegment()->CreateChunk(srcChunk->LoadAddress());
                 }
-                ReloacteChunkFromUnit(sourceContext, unit, srcChunk);
+
+                if (!ReloacteChunkFromUnit(sourceContext, unit, srcChunk)) {
+                    return false;
+                }
             }
         }
     }
@@ -113,12 +120,14 @@ void DummyLinker::MergeAllSegments(Context &sourceContext) {
             memcpy(linkedData.data()+chunk->LoadAddress(), chunk->DataPtr(), chunk->Size());
         }
     }
+
+    return true;
 }
 
 // Relocates the active chunk from unit::<seg>::chunk
-void DummyLinker::ReloacteChunkFromUnit(Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
+bool DummyLinker::ReloacteChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
     // Write data to it...
-    Write(destContext, srcChunk->Data());
+    Write( srcChunk->Data());
 
     // relocate local variables within this chunk...
     auto loadAddress = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
@@ -155,7 +164,7 @@ void DummyLinker::ReloacteChunkFromUnit(Context &sourceContext, const CompileUni
         auto exportedIdentifier = sourceContext.GetExport(symbol);
         if (exportedIdentifier == nullptr) {
             fmt::println(stderr, "Compiler, No such symbol {}", symbol);
-            return;
+            return false;
         }
 
         // Loop through them and find any belonging to this chunk...
@@ -187,24 +196,25 @@ void DummyLinker::ReloacteChunkFromUnit(Context &sourceContext, const CompileUni
             exportedIdentifier->resolvePoints.push_back(newResolvePoint);
         }
     }
+    return true;
 }
 
-size_t DummyLinker::Write(Context &context, const std::vector<uint8_t> &data) {
-    if (!EnsureChunk(context)) {
+size_t DummyLinker::Write(const std::vector<uint8_t> &data) {
+    if (!EnsureChunk()) {
         return 0;
     }
-    return context.GetActiveSegment()->CurrentChunk()->Write(data);
+    return destContext.GetActiveSegment()->CurrentChunk()->Write(data);
 }
 
-bool DummyLinker::EnsureChunk(Context &context) {
-    if (context.GetActiveSegment() == nullptr) {
+bool DummyLinker::EnsureChunk() {
+    if (destContext.GetActiveSegment() == nullptr) {
         fmt::println(stderr, "Compiler, need at least an active segment");
         return false;
     }
-    if (context.GetActiveSegment()->CurrentChunk() != nullptr) {
+    if (destContext.GetActiveSegment()->CurrentChunk() != nullptr) {
         return true;
     }
-    context.GetActiveSegment()->CreateChunk(context.GetCurrentWriteAddress());
+    destContext.GetActiveSegment()->CreateChunk(destContext.GetCurrentWriteAddress());
     return true;
 }
 

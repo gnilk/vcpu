@@ -23,7 +23,7 @@ namespace gnilk {
         public:
             BaseLinker() = default;
             virtual ~BaseLinker() = default;
-            virtual bool Link(Context &contex) { return false; }
+            virtual bool Link(const Context &contex) { return false; }
             virtual const std::vector<uint8_t> &Data() = 0;
         };
     }

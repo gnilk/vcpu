@@ -18,14 +18,14 @@ namespace gnilk {
             DummyLinker() = default;
             virtual ~DummyLinker() = default;
 
-            bool Link(Context &context) override;
+            bool Link(const Context &context) override;
             const std::vector<uint8_t> &Data() override;
         protected:
-            void Merge(Context &context);
-            void MergeAllSegments(Context &sourceContext);
-            void ReloacteChunkFromUnit(Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
-            bool EnsureChunk(Context &context);
-            size_t Write(Context &sourceContext, const std::vector<uint8_t> &data);
+            bool Merge(const Context &context);
+            bool MergeAllSegments(const Context &sourceContext);
+            bool ReloacteChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            bool EnsureChunk();
+            size_t Write(const std::vector<uint8_t> &data);
 
         private:
             Context destContext;

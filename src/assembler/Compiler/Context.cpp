@@ -92,6 +92,16 @@ ExportIdentifier::Ref Context::GetExport(const std::string &ident) {
     }
     return exportIdentifiers[ident];
 }
+ExportIdentifier::Ref Context::GetExport(const std::string &ident) const {
+    // This is a forward declaration, we don't have it in the public x-unit list, so we create it
+    // will set the 'origIdentifier' in the Export to nullptr which should be filled out when merging units
+    if (!exportIdentifiers.contains(ident)) {
+        fmt::println("Compiler, forward declare export '{}'", ident);
+        return nullptr;
+    }
+    return exportIdentifiers.at(ident);
+}
+
 
 size_t Context::Write(const std::vector<uint8_t> &data) {
     if (!EnsureChunk()) {

@@ -17,7 +17,7 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 }
 
 
-bool ElfLinker::Link(gnilk::assembler::Context &context) {
+bool ElfLinker::Link(const gnilk::assembler::Context &context) {
     return false;
 }
 

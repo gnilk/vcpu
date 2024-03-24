@@ -29,7 +29,12 @@ namespace gnilk {
             bool HasExport(const std::string &ident) override;
             void AddExport(const std::string &ident) override;
             ExportIdentifier::Ref GetExport(const std::string &ident) override;
+            ExportIdentifier::Ref GetExport(const std::string &ident) const;
+
             const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() override {
+                return exportIdentifiers;
+            }
+            const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() const {
                 return exportIdentifiers;
             }
 
@@ -42,6 +47,9 @@ namespace gnilk {
 
             CompileUnit &CreateUnit();
             const std::vector<CompileUnit> &GetUnits() {
+                return units;
+            }
+            const std::vector<CompileUnit> &GetUnits() const {
                 return units;
             }
 
