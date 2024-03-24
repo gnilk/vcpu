@@ -13,10 +13,8 @@
 #include "Linker/DummyLinker.h"
 #include "Linker/ElfLinker.h"
 
-static gnilk::assembler::DummyLinker dummyLinker;
-static gnilk::assembler::ElfLinker elfLinker;
 
-static gnilk::assembler::BaseLinker *ptrUseLinker = &elfLinker;
+static gnilk::assembler::BaseLinker::Ref ptrUseLinker = nullptr;
 
 bool ProcessFile(const std::string &outFilename, std::filesystem::path &pathToSrcFile);
 
@@ -35,6 +33,8 @@ static void Usage() {
 int main(int argc, const char **argv) {
     std::string outFilename = "a.gnk";
     std::vector<std::string> filesToAssemble;
+
+
     for(int i=1;i<argc;i++) {
         if (argv[i][0] == '-') {
             switch(argv[i][1]) {
@@ -44,9 +44,9 @@ int main(int argc, const char **argv) {
                 case 't' : {
                     auto linkerName = argv[++i];
                     if (linkerName == std::string("raw")) {
-                        ptrUseLinker = &dummyLinker;
+                        ptrUseLinker = std::make_shared<gnilk::assembler::DummyLinker>();
                     } else if (linkerName == std::string("elf")) {
-                        ptrUseLinker = &elfLinker;
+                        ptrUseLinker = std::make_shared<gnilk::assembler::ElfLinker>();
                     } else {
                         fmt::println(stderr, "Unknown linker: {}", linkerName);
                         Usage();
@@ -67,6 +67,12 @@ int main(int argc, const char **argv) {
             filesToAssemble.push_back(argv[i]);
         }
     }
+
+    // Set default linker if not set already...
+    if (ptrUseLinker == nullptr) {
+        ptrUseLinker = std::make_shared<gnilk::assembler::ElfLinker>();
+    }
+
     if (filesToAssemble.empty()) {
         fmt::println("Nothing to do, bailing...");
         Usage();

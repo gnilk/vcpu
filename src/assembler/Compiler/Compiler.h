@@ -28,7 +28,7 @@ namespace gnilk {
             bool Compile(gnilk::ast::Program::Ref program);
             bool Link();
 
-            void SetLinker(BaseLinker *newLinker) {
+            void SetLinker(BaseLinker::Ref newLinker) {
                 linker = newLinker;
             }
 
@@ -53,7 +53,7 @@ namespace gnilk {
             double msCompileDuration = 0.0;
             double msLinkDuration = 0.0;
             Context context;
-            BaseLinker *linker = nullptr;
+            std::shared_ptr<BaseLinker> linker = nullptr;
 
             std::vector<uint8_t> linkdata;
         };

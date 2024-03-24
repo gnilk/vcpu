@@ -7,6 +7,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 #include "Compiler/Context.h"
 #include "Compiler/CompileUnit.h"
@@ -17,6 +18,8 @@
 namespace gnilk {
     namespace assembler {
         class BaseLinker {
+        public:
+            using Ref = std::shared_ptr<BaseLinker>;
         public:
             BaseLinker() = default;
             virtual ~BaseLinker() = default;

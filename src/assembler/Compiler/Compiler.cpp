@@ -61,8 +61,8 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 //
 bool Compiler::Link() {
     if (linker == nullptr) {
-        static DummyLinker dummyLinker;
-        linker = &dummyLinker;
+        //static DummyLinker dummyLinker;
+        linker = std::make_shared<DummyLinker>(); //&dummyLinker;
     }
     DurationTimer timer;
     auto result = linker->Link(context);

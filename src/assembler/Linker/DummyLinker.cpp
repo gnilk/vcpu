@@ -63,14 +63,14 @@ void DummyLinker::Merge(Context &context) {
 }
 
 // Merge all segments
-void DummyLinker::MergeAllSegments(Context &context) {
+void DummyLinker::MergeAllSegments(Context &sourceContext) {
     size_t startAddress = 0;
     size_t endAddress = 0;
 
     size_t unitCounter = 0;
 
     // Merge segments across units and copy data...
-    for(auto &unit : context.GetUnits()) {
+    for(auto &unit : sourceContext.GetUnits()) {
         fmt::println("Merge segments in unit {}", unitCounter);
         unitCounter += 1;
 
@@ -78,26 +78,26 @@ void DummyLinker::MergeAllSegments(Context &context) {
         unit.GetSegments(unitSegments);
         for(auto srcSeg : unitSegments) {
             // Make sure we have this segment
-            context.GetOrAddSegment(srcSeg->Name());
+            destContext.GetOrAddSegment(srcSeg->Name());
             for(auto srcChunk : srcSeg->DataChunks()) {
                 // Create out own chunk at the correct address - chunk merging happen later...
                 if (srcChunk->IsLoadAddressAppend()) {
                     // No load-address given  - just append
                     // FIXME: We should check overlap here!
-                    context.GetActiveSegment()->CreateChunk(context.GetActiveSegment()->EndAddress());
+                    destContext.GetActiveSegment()->CreateChunk(destContext.GetActiveSegment()->EndAddress());
 
                 } else {
                     // Load address given, create chunk at this specific load address
                     // FIXME: We should check overlap here!
-                    context.GetActiveSegment()->CreateChunk(srcChunk->LoadAddress());
+                    destContext.GetActiveSegment()->CreateChunk(srcChunk->LoadAddress());
                 }
-                ReloacteChunkFromUnit(context, unit, srcChunk);
+                ReloacteChunkFromUnit(sourceContext, unit, srcChunk);
             }
         }
     }
 
     // Compute full binary end address...
-    for(auto &[name, seg] : context.GetSegments()) {
+    for(auto &[name, seg] : destContext.GetSegments()) {
         if (seg->EndAddress() > endAddress) {
             endAddress = seg->EndAddress();
         }
@@ -108,7 +108,7 @@ void DummyLinker::MergeAllSegments(Context &context) {
     linkedData.resize(szFinalData);
 
     // Append the data
-    for(auto &[name, seg] : context.GetSegments()) {
+    for(auto &[name, seg] : destContext.GetSegments()) {
         for(auto &chunk : seg->DataChunks()) {
             memcpy(linkedData.data()+chunk->LoadAddress(), chunk->DataPtr(), chunk->Size());
         }
@@ -116,12 +116,12 @@ void DummyLinker::MergeAllSegments(Context &context) {
 }
 
 // Relocates the active chunk from unit::<seg>::chunk
-void DummyLinker::ReloacteChunkFromUnit(Context &context, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
+void DummyLinker::ReloacteChunkFromUnit(Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
     // Write data to it...
-    Write(context, srcChunk->Data());
+    Write(destContext, srcChunk->Data());
 
     // relocate local variables within this chunk...
-    auto loadAddress = context.GetActiveSegment()->CurrentChunk()->LoadAddress();
+    auto loadAddress = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
     for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
         // Relocate all within this chunk...
         if (identifier->chunk != srcChunk) {
@@ -135,22 +135,24 @@ void DummyLinker::ReloacteChunkFromUnit(Context &context, const CompileUnit &uni
         for(auto &resolvePoint : identifier->resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
             if (!resolvePoint.isRelative) {
-                context.GetActiveSegment()->CurrentChunk()->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier->absoluteAddress, resolvePoint.opSize);
+                destContext.GetActiveSegment()->CurrentChunk()->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier->absoluteAddress, resolvePoint.opSize);
             } else {
                 int64_t offset = static_cast<int64_t>(identifier->absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
                 if (offset < 0) {
                     offset -= 1;
                 }
-                context.GetActiveSegment()->CurrentChunk()->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize);
+                destContext.GetActiveSegment()->CurrentChunk()->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize);
             }
         }
     }
+
+    // FIXME: we change the sourceContext here - this is wrong...
 
     // Update resolve points for any public identifier (export) belonging to this chunk
     // Since the chunk might have moved - the resolvePoint (i.e. the point to be modified when resolving identifiers) might have moved
     // So we need to adjust all of them...
     for(auto &[symbol, identifier] : unit.GetImports()) {
-        auto exportedIdentifier = context.GetExport(symbol);
+        auto exportedIdentifier = sourceContext.GetExport(symbol);
         if (exportedIdentifier == nullptr) {
             fmt::println(stderr, "Compiler, No such symbol {}", symbol);
             return;
@@ -167,7 +169,9 @@ void DummyLinker::ReloacteChunkFromUnit(Context &context, const CompileUnit &uni
                 continue;
             }
             auto srcLoad = srcChunk->LoadAddress();
-            auto dstLoad = context.GetActiveSegment()->CurrentChunk()->LoadAddress();
+
+            // FIXME: this is wrong...
+            auto dstLoad = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
             auto delta = static_cast<int64_t>(dstLoad) - static_cast<int64_t>(srcLoad);
             // Compute the new placeholder address...
             auto newPlaceHolderAddress = resolvePoint.placeholderAddress + delta;
@@ -177,6 +181,7 @@ void DummyLinker::ReloacteChunkFromUnit(Context &context, const CompileUnit &uni
             // instead we compute it on a per unit per import and add it to the correct export
             // so when linking we only care about the full export table and all things it points to...
 
+            // FIXME: These should be placed locally...
             IdentifierResolvePoint newResolvePoint = resolvePoint;
             newResolvePoint.placeholderAddress = newPlaceHolderAddress;
             exportedIdentifier->resolvePoints.push_back(newResolvePoint);
