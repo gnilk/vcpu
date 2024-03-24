@@ -48,7 +48,7 @@ namespace gnilk {
             bool SetActiveSegment(const std::string &name);
             bool HaveSegment(const std::string &name);
             Segment::Ref GetActiveSegment();
-            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
+            size_t GetSegments(std::vector<Segment::Ref> &outSegments) const;
             const Segment::Ref GetSegment(const std::string segName);
             size_t GetSegmentEndAddress(const std::string &name);
             uint64_t GetCurrentWriteAddress();
@@ -60,7 +60,7 @@ namespace gnilk {
             bool HasIdentifier(const std::string &ident);
             void AddIdentifier(const std::string &ident, const Identifier &idAddress);
             Identifier::Ref GetIdentifier(const std::string &ident);
-            const std::unordered_map<std::string, Identifier::Ref> &GetIdentifiers() {
+            const std::unordered_map<std::string, Identifier::Ref> &GetIdentifiers() const {
                 return identifierAddresses;
             }
 
@@ -70,7 +70,7 @@ namespace gnilk {
                 imports[ident] = import;
                 return import;
             }
-            std::unordered_map<std::string, ImportIdentifier::Ref> &GetImports() {
+            const std::unordered_map<std::string, ImportIdentifier::Ref> &GetImports() const {
                 return imports;
             }
 

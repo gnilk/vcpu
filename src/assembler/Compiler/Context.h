@@ -65,8 +65,8 @@ namespace gnilk {
             void ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
             size_t Write(const std::vector<uint8_t> &data);
 
-        protected:
-            // Segment handling, not exposed - these are only used during the merge process...
+        public:
+            // Segment handling, exposed because the linker handles the merge process
             bool EnsureChunk();
             bool CreateEmptySegment(const std::string &name);
             bool GetOrAddSegment(const std::string &name);
@@ -75,7 +75,7 @@ namespace gnilk {
             Segment::Ref GetActiveSegment();
             const Segment::Ref GetSegment(const std::string segName);
             size_t GetSegmentEndAddress(const std::string &name);
-
+            std::unordered_map<std::string, Segment::Ref> &GetSegments();
             uint64_t GetCurrentWriteAddress();
 
         protected:

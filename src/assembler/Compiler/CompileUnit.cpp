@@ -118,7 +118,7 @@ const Segment::Ref CompileUnit::GetSegment(const std::string segName) {
     return segments.at(segName);
 }
 
-size_t CompileUnit::GetSegments(std::vector<Segment::Ref> &outSegments) {
+size_t CompileUnit::GetSegments(std::vector<Segment::Ref> &outSegments) const {
     for(auto [k, v] : segments) {
         outSegments.push_back(v);
     }

@@ -57,8 +57,7 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 
 
 //
-// This is a simple single-unit self-linking thingie - produces something like a a.out file...
-// We should split this to it's own structure
+// Compiler front-end also allows linkage - stupid?
 //
 bool Compiler::Link() {
     if (linker == nullptr) {

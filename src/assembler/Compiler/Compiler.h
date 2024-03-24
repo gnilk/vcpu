@@ -38,8 +38,8 @@ namespace gnilk {
             }
 
             const std::vector<uint8_t> &Data() {
-                //return linker->Data();
-                return context.Data();
+                return linker->Data();
+                //return context.Data();
             }
 
             double GetCompileDurationMS() {

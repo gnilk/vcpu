@@ -304,6 +304,11 @@ size_t Context::GetSegments(std::vector<Segment::Ref> &outSegments) {
     return outSegments.size();
 }
 
+std::unordered_map<std::string, Segment::Ref> &Context::GetSegments() {
+    return segments;
+}
+
+
 
 Segment::Ref Context::GetActiveSegment() {
     return activeSegment;

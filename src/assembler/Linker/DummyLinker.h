@@ -20,6 +20,13 @@ namespace gnilk {
 
             bool Link(Context &context) override;
             const std::vector<uint8_t> &Data() override;
+        protected:
+            void Merge(Context &context);
+            void MergeAllSegments(Context &context);
+            void ReloacteChunkFromUnit(Context &context, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            bool EnsureChunk(Context &context);
+            size_t Write(Context &context, const std::vector<uint8_t> &data);
+
         private:
             std::vector<uint8_t> linkedData;
         };
