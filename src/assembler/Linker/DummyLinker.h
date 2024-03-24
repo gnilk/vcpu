@@ -22,8 +22,12 @@ namespace gnilk {
             const std::vector<uint8_t> &Data() override;
         protected:
             bool Merge(const Context &context);
-            bool MergeAllSegments(const Context &sourceContext);
-            bool ReloacteChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            bool MergeUnits(const Context &sourceContext);
+            bool MergeSegmentsInUnit(const Context &sourceContext, const CompileUnit &unit);
+            bool RelocateExports(const Context &sourceContext);
+            bool RelocateChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            void RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            bool RelocateExportsInChunk(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
             bool EnsureChunk();
             size_t Write(const std::vector<uint8_t> &data);
 

@@ -27,47 +27,18 @@ bool DummyLinker::Link(const Context &context) {
         return false;
     }
 
-
-    fmt::println("Relocate exported symbols");
-
-
-    // Relocate symbols, this should all be done in the linker
-    auto &data = destContext.Data();
-    for(auto &[symbol, identifier] : context.GetExports()) {
-        if (identifier->origIdentifier == nullptr) {
-            fmt::println(stderr, "Linker, No such symbol '{}'", symbol);
-            return false;
-        }
-        auto identAbsAddress = identifier->origIdentifier->absoluteAddress;
-        fmt::println("  {} @ {:#x}", symbol, identAbsAddress);
-        for(auto &resolvePoint : identifier->resolvePoints) {
-            fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
-            if (!resolvePoint.isRelative) {
-                VectorReplaceAt(data, resolvePoint.placeholderAddress, identAbsAddress, resolvePoint.opSize);
-            } else {
-                int64_t offset = static_cast<int64_t>(identAbsAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
-                if (offset < 0) {
-                    offset -= 1;
-                }
-                VectorReplaceAt(data, resolvePoint.placeholderAddress, offset, resolvePoint.opSize);
-            }
-        }
-    }
-
-
-
-    return true;
+    return RelocateExports(context);
 }
 
 // Merge stuff in the context
 bool DummyLinker::Merge(const Context &context) {
     // Make sure this is empty...
     linkedData.clear();
-    return MergeAllSegments(context);
+    return MergeUnits(context);
 }
 
-// Merge all segments
-bool DummyLinker::MergeAllSegments(const Context &sourceContext) {
+// Merge all units
+bool DummyLinker::MergeUnits(const Context &sourceContext) {
     size_t startAddress = 0;
     size_t endAddress = 0;
 
@@ -78,28 +49,8 @@ bool DummyLinker::MergeAllSegments(const Context &sourceContext) {
         fmt::println("Merge segments in unit {}", unitCounter);
         unitCounter += 1;
 
-        std::vector<Segment::Ref> unitSegments;
-        unit.GetSegments(unitSegments);
-        for(auto srcSeg : unitSegments) {
-            // Make sure we have this segment
-            destContext.GetOrAddSegment(srcSeg->Name());
-            for(auto srcChunk : srcSeg->DataChunks()) {
-                // Create out own chunk at the correct address - chunk merging happen later...
-                if (srcChunk->IsLoadAddressAppend()) {
-                    // No load-address given  - just append
-                    // FIXME: We should check overlap here!
-                    destContext.GetActiveSegment()->CreateChunk(destContext.GetActiveSegment()->EndAddress());
-
-                } else {
-                    // Load address given, create chunk at this specific load address
-                    // FIXME: We should check overlap here!
-                    destContext.GetActiveSegment()->CreateChunk(srcChunk->LoadAddress());
-                }
-
-                if (!ReloacteChunkFromUnit(sourceContext, unit, srcChunk)) {
-                    return false;
-                }
-            }
+        if (!MergeSegmentsInUnit(sourceContext, unit)) {
+            return false;
         }
     }
 
@@ -124,11 +75,54 @@ bool DummyLinker::MergeAllSegments(const Context &sourceContext) {
     return true;
 }
 
+// Merge all segments in the unit
+bool DummyLinker::MergeSegmentsInUnit(const Context &sourceContext, const CompileUnit &unit) {
+    std::vector<Segment::Ref> unitSegments;
+    unit.GetSegments(unitSegments);
+    for(auto srcSeg : unitSegments) {
+        // Make sure we have this segment
+        destContext.GetOrAddSegment(srcSeg->Name());
+        for(auto srcChunk : srcSeg->DataChunks()) {
+            // Create out own chunk at the correct address - chunk merging happen later...
+            if (srcChunk->IsLoadAddressAppend()) {
+                // No load-address given  - just append
+                // FIXME: We should check overlap here!
+                destContext.GetActiveSegment()->CreateChunk(destContext.GetActiveSegment()->EndAddress());
+
+            } else {
+                // Load address given, create chunk at this specific load address
+                // FIXME: We should check overlap here!
+                destContext.GetActiveSegment()->CreateChunk(srcChunk->LoadAddress());
+            }
+
+            if (!RelocateChunkFromUnit(sourceContext, unit, srcChunk)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+//
 // Relocates the active chunk from unit::<seg>::chunk
-bool DummyLinker::ReloacteChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
-    // Write data to it...
+//
+bool DummyLinker::RelocateChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
+
+    // Write over the data to the correct address
     Write( srcChunk->Data());
 
+    // Relocate all identifiers
+    RelocateIdentifiersInChunk(unit, srcChunk);
+
+    // Create new relocation points for the exports (explicit and implicit)
+    return RelocateExportsInChunk(sourceContext, unit, srcChunk);
+}
+
+//
+// Relocate the identifiers within this chunk
+//
+void DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
     // relocate local variables within this chunk...
     auto loadAddress = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
     for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
@@ -154,12 +148,18 @@ bool DummyLinker::ReloacteChunkFromUnit(const Context &sourceContext, const Comp
             }
         }
     }
+}
 
-    // FIXME: we change the sourceContext here - this is wrong...
-
+//
+// Relocates all exports in a chunk for a specific unit...
+// This will create new resolve points within the linker context (destContext)
+//
+bool DummyLinker::RelocateExportsInChunk(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
     // Update resolve points for any public identifier (export) belonging to this chunk
     // Since the chunk might have moved - the resolvePoint (i.e. the point to be modified when resolving identifiers) might have moved
     // So we need to adjust all of them...
+
+    // Note: We can add a unit verification step - here we are quite deep down just for one return...
     for(auto &[symbol, identifier] : unit.GetImports()) {
         auto exportedIdentifier = sourceContext.GetExport(symbol);
         if (exportedIdentifier == nullptr) {
@@ -179,7 +179,6 @@ bool DummyLinker::ReloacteChunkFromUnit(const Context &sourceContext, const Comp
             }
             auto srcLoad = srcChunk->LoadAddress();
 
-            // FIXME: this is wrong...
             auto dstLoad = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
             auto delta = static_cast<int64_t>(dstLoad) - static_cast<int64_t>(srcLoad);
             // Compute the new placeholder address...
@@ -190,15 +189,22 @@ bool DummyLinker::ReloacteChunkFromUnit(const Context &sourceContext, const Comp
             // instead we compute it on a per unit per import and add it to the correct export
             // so when linking we only care about the full export table and all things it points to...
 
-            // FIXME: These should be placed locally...
             IdentifierResolvePoint newResolvePoint = resolvePoint;
             newResolvePoint.placeholderAddress = newPlaceHolderAddress;
-            exportedIdentifier->resolvePoints.push_back(newResolvePoint);
+
+            // Now create a new export locally in our own context...
+            destContext.AddExport(exportedIdentifier->name);
+            auto destExport = destContext.GetExport(exportedIdentifier->name);
+            destExport->resolvePoints.push_back(newResolvePoint);
+            destExport->origIdentifier = exportedIdentifier->origIdentifier;
         }
     }
     return true;
 }
 
+//
+// Write data to the chunk, first we ensure there is a chunk...
+//
 size_t DummyLinker::Write(const std::vector<uint8_t> &data) {
     if (!EnsureChunk()) {
         return 0;
@@ -206,6 +212,9 @@ size_t DummyLinker::Write(const std::vector<uint8_t> &data) {
     return destContext.GetActiveSegment()->CurrentChunk()->Write(data);
 }
 
+//
+// Ensure there is a chunk to write to - this should always be the case - but better safe than sorry
+//
 bool DummyLinker::EnsureChunk() {
     if (destContext.GetActiveSegment() == nullptr) {
         fmt::println(stderr, "Compiler, need at least an active segment");
@@ -215,6 +224,37 @@ bool DummyLinker::EnsureChunk() {
         return true;
     }
     destContext.GetActiveSegment()->CreateChunk(destContext.GetCurrentWriteAddress());
+    return true;
+}
+
+//
+// Relocate all exportes - these have been created during the merge process
+//
+bool DummyLinker::RelocateExports(const Context &sourceContext) {
+    fmt::println("Relocate exported symbols");
+
+    // Relocate symbols, this should all be done in the linker
+    auto &data = destContext.Data();
+    for(auto &[symbol, identifier] : destContext.GetExports()) {
+        if (identifier->origIdentifier == nullptr) {
+            fmt::println(stderr, "Linker, No such symbol '{}'", symbol);
+            return false;
+        }
+        auto identAbsAddress = identifier->origIdentifier->absoluteAddress;
+        fmt::println("  {} @ {:#x}", symbol, identAbsAddress);
+        for(auto &resolvePoint : identifier->resolvePoints) {
+            fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
+            if (!resolvePoint.isRelative) {
+                VectorReplaceAt(data, resolvePoint.placeholderAddress, identAbsAddress, resolvePoint.opSize);
+            } else {
+                int64_t offset = static_cast<int64_t>(identAbsAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
+                if (offset < 0) {
+                    offset -= 1;
+                }
+                VectorReplaceAt(data, resolvePoint.placeholderAddress, offset, resolvePoint.opSize);
+            }
+        }
+    }
     return true;
 }
 
