@@ -2,6 +2,8 @@
 // Created by gnilk on 11.01.2024.
 //
 
+// FIXME: We are merging to the same context - we should merge into a local - new - context...   incoming context should be const!
+
 #include "fmt/core.h"
 #include "Segment.h"
 #include "DummyLinker.h"
@@ -17,7 +19,7 @@ const std::vector<uint8_t> &DummyLinker::Data() {
     return linkedData;
 }
 
-////// NEW LINKER IMPL
+// Link data in a context
 bool DummyLinker::Link(Context &context) {
 
     // Now merge to one big blob...
@@ -53,12 +55,14 @@ bool DummyLinker::Link(Context &context) {
     return true;
 }
 
+// Merge stuff in the context
 void DummyLinker::Merge(Context &context) {
     // Make sure this is empty...
     linkedData.clear();
     MergeAllSegments(context);
 }
 
+// Merge all segments
 void DummyLinker::MergeAllSegments(Context &context) {
     size_t startAddress = 0;
     size_t endAddress = 0;
