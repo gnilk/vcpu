@@ -64,6 +64,8 @@ emulated CPU...  Good riddance!
 
 # TO-DO
 ```pre
+- Refactor instruction decoder (and order of details) to enable pipelineing
+  I want to be able to calculate the complete instr.size from just the 32 bits (4 bytes) of op. instr. data
 ! Lexer should NOT produce EOL tokens!!!!
 ! basic infrastructure (cpu, assembler, etc..)
 ! stack handling in CPU (needed for call routines)
@@ -105,16 +107,16 @@ Support for the following directives:
 + bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
-    + output elf files (currently broken)
-    + make a linker step (works, but is WIP)
-    ! Ability to output a proper memory layout
+    + output elf files (works - but can be refactored to take advantage of ELF symbol handling)
+    ! make a linker step (works, it's good for now)
+    ! Ability to output a proper memory layout(??)
     - Perhaps output emitter statement as some kind of 'language' (text) - JSON/XML/Other?
       This can later be fed into the linker step. Which allows for 'streaming' data between these steps.
     ! add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)
     - Consider using name-mangling for private symbols..      
 - linker
-    + Support for multiple compile units
-    + Support for static (within a compile-unit) and exported functions and variables
+    ! Support for multiple compile units
+    ! Support for static (within a compile-unit) and exported functions and variables
 - VCPU
     + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
       Currently we fire interrupts even if no handlers are enabled (not good)
@@ -138,10 +140,10 @@ Support for the following directives:
   - Other?
              
 - emulator
-    + accept elf files as executables (broken due to linker refactoring)
+    ! accept elf files as executables
         
-+ consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
-  Currently broken due to refactoring of linker step...
+! consider adding 'elf' support in compiler (see: https://github.com/serge1/ELFIO
+  Could be refactored to take advantage of the ELF symbol handling. Currently using my own linker and just wraps in an ELF binary
   
 - write an OS
 + have fun...       <- don't forget...
