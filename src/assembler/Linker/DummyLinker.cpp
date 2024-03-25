@@ -12,6 +12,7 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
+
 static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t newValue, vcpu::OperandSize opSize);
 
 
@@ -29,6 +30,18 @@ bool DummyLinker::Link(const Context &context) {
 
     return RelocateExports(context);
 }
+
+
+//
+// Move this to the base???
+//
+
+#ifndef GLB_IDENT_START_POINT
+#define GLB_IDENT_START_POINT "_start"
+#endif
+
+static const std::string glbStartPointSymbol(GLB_IDENT_START_POINT);
+
 
 //
 // Merge stuff in the context
@@ -128,7 +141,9 @@ bool DummyLinker::RelocateChunkFromUnit(const Context &sourceContext, const Comp
     Write(chunk->Data());
 
     // Relocate all identifiers
-    RelocateIdentifiersInChunk(unit, chunk);
+    if (!RelocateIdentifiersInChunk(unit, chunk)) {
+        return false;
+    }
 
     // Create new relocation points for the exports (explicit and implicit)
     return RelocateExportsInChunk(sourceContext, unit, chunk);
@@ -137,7 +152,7 @@ bool DummyLinker::RelocateChunkFromUnit(const Context &sourceContext, const Comp
 //
 // Relocate the identifiers within this chunk
 //
-void DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::DataChunk::Ref chunk) {
+bool DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::DataChunk::Ref chunk) {
     // relocate local variables within this chunk...
     auto loadAddress = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
     for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
@@ -145,6 +160,20 @@ void DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::D
         if (identifier->chunk != chunk) {
             continue;
         }
+
+        // Note: This must be done before we check resolve points as the resolve-point array _should_ be empty for start
+        //       But it is nothing we prohibit...
+        // If this is the globally recognized starting point - set the start address for the binary
+        // Unless defined elsewhere...
+        if (identifier->name == glbStartPointSymbol) {
+            if (destContext.HasStartAddress()) {
+                fmt::println("Compiler, '{}' defined twice. '{}' is a reserved symbol defining the entry point for the binary", glbStartPointSymbol, glbStartPointSymbol);
+                return false;
+            }
+            destContext.SetStartAddress(identifier);
+        }
+
+
         if(identifier->resolvePoints.empty()) {
             continue;
         }
@@ -163,6 +192,7 @@ void DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::D
             }
         }
     }
+    return true;
 }
 
 //
