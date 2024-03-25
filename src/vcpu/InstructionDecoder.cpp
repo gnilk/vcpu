@@ -76,6 +76,8 @@ void InstructionDecoder::DecodeDstReg(CPUBase &cpu) {
     // Same as below..
     dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
     dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
+
+    // FIXME: This should come after srcRegAndFlags
     if (dstAddrMode == AddressMode::Indirect) {
         // Do nothing - this is decoded from the data about - details will be decoded further down...
     } else if (dstAddrMode == AddressMode::Absolute) {
@@ -112,6 +114,9 @@ void InstructionDecoder::DecodeSrcReg(CPUBase &cpu) {
     // decode source operand details
     srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x03);
     srcRelAddrMode.mode  = static_cast<RelativeAddressMode>((srcRegAndFlags & 0x0c)>>2);
+
+    // FIXME: this should after any potential dst info..
+
     // Switch?
     if (srcAddrMode == AddressMode::Indirect) {
 
