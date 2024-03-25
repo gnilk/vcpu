@@ -148,6 +148,7 @@ DLL_EXPORT int test_context_multiunit_export_simple(ITesting *t) {
             {
                     ".code\n" \
                     ".org 0x200\n"\
+                    "_start:\n"\
                     "call myfunc\n"\
                     "ret\n"
             },
