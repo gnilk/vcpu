@@ -43,6 +43,17 @@ namespace gnilk {
             const StructDefinition::Ref GetStructDefinitionFromTypeName(const std::string &typeName) override;
             const std::vector<StructDefinition::Ref> &StructDefinitions() override;
 
+            bool HasStartAddress() const {
+                return (startAddress != nullptr);
+            }
+            void SetStartAddress(Identifier::Ref startIdentifier) {
+                startAddress = startIdentifier;
+            }
+            Identifier::Ref GetStartAddress() const {
+                return startAddress;
+            }
+
+
             CompileUnit &CreateUnit();
             const std::vector<CompileUnit> &GetUnits() {
                 return units;
