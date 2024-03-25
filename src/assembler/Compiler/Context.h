@@ -43,8 +43,6 @@ namespace gnilk {
             const StructDefinition::Ref GetStructDefinitionFromTypeName(const std::string &typeName) override;
             const std::vector<StructDefinition::Ref> &StructDefinitions() override;
 
-
-
             CompileUnit &CreateUnit();
             const std::vector<CompileUnit> &GetUnits() {
                 return units;
@@ -98,6 +96,8 @@ namespace gnilk {
             std::vector<StructDefinition::Ref> structDefinitions;
             // identifiers explicitly marked for export goes here...
             std::unordered_map<std::string, ExportIdentifier::Ref> exportIdentifiers;
+
+            Identifier::Ref startAddress = nullptr;
 
         };
 
