@@ -9,6 +9,15 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+//
+// FIX THIS!
+// 1) - create a structure for all 'dstXYZ' and 'srcXYZ' variables
+//    - change DecodeDst/SrcReg to 'DecodeDstOrSrc'
+// 2) - make the decoder a state machine
+// 3) -
+//
+//
+
 InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
 
     auto inst = std::make_shared<InstructionDecoder>();
