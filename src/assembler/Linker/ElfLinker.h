@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "BaseLinker.h"
+#include "DummyLinker.h"
 #include "Compiler/CompileUnit.h"
 
 #include "elfio/elfio.hpp"
@@ -19,7 +20,7 @@
 
 namespace gnilk {
     namespace assembler {
-        class ElfLinker : public BaseLinker {
+        class ElfLinker : public DummyLinker {
         public:
             ElfLinker() = default;
             virtual ~ElfLinker() = default;
@@ -27,7 +28,8 @@ namespace gnilk {
             bool Link(const Context &context) override;
             const std::vector<uint8_t> &Data() override;
         protected:
-            bool WriteElf(CompileUnit &unit);
+            bool WriteElf();
+            bool WriteElfOld(CompileUnit &unit);
         private:
             std::vector<uint8_t> elfData;
             ELFIO::elfio elfWriter;

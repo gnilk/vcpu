@@ -18,13 +18,78 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 
 
 bool ElfLinker::Link(const gnilk::assembler::Context &context) {
-    return false;
+    if (!Merge(context)) {
+        return false;
+    }
+
+    if (!WriteElf()) {
+        return false;
+    }
+    auto f = fopen("dummy.bin", "w+");
+    if (f == nullptr) {
+        return false;
+    }
+    fwrite(elfData.data(), elfData.size(), 1, f);
+    fclose(f);
+    return true;
 }
 
+// I could use the elf to relocate my binary - but it has already been done so I don't quite need it..
+// And - there is a problem - my relocation table points to the source-chunks and not the merged chunks..
+bool ElfLinker::WriteElf() {
+    elfWriter.create(ELFCLASS64, ELFDATA2LSB );
 
-bool ElfLinker::WriteElf(CompileUnit &unit) {
+    elfWriter.set_os_abi(ELFOSABI_NONE );
+    elfWriter.set_type(ET_EXEC );
+    elfWriter.set_machine(EM_68K );
+
+    for(auto &[name, seg] : destContext.GetSegments()) {
+        auto elfSeg = elfWriter.segments.add();
+        elfSeg->set_virtual_address(seg->StartAddress());
+        elfSeg->set_physical_address(seg->StartAddress());
+        elfSeg->set_flags(PF_X | PF_R);
+        elfSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
+
+        for(auto chunk : seg->DataChunks()) {
+            auto elfSection = elfWriter.sections.add("noname");
+
+            elfSection->set_address(chunk->LoadAddress());
+            elfSection->set_type(SHT_PROGBITS);
+            elfSection->set_flags( SHF_ALLOC | SHF_EXECINSTR );
+            // WHY do you write a library accepting 'char *' and not 'void *' here???
+            elfSection->append_data((const char *)chunk->DataPtr(), chunk->Size());
+
+        }
+    }
+
+
+
+    // Not sure if this is the right method...
+    if (destContext.HasStartAddress()) {
+        elfWriter.set_entry(destContext.GetStartAddress()->absoluteAddress);
+    } else {
+        fmt::println(stderr, "ElfLinker, no entry point defined, setting to 0 (zero)");
+        elfWriter.set_entry(0);
+    }
+
+    // Save this to a 'stringstream' (CPP Streams are: @#$!@$!@#)
+    std::ostringstream outStream(std::ios_base::binary | std::ios_base::out);
+    elfWriter.save(outStream);
+    outStream.flush();
+
+    // Convert the 'string' to a vector of bytes...
+    // This can be an array - but that's a refactoring for another day...
+    auto strData = outStream.rdbuf()->str();
+    auto ptrData = strData.data();
+    auto szData = strData.size();
+
+    elfData.insert(elfData.end(), ptrData, ptrData + szData);
+    return true;
+
+}
+
+bool ElfLinker::WriteElfOld(CompileUnit &unit) {
     // You can't proceed without this function call!
-/*
     elfWriter.create(ELFCLASS64, ELFDATA2LSB );
 
     elfWriter.set_os_abi(ELFOSABI_NONE );
@@ -36,6 +101,29 @@ bool ElfLinker::WriteElf(CompileUnit &unit) {
         return false;
     }
 
+
+    auto elfSeg = elfWriter.segments.add();
+
+    for(auto &[name, seg] : destContext.GetSegments()) {
+        auto elfSeg = elfWriter.segments.add();
+        elfSeg->set_virtual_address(textSeg->StartAddress());
+        elfSeg->set_physical_address(textSeg->StartAddress());
+        elfSeg->set_flags(PF_X | PF_R);
+        elfSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
+
+
+        for(auto chunk : seg->DataChunks()) {
+            auto elfSection = elfWriter.sections.add("noname");
+
+            elfSection->set_address(chunk->LoadAddress());
+            elfSection->set_type(SHT_PROGBITS);
+            elfSection->set_flags( SHF_ALLOC | SHF_EXECINSTR );
+            // WHY do you write a library accepting 'char *' and not 'void *' here???
+            elfSection->append_data((const char *)chunk->DataPtr(), chunk->Size());
+
+            elfSeg->add_section(elfSection, 0x10);
+        }
+    }
     section *elfTextSec = elfWriter.sections.add(".text");
     elfTextSec->set_type( SHT_PROGBITS );
     elfTextSec->set_flags( SHF_ALLOC | SHF_EXECINSTR );
@@ -87,9 +175,6 @@ bool ElfLinker::WriteElf(CompileUnit &unit) {
 
     elfData.insert(elfData.end(), ptrData, ptrData + szData);
     return true;
-*/
-
-    return false;
 }
 
 
