@@ -271,7 +271,7 @@ bool Lexer::ParseStateRegular(std::vector<Token> &tokens, Context &context, cons
             if (!ParseNumber(tokens, context, line)) {
                 return false;
             }
-        } else if (IsAlpha(*it)) {
+        } else if (IsAlphaNum(*it)) {
             ParseIdentifier(tokens, context, line);
         } else if (IsSkippable(*it)) {
             ++it;
