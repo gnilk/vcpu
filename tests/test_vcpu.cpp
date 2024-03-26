@@ -364,12 +364,12 @@ DLL_EXPORT int test_vcpu_instr_push(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
     // Must be reversed order form push...
     uint8_t program[]={
-        0x80,0x02,0x03,                            // pop.d d0
-        0x80,0x01,0x03,                            // pop.w d0
-        0x80,0x00,0x03,                            // pop.b d0
-        0x80,0x02,0x03,                            // pop.d d0
-        0x80,0x01,0x13,                            // pop.w d1
-        0x80,0x00,0x23,                            // pop.b d2
+        0x80,0x02,0x03,0x00,                            // pop.d d0
+        0x80,0x01,0x03,0x00,                            // pop.w d0
+        0x80,0x00,0x03,0x00,                            // pop.b d0
+        0x80,0x02,0x03,0x00,                            // pop.d d0
+        0x80,0x01,0x13,0x00,                            // pop.w d1
+        0x80,0x00,0x23,0x00,                            // pop.b d2
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
