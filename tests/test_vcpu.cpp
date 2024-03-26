@@ -421,7 +421,7 @@ DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
     // 0xf1 = NOP
     uint8_t program[]={
-        0xc0,0x00,0x01,0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        0xc0,0x00,0x01,0x00, 0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
         0xf1,                       // 4
         0x00,                       // 5 WHALT!
         0xf1,                       // 6 <- call should go here
@@ -432,13 +432,13 @@ DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
     vcpu.QuickStart(program, 1024);
     auto &instrPtr = vcpu.GetInstrPtr();
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 7);
-    vcpu.Step();
     TR_ASSERT(t, instrPtr.data.longword == 8);
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 5);
+    TR_ASSERT(t, instrPtr.data.longword == 9);
     vcpu.Step();
     TR_ASSERT(t, instrPtr.data.longword == 6);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 7);
     // We should be halted now!
     return kTR_Pass;
 }
