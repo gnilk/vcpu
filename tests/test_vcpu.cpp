@@ -444,8 +444,12 @@ DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
 }
 
 DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
+    // FIXME: We should consider this to be a implicit instruction
     uint8_t program[]={
-        0xf1,0xf1,0xf1,0xf1,        // 4 nop
+        0xf1,0x00, 0x00, 0x00,
+        0xf1,0x00, 0x00, 0x00,
+        0xf1,0x00, 0x00, 0x00,
+        0xf1,0x00, 0x00, 0x00,        // 4 nop
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
@@ -453,13 +457,13 @@ DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
     auto &instrPtr = vcpu.GetInstrPtr();
     TR_ASSERT(t, instrPtr.data.longword == 0);
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 1);
-    vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 2);
-    vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 3);
-    vcpu.Step();
     TR_ASSERT(t, instrPtr.data.longword == 4);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 8);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 12);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 16);
 
     return kTR_Pass;
 }
