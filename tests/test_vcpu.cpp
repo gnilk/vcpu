@@ -443,25 +443,29 @@ DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
     // 0xf1 = NOP
     uint8_t program[]={
-        0xc0,0x00,0x01,0x00, 0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
-        0xf1,                       // 4
-        0x00,                       // 5 WHALT!
-        0xf1,                       // 6 <- call should go here
-        0xf1,                       // 7
-        0xf0,                       // 8 <- return, should be ip+1 => 5
+        0xc0,0x00,0x01,0x00, 0x08,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        0xf1,0x00,0x00,0x00,                       // 5 <- return address
+        0x00,0x00,0x00,0x00,                       // 9 HALT!
+        0xf1,0x00,0x00,0x00,                       // 13 <- call should go here
+        0xf1,0x00,0x00,0x00,                       // 17
+        0xf0,0x00,0x00,0x00,                       // 21 <- return, should be ip+1 => 5
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
     auto &instrPtr = vcpu.GetInstrPtr();
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 8);
+    TR_ASSERT(t, instrPtr.data.longword == 13);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 17);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 21);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 5);
     vcpu.Step();
     TR_ASSERT(t, instrPtr.data.longword == 9);
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 6);
-    vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 7);
     // We should be halted now!
+    TR_ASSERT(t, vcpu.IsHalted());
     return kTR_Pass;
 }
 
@@ -730,7 +734,7 @@ DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_beq(ITesting *t) {
     uint8_t program[]={
         0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
-        0xd0,0x00,0x01,0xf7,            // beq.b -9
+        0xd0,0x00,0x01,0x00, 0xf6,            // beq.b -10
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
@@ -755,7 +759,7 @@ DLL_EXPORT int test_vcpu_instr_beq(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_bne(ITesting *t) {
     uint8_t program[]={
         0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
-        0xd1,0x00,0x01,0xf7,            // bne.b -9
+        0xd1,0x00,0x01,0x00, 0xf6,            // bne.b -9
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
@@ -779,12 +783,12 @@ DLL_EXPORT int test_vcpu_instr_bne(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_halt(ITesting *t) {
     uint8_t program[]={
-        0xf1,   // nop
-        0x00,   // break
-        0xf1,   // nop - should never execute
-        0xf1,   // nop
-        0xf1,   // nop
-        0xf1,   // nop
+        0xf1,0x00,0x00,0x00,   // nop
+        0x00,   0x00,0x00,0x00,// break
+        0xf1, 0x00,0x00,0x00,  // nop - should never execute
+        0xf1,  0x00,0x00,0x00, // nop
+        0xf1,  0x00,0x00,0x00, // nop
+        0xf1,  0x00,0x00,0x00, // nop
     };
     VirtualCPU vcpu;
     auto &status = vcpu.GetStatusReg();
@@ -815,7 +819,7 @@ DLL_EXPORT int test_vcpu_disasm(ITesting *t) {
         0x20,0x01,0x13,0x03,    // move.w d1, d0
         0x20,0x01,0x53,0x13,    // move.w d5, d1
         0x20,0x00,0x23,0x53,    // move.b d2, d5
-        0x00,
+        0x00,0x00,0x00,0x00,
     };
 
     VirtualCPU vcpu;
