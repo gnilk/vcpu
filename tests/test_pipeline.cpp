@@ -6,6 +6,7 @@
 #include <testinterface.h>
 
 #include "VirtualCPU.h"
+#include "SuperScalarCPU.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -24,19 +25,19 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
             0x20,0x00,0x23,0x53,    // move.b d2, d5
             0x00, 0x00, 0x00, 0x00, // brk
     };
-    VirtualCPU vcpu;
-    vcpu.QuickStart(program, 1024);
-    auto &regs = vcpu.GetRegisters();
+    SuperScalarCPU cpu;
+    cpu.QuickStart(program, 1024);
+    auto &regs = cpu.GetRegisters();
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.word = 0x4711;
 
     InstructionPipeline pipeline;
-    pipeline.SetInstructionDecodedHandler([&vcpu](InstructionDecoder &decoder){
-        fmt::println("EXECUTED: {}", decoder.ToString());
+    pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoder &decoder){
+        cpu.ExecuteInstruction(decoder);
     });
 
-    while(!vcpu.IsHalted()) {
-        pipeline.Tick(vcpu);
+    while(!cpu.IsHalted()) {
+        pipeline.Tick(cpu);
     }
 
     // Verify intermediate mode reading works for 8,16,32,64 bit sizes
