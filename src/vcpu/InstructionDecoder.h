@@ -28,10 +28,24 @@ namespace gnilk {
                     } reg;
                 } relativeAddress;
             };
+            enum class State : uint8_t {
+                kStateIdle,
+                kStateDecodeAddrMode,
+                kStateReadMem,
+                kStateFinished,
+            };
+            State state = {};
+
         public:
             InstructionDecoder()  = default;
             virtual ~InstructionDecoder() = default;
             static InstructionDecoder::Ref Create(uint64_t memoryOffset);
+
+            bool Tick(CPUBase &cpu);
+            // Make this private when it works
+            bool ExecuteTickFromIdle(CPUBase &cpu);
+            bool ExecuteTickDecodeAddrMode(CPUBase &cpu);
+            bool ExecuteTickReadMem(CPUBase &cpu);
 
             bool Decode(CPUBase &cpu);
             // Converts a decoded instruction back to it's mnemonic form

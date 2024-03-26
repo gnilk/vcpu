@@ -51,6 +51,23 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+bool InstructionPipeline::Tick(CPUBase &cpu) {
+    auto &decoder = pipeline[0];
+    if (!decoder.Tick(cpu)) {
+        return false;
+    }
+
+    if (decoder.state == InstructionDecoder::State::kStateFinished) {
+        if (cbDecoded != nullptr) {
+            cbDecoded(decoder);
+        }
+        decoder.state = InstructionDecoder::State::kStateIdle;
+    }
+    return true;
+}
+
+
+
 void VirtualCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
     AddPeripheral(CPUIntMask::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1));
@@ -65,12 +82,6 @@ void VirtualCPU::Begin(void *ptrRam, size_t sizeOfRam) {
 void VirtualCPU::Reset() {
     CPUBase::Reset();
 }
-
-class InstructionPipeline {
-
-};
-
-
 
 // Use this for debugging and similar..
 bool VirtualCPU::Step() {
@@ -100,6 +111,7 @@ bool VirtualCPU::Step() {
     }
     // Advance forward..
     AdvanceInstrPtr(instrDecoder->GetInstrSizeInBytes());
+
 
     //
     // This would be cool:
@@ -170,6 +182,11 @@ bool VirtualCPU::Step() {
     lastDecodedInstruction.isrStateAfter = isrControlBlock.isrState;
     lastDecodedInstruction.cpuRegistersAfter = registers;
     lastDecodedInstruction.instrDecoder = instrDecoder;
+    return true;
+}
+
+bool VirtualCPU::ExecuteInstruction(InstructionDecoder &decoder) {
+
     return true;
 }
 

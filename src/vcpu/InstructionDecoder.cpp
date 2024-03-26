@@ -27,16 +27,25 @@ InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
     return inst;
 }
 
-bool InstructionDecoder::Decode(CPUBase &cpu) {
-
-    // Verify instr. pointer alignment - this not needed, but having proper instr. could make the bus more effective...
-    if ((cpu.registers.instrPointer.data.longword & 0x03) != 0x00) {
-        // FIXME: Raise exception here
-        fmt::println(stderr, "InstrDecoder, misaligned instruction at {:x}", cpu.registers.instrPointer.data.longword);
-        //return false;
+bool InstructionDecoder::Tick(CPUBase &cpu) {
+    switch(state) {
+        case State::kStateIdle :
+            return ExecuteTickFromIdle(cpu);
+        case State::kStateDecodeAddrMode :
+            return ExecuteTickDecodeAddrMode(cpu);
+        case State::kStateReadMem :
+            return ExecuteTickReadMem(cpu);
+        case State::kStateFinished :
+            fmt::println(stderr, "InstrDecoder - tick on state 'kStateFinished' we should never reach this - should auto-go to IDLE");
+            return true;
     }
-    // Save the start offset
-    ofsStartInstr = memoryOffset;
+    return false;
+}
+
+bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
+    memoryOffset = cpu.GetInstrPtr().data.longword;
+    ofsStartInstr = 0;
+    ofsEndInstr = 0;
 
     code.opCodeByte = NextByte(cpu);
     if (code.opCodeByte == 0xff) {
@@ -69,7 +78,99 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     //
     // Decode src/dst handling
     //
+    opArgDst = {};
+    opArgSrc = {};
+
+    // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
+    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+        DecodeOperandArg(cpu, opArgDst);
+
+        // Alignment byte - we always have 32 bits in the operand, before we read any immediate or extension bits..
+        // This makes pipelining easier...
+        NextByte(cpu);
+
+    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+        DecodeOperandArg(cpu, opArgDst);
+        DecodeOperandArg(cpu, opArgSrc);
+    } else {
+        // No operands, we three trailing bytes
+        NextByte(cpu);
+        NextByte(cpu);
+    }
+    auto szComputed = ComputeInstrSize();
+
+    cpu.AdvanceInstrPtr(szComputed);
+
+    if ((code.description.features & OperandDescriptionFlags::OneOperand) || (code.description.features & OperandDescriptionFlags::TwoOperands)) {
+        state = State::kStateDecodeAddrMode;
+        return true;
+    }
+
+    state = State::kStateFinished;
+    return true;
+}
+
+bool InstructionDecoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
+    DecodeOperandArgAddrMode(cpu, opArgDst);
+    DecodeOperandArgAddrMode(cpu, opArgSrc);
+    state = State::kStateReadMem;
+    return true;
+}
+
+bool InstructionDecoder::ExecuteTickReadMem(CPUBase &cpu) {
+    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+        value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
+    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+        value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+    }
+    state = State::kStateFinished;
+    return true;
+}
+
+bool InstructionDecoder::Decode(CPUBase &cpu) {
+
+    // Verify instr. pointer alignment - this not needed, but having proper instr. could make the bus more effective...
+    if ((cpu.registers.instrPointer.data.longword & 0x03) != 0x00) {
+        // FIXME: Raise exception here
+        fmt::println(stderr, "InstrDecoder, misaligned instruction at {:x}", cpu.registers.instrPointer.data.longword);
+        //return false;
+    }
+    // Save the start offset
+    ofsStartInstr = memoryOffset;
+
     // BEGIN - PIPELINE TICK1, first 32 bits - and enough to compute size
+
+    code.opCodeByte = NextByte(cpu);
+    if (code.opCodeByte == 0xff) {
+        return false;
+    }
+
+    // Decode the op-code
+    code.opCode =  static_cast<OperandCode>(code.opCodeByte);
+    // check if we have this instruction defined
+    if (!gnilk::vcpu::GetInstructionSet().contains(code.opCode)) {
+        return false;
+    }
+
+    code.description = gnilk::vcpu::GetInstructionSet().at(code.opCode);
+
+    //
+    // Decode addressing
+    //
+    code.opSizeAndFamilyCode = NextByte(cpu);
+
+    if (code.description.features & OperandDescriptionFlags::OperandSize) {
+        code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
+        code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
+    } else if (code.opSizeAndFamilyCode != 0) {
+        // FIXME: Raise invalid opsize here exception!
+        fmt::println(stderr, "InstrDecoder, operand size not available for '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
+        return false;
+    }
+
+    //
+    // Decode src/dst handling
+    //
     opArgDst = {};
     opArgSrc = {};
 
