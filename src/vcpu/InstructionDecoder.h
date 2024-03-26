@@ -89,6 +89,9 @@ namespace gnilk {
 
             void DecodeOperandArg(CPUBase &cpu, OperandArg &inOutOpArg);
             void DecodeOperandArgAddrMode(CPUBase &cpu, OperandArg &inOutOpArg);
+
+            size_t ComputeInstrSize();
+            size_t ComputeOpArgSize(OperandArg &opArg);
         public:
             // Used during by decoder...
 

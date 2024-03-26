@@ -89,7 +89,16 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
         NextByte(cpu);
         NextByte(cpu);
     }
+    auto szComputed = ComputeInstrSize();
     // END PIPELINE - TICK1
+
+    // This can now all be done in another tick!
+    // However, we need a mechanism to 'lock' registers - so the CPU can wait for them to become finished...
+    //
+    // like:
+    //   move d0, 0x01
+    //   add  d0, 0x02  <- can't execute before 'd0' is released -> pipeline stall!
+    //
 
     // BEGIN PIPELINE - TICK2
     DecodeOperandArgAddrMode(cpu, opArgDst);
@@ -107,7 +116,40 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
 
     // Mark end of instruction decoding...
     ofsEndInstr = memoryOffset;
+
+    auto szReal = GetInstrSizeInBytes();
+    if (szReal != szComputed) {
+        fmt::println(stderr,"InstrDecoder, instr.size difference detected, computed={}, real={}", szComputed, szReal);
+    }
+
+
     return true;
+}
+
+size_t InstructionDecoder::ComputeInstrSize() {
+    size_t opSize = 4;
+    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+        opSize += ComputeOpArgSize(opArgDst);
+    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+        opSize += ComputeOpArgSize(opArgDst);
+        opSize += ComputeOpArgSize(opArgSrc);
+    }
+    return opSize;
+}
+
+size_t InstructionDecoder::ComputeOpArgSize(InstructionDecoder::OperandArg &opArg) {
+    size_t szOpArg = 0;
+    if (opArg.addrMode == AddressMode::Absolute) {
+        szOpArg += sizeof(uint64_t);
+    }
+    if ((opArg.relAddrMode.mode == RelativeAddressMode::AbsRelative) || (opArg.relAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        szOpArg += sizeof(uint8_t);
+    }
+    if (opArg.addrMode == AddressMode::Immediate) {
+        szOpArg += ByteSizeOfOperandSize(code.opSize);
+    }
+
+    return szOpArg;
 }
 
 void InstructionDecoder::DecodeOperandArg(CPUBase &cpu, InstructionDecoder::OperandArg &inOutOpArg) {
@@ -118,6 +160,7 @@ void InstructionDecoder::DecodeOperandArg(CPUBase &cpu, InstructionDecoder::Oper
 
     inOutOpArg.regIndex = (inOutOpArg.regAndFlags>>4) & 15;
 }
+
 void InstructionDecoder::DecodeOperandArgAddrMode(CPUBase &cpu, InstructionDecoder::OperandArg &inOutOpArg) {
     if (inOutOpArg.addrMode == AddressMode::Indirect) {
         // Do nothing - this is decoded from the data about - details will be decoded further down...
