@@ -62,6 +62,16 @@ namespace gnilk {
 
             uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddr);
 
+            struct Operand {
+                // Used during by decoder...
+                uint8_t opCodeByte;     // raw opCodeByte
+                OperandCode opCode;
+                OperandDescription description;
+
+                uint8_t opSizeAndFamilyCode;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
+                OperandSize opSize; // Only if 'description.features & OperandSize' == true
+                OperandFamily opFamily;
+            };
             struct OperandArg {
                 uint8_t regAndFlags = 0;
                 uint8_t regIndex = 0;
@@ -69,7 +79,6 @@ namespace gnilk {
                 uint64_t absoluteAddr = 0;
                 RelativeAddressing relAddrMode = {};
             };
-
 
         protected:
             uint8_t NextByte(CPUBase &cpu);
@@ -79,18 +88,13 @@ namespace gnilk {
             RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddr, int idxRegister);
 
             void DecodeOperandArg(CPUBase &cpu, OperandArg &inOutOpArg);
+            void DecodeOperandArgAddrMode(CPUBase &cpu, OperandArg &inOutOpArg);
         public:
             // Used during by decoder...
-            uint8_t opCodeByte;     // raw opCodeByte
-            OperandCode opCode;
-            OperandDescription description;
 
-            uint8_t opSizeAndFamilyCode;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
-            OperandSize opSize; // Only if 'description.features & OperandSize' == true
-            OperandFamily opFamily;
-
-            OperandArg dstOperand;
-            OperandArg srcOperand;
+            Operand code;
+            OperandArg opArgDst;
+            OperandArg opArgSrc;
 
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand

@@ -66,6 +66,12 @@ void VirtualCPU::Reset() {
     CPUBase::Reset();
 }
 
+class InstructionPipeline {
+
+};
+
+
+
 // Use this for debugging and similar..
 bool VirtualCPU::Step() {
 
@@ -100,7 +106,7 @@ bool VirtualCPU::Step() {
     // Also, we should put enough information in the first 2-3 bytes to understand the fully decoded size
     // This way we can basically have multiple threads decoding instructions -> super scalar emulation
     //
-    switch(instrDecoder->opCode) {
+    switch(instrDecoder->code.opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
             registers.statusReg.flags.halt = 1;
@@ -157,7 +163,7 @@ bool VirtualCPU::Step() {
             break;
         default:
             // raise invaild-instr. exception here!
-            fmt::println(stderr, "Invalid operand: {}", instrDecoder->opCodeByte);
+            fmt::println(stderr, "Invalid operand: {}", instrDecoder->code.opCodeByte);
             return false;
     }
     UpdateMMU();
@@ -211,7 +217,7 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
 }
 
 void VirtualCPU::ExecuteBneInstr(InstructionDecoder::Ref instrDecoder) {
-    if (instrDecoder->dstOperand.addrMode != AddressMode::Immediate) {
+    if (instrDecoder->opArgDst.addrMode != AddressMode::Immediate) {
         // raise exception
         return;
     }
@@ -225,7 +231,7 @@ void VirtualCPU::ExecuteBneInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
     int64_t relativeOffset = 0;
 
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             relativeOffset = (int8_t)(v.data.byte);
         break;
@@ -244,7 +250,7 @@ void VirtualCPU::ExecuteBneInstr(InstructionDecoder::Ref instrDecoder) {
 }
 void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstOperand.addrMode != AddressMode::Immediate) {
+    if (instrDecoder->opArgDst.addrMode != AddressMode::Immediate) {
         // raise exception
         return;
     }
@@ -255,7 +261,7 @@ void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
 
     int64_t relativeOffset = 0;
 
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             relativeOffset = (int8_t)(v.data.byte);
             break;
@@ -274,7 +280,7 @@ void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
 
 void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstOperand.addrMode == AddressMode::Immediate) {
+    if (instrDecoder->opArgDst.addrMode == AddressMode::Immediate) {
         // raise exception
         return;
     }
@@ -291,7 +297,7 @@ void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
     }
 */
 
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             UpdateCPUFlagsCMP<uint8_t>(registers.statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
             break;
@@ -309,22 +315,22 @@ void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
 
 void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
+    if (instrDecoder->opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
 
-    auto &dstReg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
+    auto &dstReg = GetRegisterValue(instrDecoder->opArgDst.regIndex, instrDecoder->code.opFamily);
 
-    auto signBefore = MSBForOpSize(instrDecoder->opSize, dstReg);
+    auto signBefore = MSBForOpSize(instrDecoder->code.opSize, dstReg);
 
     uint64_t msb = 0;
     bool isZero = false;
     int nBits = v.data.byte;
     while(nBits > 0) {
         // Will we shift out something??
-        msb = MSBForOpSize(instrDecoder->opSize, dstReg);
-        switch(instrDecoder->opSize) {
+        msb = MSBForOpSize(instrDecoder->code.opSize, dstReg);
+        switch(instrDecoder->code.opSize) {
             case OperandSize::Byte :
                 dstReg.data.byte = dstReg.data.byte <<  1;
                 if (!dstReg.data.byte) isZero = true;
@@ -355,7 +361,7 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
     registers.statusReg.flags.zero = isZero;
     registers.statusReg.flags.negative = (msb)?true:false;
     // Overflow - IF the MSB is toggled during anypoint...
-    if (signBefore != MSBForOpSize(instrDecoder->opSize, dstReg)) {
+    if (signBefore != MSBForOpSize(instrDecoder->code.opSize, dstReg)) {
         registers.statusReg.flags.overflow = true;
     } else {
         registers.statusReg.flags.overflow = false;
@@ -366,14 +372,14 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
 // See: MoiraALU_cpp.h - could take a few impl. ideas from there..
 void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
+    if (instrDecoder->opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
-    auto &dstReg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
+    auto &dstReg = GetRegisterValue(instrDecoder->opArgDst.regIndex, instrDecoder->code.opFamily);
 
     // Fetch the sign-bit..
-    uint64_t msb = MSBForOpSize(instrDecoder->opSize, dstReg);
+    uint64_t msb = MSBForOpSize(instrDecoder->code.opSize, dstReg);
 
     bool carryExtFlag = false;
     bool isZero = false;
@@ -382,7 +388,7 @@ void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     int nBits = v.data.byte;
     while(nBits) {
         carryExtFlag = (dstReg.data.longword & 1)?true:false;
-        switch(instrDecoder->opSize) {
+        switch(instrDecoder->code.opSize) {
             case OperandSize::Byte :
                 dstReg.data.byte = dstReg.data.byte >>  1;
                 if (!dstReg.data.byte) isZero = true;
@@ -468,7 +474,7 @@ void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
 // FIXME: Verify and update CPU Status Flags
 void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
+    if (instrDecoder->opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
@@ -476,7 +482,7 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     auto dstReg = instrDecoder->ReadDstValue(*this);
 
     // I would like to get rid of this switch, but I can't without having an encapsulation class
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             Shift<OperandSize::Byte, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
             break;
@@ -496,14 +502,14 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
 // FIXME: Verify and CPU Status flags
 void VirtualCPU::ExecuteLsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
+    if (instrDecoder->opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
     RegisterValue dstReg = instrDecoder->ReadDstValue(*this);
 
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             // FIXME: Make sure this works as expected!
             dstReg.data.byte = dstReg.data.byte >>  v.data.byte;
@@ -622,7 +628,7 @@ void VirtualCPU::ExecuteAddInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
 
     RegisterValue tmpReg = instrDecoder->ReadDstValue(*this);
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             AddValues<uint8_t>(registers.statusReg, tmpReg, v);
         break;
@@ -643,7 +649,7 @@ void VirtualCPU::ExecuteSubInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
 
     RegisterValue tmpReg = instrDecoder->ReadDstValue(*this);
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             SubtractValues<uint8_t>(registers.statusReg, tmpReg, v);
             break;
@@ -674,7 +680,7 @@ void VirtualCPU::ExecuteCallInstr(InstructionDecoder::Ref instrDecoder) {
     // push on stack...
     stack.push(retAddr);
 
-    switch(instrDecoder->opSize) {
+    switch(instrDecoder->code.opSize) {
         case OperandSize::Byte :
             registers.instrPointer.data.longword += v.data.byte;
             break;
@@ -719,15 +725,15 @@ void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
 //
 void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v) {
     // FIXME: Support more address mode
-    if (instrDecoder->dstOperand.addrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
+    if (instrDecoder->opArgDst.addrMode == AddressMode::Register) {
+        auto &reg = GetRegisterValue(instrDecoder->opArgDst.regIndex, instrDecoder->code.opFamily);
         reg.data = v.data;
-    } else if (instrDecoder->dstOperand.addrMode == AddressMode::Absolute) {
-        WriteToMemoryUnit(instrDecoder->opSize, instrDecoder->dstOperand.absoluteAddr, v);
-    } else if (instrDecoder->dstOperand.addrMode == AddressMode::Indirect) {
-        auto &reg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
-        auto relativeAddrOfs = instrDecoder->ComputeRelativeAddress(*this, instrDecoder->dstOperand.relAddrMode);
-        WriteToMemoryUnit(instrDecoder->opSize, reg.data.longword + relativeAddrOfs, v);
+    } else if (instrDecoder->opArgDst.addrMode == AddressMode::Absolute) {
+        WriteToMemoryUnit(instrDecoder->code.opSize, instrDecoder->opArgDst.absoluteAddr, v);
+    } else if (instrDecoder->opArgDst.addrMode == AddressMode::Indirect) {
+        auto &reg = GetRegisterValue(instrDecoder->opArgDst.regIndex, instrDecoder->code.opFamily);
+        auto relativeAddrOfs = instrDecoder->ComputeRelativeAddress(*this, instrDecoder->opArgDst.relAddrMode);
+        WriteToMemoryUnit(instrDecoder->code.opSize, reg.data.longword + relativeAddrOfs, v);
 
 //        auto v = ReadFromMemoryUnit(instrDecoder->opSize, reg.data.longword + relativeAddrOfs);
 //        reg.data = v.data;

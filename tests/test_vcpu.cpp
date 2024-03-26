@@ -187,7 +187,14 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
         0x20,0x01,0x03,0x88,0x47,        // move.w d0, (a0+0x47)
 
         // this is a side-effect of the
-        0x20,0x01,0x94,0x43,0x84,0x30,        // move.w (a1+d4<<3), (a0+d3<<1)
+        // op code = 0x20 -> move
+        // op size = 0x01 -> word
+        // dstRegMode = 0x94 => a1 + d4
+        // srcRegMode = 0x84 = a0 + d3
+
+        // dstRelMode = 0x43 => d4<<3
+        // srcRelMode = 0x30 = d3<<1
+        0x20,0x01,0x94,0x84,0x43,0x31,        // move.w (a1+d4<<3), (a0+d3<<1)
 
         0x20,0x01,0x03,0x80,             // move.w d0, (a0)
         0x00                                // brk
@@ -197,10 +204,13 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
     auto &regs = vcpu.GetRegisters();
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.word = 0x4711;
+    regs.addressRegisters[0].data.longword = 0x05;  // read from address 5...
 
+    int instrCounter = 0;
     while(!vcpu.IsHalted()) {
         vcpu.Step();
         fmt::println("{}", vcpu.GetLastDecodedInstr()->ToString());
+        instrCounter++;
     }
 
     return kTR_Pass;
@@ -233,7 +243,14 @@ DLL_EXPORT int test_vcpu_instr_move_cntrl(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_instr_move_absolute(ITesting *t) {
     uint8_t program[]={
-        0x20, 0x03, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x15,0x01,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,   // move.l (0x00000015),0x01
+            // op code = 0x20 => move
+            // op size = 0x03 => long
+            // dst reg mode = 0x02 => absolute
+            // [value]
+            // src reg mode = 0x01 => immediate
+            // [value]
+            //
+        0x20, 0x03, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x15,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,   // move.l (0x00000015),0x01
         0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // this should be addres 0x15
       // 0     1     2     3     4     5     6     7     8     9     10   11   12    13    14    15    16    17    18   19
@@ -241,6 +258,9 @@ DLL_EXPORT int test_vcpu_instr_move_absolute(ITesting *t) {
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
     vcpu.Step();
+    uint64_t address = 0x15;
+    auto value = vcpu.ReadFromMemoryUnit(OperandSize::Long, address);
+    TR_ASSERT(t, 0x01 == value.data.longword);
 
     return kTR_Pass;
 }
@@ -302,12 +322,12 @@ DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_instr_push(ITesting *t) {
     uint8_t program[]={
-        0x70,0x00,0x01,0x43,                       // push.b 0x43
-        0x70,0x01,0x01,0x42,0x00,                  // push.w 0x4200
-        0x70,0x02,0x01,0x41,0x00,0x00,0x00,        // push.d 0x41000000
-        0x70,0x00,0x03,                            // push.b d0
-        0x70,0x01,0x13,                            // push.w d1
-        0x70,0x02,0x23,                            // push.d d2
+        0x70,0x00,0x01,0x00, 0x43,                       // push.b 0x43
+        0x70,0x01,0x01,0x00, 0x42,0x00,                  // push.w 0x4200
+        0x70,0x02,0x01,0x00, 0x41,0x00,0x00,0x00,        // push.d 0x41000000
+        0x70,0x00,0x03,0x00,                            // push.b d0
+        0x70,0x01,0x13,0x00,                            // push.w d1
+        0x70,0x02,0x23,0x00,                            // push.d d2
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);

@@ -32,52 +32,66 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     // Save the start offset
     ofsStartInstr = memoryOffset;
 
-    opCodeByte = NextByte(cpu);
-    if (opCodeByte == 0xff) {
+    code.opCodeByte = NextByte(cpu);
+    if (code.opCodeByte == 0xff) {
         return false;
     }
 
     // Decode the op-code
-    opCode =  static_cast<OperandCode>(opCodeByte);
+    code.opCode =  static_cast<OperandCode>(code.opCodeByte);
     // check if we have this instruction defined
-    if (!gnilk::vcpu::GetInstructionSet().contains(opCode)) {
+    if (!gnilk::vcpu::GetInstructionSet().contains(code.opCode)) {
         return false;
     }
 
-    description = gnilk::vcpu::GetInstructionSet().at(opCode);
+    code.description = gnilk::vcpu::GetInstructionSet().at(code.opCode);
 
     //
     // Decode addressing
     //
-    opSizeAndFamilyCode = 0;
-    if (description.features & OperandDescriptionFlags::OperandSize) {
-        opSizeAndFamilyCode = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-        opSize = static_cast<OperandSize>(opSizeAndFamilyCode & 0x03);
-        opFamily = static_cast<OperandFamily>((opSizeAndFamilyCode >> 4) & 0x03);
+    code.opSizeAndFamilyCode = 0;
+    if (code.description.features & OperandDescriptionFlags::OperandSize) {
+        code.opSizeAndFamilyCode = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
+        code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
+        code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
     }
 
     //
     // Decode src/dst handling
     //
-    //dstRegAndFlags = 0;
-    //srcRegAndFlags = 0;
-    dstOperand = {};
-    srcOperand = {};
+    // BEGIN - PIPELINE TICK1, first 32 bits - and enough to compute size
+    opArgDst = {};
+    opArgSrc = {};
 
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
-    if (description.features & OperandDescriptionFlags::OneOperand) {
-        //DecodeDstReg(cpu);
-        DecodeOperandArg(cpu, dstOperand);
-        value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
-    } else if (description.features & OperandDescriptionFlags::TwoOperands) {
-        //DecodeDstReg(cpu);
-        //DecodeSrcReg(cpu);
-        DecodeOperandArg(cpu, dstOperand);
-        DecodeOperandArg(cpu, srcOperand);
-        value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+        DecodeOperandArg(cpu, opArgDst);
+
+        // Alignment byte - we always have 32 bits in the operand, before we read any immediate or extension bits..
+        // This makes pipelining easier...
+        NextByte(cpu);
+
+    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+        DecodeOperandArg(cpu, opArgDst);
+        DecodeOperandArg(cpu, opArgSrc);
     } else {
         // No operands
     }
+    // END PIPELINE - TICK1
+
+    // BEGIN PIPELINE - TICK2
+    DecodeOperandArgAddrMode(cpu, opArgDst);
+    DecodeOperandArgAddrMode(cpu, opArgSrc);
+    // END PIPELINE - TICK 2
+
+    // BEGIN PIPELINE - TICK 3
+    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+        value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
+    } else {
+        value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+    }
+    // END PIPELINE - TICK 3
+
 
     // Mark end of instruction decoding...
     ofsEndInstr = memoryOffset;
@@ -89,7 +103,10 @@ void InstructionDecoder::DecodeOperandArg(CPUBase &cpu, InstructionDecoder::Oper
     inOutOpArg.addrMode = static_cast<AddressMode>(inOutOpArg.regAndFlags & 0x03);
     inOutOpArg.relAddrMode.mode  = static_cast<RelativeAddressMode>((inOutOpArg.regAndFlags & 0x0c)>>2);
 
-    // FIXME: This should come after srcRegAndFlags
+
+    inOutOpArg.regIndex = (inOutOpArg.regAndFlags>>4) & 15;
+}
+void InstructionDecoder::DecodeOperandArgAddrMode(CPUBase &cpu, InstructionDecoder::OperandArg &inOutOpArg) {
     if (inOutOpArg.addrMode == AddressMode::Indirect) {
         // Do nothing - this is decoded from the data about - details will be decoded further down...
     } else if (inOutOpArg.addrMode == AddressMode::Absolute) {
@@ -116,18 +133,17 @@ void InstructionDecoder::DecodeOperandArg(CPUBase &cpu, InstructionDecoder::Oper
         }
     }
 
-    inOutOpArg.regIndex = (inOutOpArg.regAndFlags>>4) & 15;
 }
+
 
 // Returns a value based on src op decoding
 RegisterValue InstructionDecoder::ReadSrcValue(CPUBase &cpu) {
-    return ReadFrom(cpu, opSize, srcOperand.addrMode, srcOperand.absoluteAddr, srcOperand.relAddrMode, srcOperand.regIndex);
-//    return ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+    return ReadFrom(cpu, code.opSize, opArgSrc.addrMode, opArgSrc.absoluteAddr, opArgSrc.relAddrMode, opArgSrc.regIndex);
 }
 
 // Returns a value based on dst op decoding
 RegisterValue InstructionDecoder::ReadDstValue(CPUBase &cpu) {
-    return ReadFrom(cpu, opSize, dstOperand.addrMode, dstOperand.absoluteAddr, dstOperand.relAddrMode, dstOperand.regIndex);
+    return ReadFrom(cpu, code.opSize, opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.relAddrMode, opArgDst.regIndex);
 //    return ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
 }
 
@@ -140,14 +156,14 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
         v = cpuBase.ReadFromMemoryUnit(szOperand, memoryOffset);
         memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Register) {
-        auto &reg = cpuBase.GetRegisterValue(idxRegister, opFamily);
+        auto &reg = cpuBase.GetRegisterValue(idxRegister, code.opFamily);
         v.data = reg.data;
     } else if (addrMode == AddressMode::Absolute) {
         v = cpuBase.ReadFromMemoryUnit(szOperand, absAddress);
         //memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
         auto relativeAddrOfs = ComputeRelativeAddress(cpuBase, relAddrMode);
-        auto &reg = cpuBase.GetRegisterValue(idxRegister, opFamily);
+        auto &reg = cpuBase.GetRegisterValue(idxRegister, code.opFamily);
         v = cpuBase.ReadFromMemoryUnit(szOperand, reg.data.longword + relativeAddrOfs);
     }
     return v;
@@ -177,15 +193,15 @@ uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
 
 
 std::string InstructionDecoder::ToString() const {
-    if (!GetInstructionSet().contains(opCode)) {
+    if (!GetInstructionSet().contains(code.opCode)) {
         return ("invalid instruction");
     }
-    auto desc = *GetOpDescFromClass(opCode);
+    auto desc = *GetOpDescFromClass(code.opCode);
     std::string opString;
 
     opString = desc.name;
     if (desc.features & OperandDescriptionFlags::OperandSize) {
-        switch(opSize) {
+        switch(code.opSize) {
             case OperandSize::Byte :
                 opString += ".b";
                 break;
@@ -203,15 +219,15 @@ std::string InstructionDecoder::ToString() const {
 
     if (desc.features & OperandDescriptionFlags::OneOperand) {
         opString += "\t";
-        opString += DisasmOperand(dstOperand.addrMode, dstOperand.absoluteAddr, dstOperand.regIndex, dstOperand.relAddrMode);
+        opString += DisasmOperand(opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.regIndex, opArgDst.relAddrMode);
     }
 
     if (desc.features & OperandDescriptionFlags::TwoOperands) {
         opString += "\t";
-        opString += DisasmOperand(dstOperand.addrMode, dstOperand.absoluteAddr, dstOperand.regIndex, dstOperand.relAddrMode);
+        opString += DisasmOperand(opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.regIndex, opArgDst.relAddrMode);
 
         opString += ",";
-        opString += DisasmOperand(srcOperand.addrMode, srcOperand.absoluteAddr, srcOperand.regIndex, srcOperand.relAddrMode);
+        opString += DisasmOperand(opArgSrc.addrMode, opArgSrc.absoluteAddr, opArgSrc.regIndex, opArgSrc.relAddrMode);
 
     }
 
@@ -222,7 +238,7 @@ std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint64_t abs
     std::string opString = "";
     if (addrMode == AddressMode::Register) {
         if (regIndex > 7) {
-            if (opFamily == OperandFamily::Control) {
+            if (code.opFamily == OperandFamily::Control) {
                 opString += "cr" + fmt::format("{}", regIndex-8);
             } else {
                 opString += "a" + fmt::format("{}", regIndex-8);
@@ -231,7 +247,7 @@ std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint64_t abs
             opString += "d" + fmt::format("{}", regIndex);
         }
     } else if (addrMode == AddressMode::Immediate) {
-        switch(opSize) {
+        switch(code.opSize) {
             case OperandSize::Byte :
                 opString += fmt::format("{:#x}",value.data.byte);
                 break;
