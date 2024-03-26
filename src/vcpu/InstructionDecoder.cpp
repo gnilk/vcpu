@@ -36,7 +36,7 @@ bool InstructionDecoder::Tick(CPUBase &cpu) {
         case State::kStateReadMem :
             return ExecuteTickReadMem(cpu);
         case State::kStateFinished :
-            fmt::println(stderr, "InstrDecoder - tick on state 'kStateFinished' we should never reach this - should auto-go to IDLE");
+            //fmt::println(stderr, "InstrDecoder - tick on state 'kStateFinished' we should never reach this - should auto-go to IDLE");
             return true;
     }
     return false;

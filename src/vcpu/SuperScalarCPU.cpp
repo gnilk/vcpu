@@ -19,7 +19,7 @@ bool InstructionPipeline::Tick(CPUBase &cpu) {
     if (!Update(cpu)) {
         return false;
     }
-    if (pipeline[idxNext].state == InstructionDecoder::State::kStateIdle) {
+    if (pipeline[idxNextAvail].state == InstructionDecoder::State::kStateIdle) {
         return BeginNext(cpu);
     }
     return true;
@@ -43,6 +43,9 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
         if (!decoder.Tick(cpu)) {
             return false;
         }
+        // We should check if we are allowed to run - or if there is another instruction queued before us...
+        // This can be a simple if 'instructionID = nextToExecuteID' and have a round-robin kind of scenario
+        // If this is twice the pipeline-size we can't risk overlap's (as some instructions can be quite large to decode)
 
         if (decoder.state == InstructionDecoder::State::kStateFinished) {
             if (cbDecoded != nullptr) {
@@ -55,8 +58,8 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
 }
 bool InstructionPipeline::BeginNext(CPUBase &cpu) {
     // Next must be idle when we get here...
-    auto &decoder = pipeline[idxNext];
-    idxNext = (idxNext + 1) % GNK_VCPU_PIPELINE_SIZE;
+    auto &decoder = pipeline[idxNextAvail];
+    idxNextAvail = (idxNextAvail + 1) % GNK_VCPU_PIPELINE_SIZE;
 
     if (!decoder.Tick(cpu)) {
         return false;
