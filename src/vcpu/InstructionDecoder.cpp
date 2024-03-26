@@ -56,7 +56,7 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
     } else if (code.opSizeAndFamilyCode != 0) {
         // FIXME: Raise invalid opsize here exception!
-        fmt::println(stderr, "VCPU, operand size not available for instr '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
+        fmt::println(stderr, "VCPU, operand size not available for '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
         return false;
     }
 
