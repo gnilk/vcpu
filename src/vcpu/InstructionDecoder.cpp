@@ -52,7 +52,6 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     code.opSizeAndFamilyCode = NextByte(cpu);
 
     if (code.description.features & OperandDescriptionFlags::OperandSize) {
-        code.opSizeAndFamilyCode = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
         code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
     } else if (code.opSizeAndFamilyCode != 0) {
