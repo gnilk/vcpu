@@ -75,7 +75,7 @@ namespace gnilk {
             struct OperandArg {
                 uint8_t regAndFlags = 0;
                 uint8_t regIndex = 0;
-                AddressMode addrMode = AddressMode::Absolute;
+                AddressMode addrMode = {}; //AddressMode::Absolute;
                 uint64_t absoluteAddr = 0;
                 RelativeAddressing relAddrMode = {};
             };
