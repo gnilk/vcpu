@@ -470,6 +470,10 @@ DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_instr_lea(ITesting *t) {
     // Lea uses 'immediate' mode addressing - since the address is fixed - absolute would cause a ready of the absolute address specified
+    // op code =  0x28 => LEA
+    // op size =  0x03 => long word
+    // dst op  => 0x83 => IIII | RRMM => I (register) = a0, RR (rel.addr.mode) = 0, MM => 3 (Register)
+    // src op  => 0x01 => IIII | RRMM => I (register) = - , RR (rel.addr.mode) = 0, MM => 1 (Immediate)
     uint8_t program[]={
         0x28, 0x03, 0x83, 0x01, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11        // lea a0, 0x8877665544332211
     };
