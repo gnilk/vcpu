@@ -87,7 +87,7 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     // BEGIN PIPELINE - TICK 3
     if (code.description.features & OperandDescriptionFlags::OneOperand) {
         value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
-    } else {
+    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
         value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
     }
     // END PIPELINE - TICK 3
