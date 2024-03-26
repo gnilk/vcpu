@@ -676,7 +676,6 @@ void VirtualCPU::ExecuteDivInstr(InstructionDecoder::Ref instrDecoder) {
 void VirtualCPU::ExecuteCallInstr(InstructionDecoder::Ref instrDecoder) {
     auto &v = instrDecoder->GetValue();
     auto retAddr = registers.instrPointer;
-    retAddr.data.longword += 1;
     // push on stack...
     stack.push(retAddr);
 
