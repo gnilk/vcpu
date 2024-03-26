@@ -29,6 +29,12 @@ InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
 
 bool InstructionDecoder::Decode(CPUBase &cpu) {
 
+    // Verify instr. pointer alignment - this not needed, but having proper instr. could make the bus more effective...
+    if ((cpu.registers.instrPointer.data.longword & 0x03) != 0x00) {
+        // FIXME: Raise exception here
+        fmt::println(stderr, "InstrDecoder, misaligned instruction at {:x}", cpu.registers.instrPointer.data.longword);
+        //return false;
+    }
     // Save the start offset
     ofsStartInstr = memoryOffset;
 
@@ -56,7 +62,7 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
     } else if (code.opSizeAndFamilyCode != 0) {
         // FIXME: Raise invalid opsize here exception!
-        fmt::println(stderr, "VCPU, operand size not available for '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
+        fmt::println(stderr, "InstrDecoder, operand size not available for '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
         return false;
     }
 
