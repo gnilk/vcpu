@@ -49,11 +49,16 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     //
     // Decode addressing
     //
-    code.opSizeAndFamilyCode = 0;
+    code.opSizeAndFamilyCode = NextByte(cpu);
+
     if (code.description.features & OperandDescriptionFlags::OperandSize) {
         code.opSizeAndFamilyCode = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
         code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
+    } else if (code.opSizeAndFamilyCode != 0) {
+        // FIXME: Raise invalid opsize here exception!
+        fmt::println(stderr, "VCPU, operand size not available for instr '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
+        return false;
     }
 
     //
@@ -75,7 +80,9 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
         DecodeOperandArg(cpu, opArgDst);
         DecodeOperandArg(cpu, opArgSrc);
     } else {
-        // No operands
+        // No operands, we three trailing bytes
+        NextByte(cpu);
+        NextByte(cpu);
     }
     // END PIPELINE - TICK1
 

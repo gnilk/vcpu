@@ -126,6 +126,7 @@ namespace gnilk {
             }
         }
 
+        // FIXME: Consider NOP to be a pseudo instruction (i.e. encode like 'move.b d0,d0' - or whatever has not side-effect)
 
         // These are the op-codes, there is plenty of 'air' inbetween the numbers - no real thought went in to the
         // numbers as such. The opcodes are 8-bit..
