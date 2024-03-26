@@ -31,6 +31,7 @@ list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
 list(APPEND vcpusrc src/vcpu/Interrupt.h)
 list(APPEND vcpusrc src/vcpu/MemoryUnit.cpp src/vcpu/MemoryUnit.h)
 list(APPEND vcpusrc src/vcpu/Peripheral.h)
+list(APPEND vcpusrc src/vcpu/SuperScalarCPU.cpp)
 list(APPEND vcpusrc src/vcpu/Timer.cpp src/vcpu/Timer.h)
 list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 #
