@@ -99,6 +99,8 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     }
     auto szComputed = ComputeInstrSize();
 
+    // now we know how much data to consume for this instruction - advance to next - which allows us to proceed next tick
+    // and the Pipeline to grab a new instruction..
     cpu.AdvanceInstrPtr(szComputed);
 
     if ((code.description.features & OperandDescriptionFlags::OneOperand) || (code.description.features & OperandDescriptionFlags::TwoOperands)) {
