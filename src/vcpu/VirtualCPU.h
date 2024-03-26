@@ -20,27 +20,6 @@ namespace gnilk {
 
     namespace vcpu {
 
-#ifndef GNK_VCPU_PIPELINE_SIZE
-#define GNK_VCPU_PIPELINE_SIZE 4
-#endif
-
-        class InstructionPipeline {
-        public:
-            using OnInstructionDecoded = std::function<void(InstructionDecoder &decoder)>;
-        public:
-            InstructionPipeline() = default;
-            virtual ~InstructionPipeline() = default;
-
-            void SetInstructionDecodedHandler(OnInstructionDecoded onInstructionDecoded) {
-                cbDecoded = onInstructionDecoded;
-            }
-            bool Tick(CPUBase &cpu);
-
-        private:
-            OnInstructionDecoded cbDecoded = nullptr;
-
-            std::array<InstructionDecoder, GNK_VCPU_PIPELINE_SIZE> pipeline;
-        };
 
         class VirtualCPU : public CPUBase {
         public:
@@ -56,7 +35,6 @@ namespace gnilk {
                 return &lastDecodedInstruction;
             }
 
-            bool ExecuteInstruction(InstructionDecoder &decoder);
         protected:
             // one operand instr.
             void ExecutePushInstr(InstructionDecoder::Ref instrDecoder);

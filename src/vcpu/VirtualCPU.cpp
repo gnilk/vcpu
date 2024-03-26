@@ -51,20 +51,6 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-bool InstructionPipeline::Tick(CPUBase &cpu) {
-    auto &decoder = pipeline[0];
-    if (!decoder.Tick(cpu)) {
-        return false;
-    }
-
-    if (decoder.state == InstructionDecoder::State::kStateFinished) {
-        if (cbDecoded != nullptr) {
-            cbDecoded(decoder);
-        }
-        decoder.state = InstructionDecoder::State::kStateIdle;
-    }
-    return true;
-}
 
 
 
@@ -182,11 +168,6 @@ bool VirtualCPU::Step() {
     lastDecodedInstruction.isrStateAfter = isrControlBlock.isrState;
     lastDecodedInstruction.cpuRegistersAfter = registers;
     lastDecodedInstruction.instrDecoder = instrDecoder;
-    return true;
-}
-
-bool VirtualCPU::ExecuteInstruction(InstructionDecoder &decoder) {
-
     return true;
 }
 
