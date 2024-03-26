@@ -16,7 +16,48 @@ using namespace gnilk;
 using namespace gnilk::vcpu;
 
 bool InstructionPipeline::Tick(CPUBase &cpu) {
-    auto &decoder = pipeline[0];
+    if (!Update(cpu)) {
+        return false;
+    }
+    if (pipeline[idxNext].state == InstructionDecoder::State::kStateIdle) {
+        return BeginNext(cpu);
+    }
+    return true;
+
+}
+bool InstructionPipeline::IsEmpty() {
+    for(auto &decoder : pipeline) {
+        if (decoder.state != InstructionDecoder::State::kStateIdle) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool InstructionPipeline::Update(CPUBase &cpu) {
+    for (auto &decoder : pipeline) {
+        if (decoder.state == InstructionDecoder::State::kStateIdle) {
+            continue;
+        }
+
+        if (!decoder.Tick(cpu)) {
+            return false;
+        }
+
+        if (decoder.state == InstructionDecoder::State::kStateFinished) {
+            if (cbDecoded != nullptr) {
+                cbDecoded(decoder);
+            }
+            decoder.state = InstructionDecoder::State::kStateIdle;
+        }
+    }
+    return true;
+}
+bool InstructionPipeline::BeginNext(CPUBase &cpu) {
+    // Next must be idle when we get here...
+    auto &decoder = pipeline[idxNext];
+    idxNext = (idxNext + 1) % GNK_VCPU_PIPELINE_SIZE;
+
     if (!decoder.Tick(cpu)) {
         return false;
     }
@@ -50,6 +91,9 @@ bool SuperScalarCPU::Tick() {
     // well - do this one we have something
     return false;
 }
+//
+// Consider moving this a base class - or somewhere else - so we can reuse this both in 'VirtualCPU' and this
+//
 bool SuperScalarCPU::ExecuteInstruction(InstructionDecoder &decoder) {
     switch(decoder.code.opCode) {
         case BRK :

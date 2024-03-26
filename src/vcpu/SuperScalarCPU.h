@@ -29,10 +29,14 @@ namespace gnilk {
                 cbDecoded = onInstructionDecoded;
             }
             bool Tick(CPUBase &cpu);
+            bool IsEmpty();
+        protected:
+            bool Update(CPUBase &cpu);
+            bool BeginNext(CPUBase &cpu);
 
         private:
             OnInstructionDecoded cbDecoded = nullptr;
-
+            size_t idxNext = 0;
             std::array<InstructionDecoder, GNK_VCPU_PIPELINE_SIZE> pipeline;
         };
 
