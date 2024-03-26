@@ -62,6 +62,14 @@ namespace gnilk {
 
             uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddr);
 
+            struct OperandArg {
+                uint8_t regAndFlags = 0;
+                uint8_t regIndex = 0;
+                AddressMode addrMode = AddressMode::Absolute;
+                uint64_t absoluteAddr = 0;
+                RelativeAddressing relAddrMode = {};
+            };
+
 
         protected:
             uint8_t NextByte(CPUBase &cpu);
@@ -70,34 +78,19 @@ namespace gnilk {
             // Perhaps move to base class
             RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddr, int idxRegister);
 
-            void DecodeDstReg(CPUBase &cpu);
-            void DecodeSrcReg(CPUBase &cpu);
-
+            void DecodeOperandArg(CPUBase &cpu, OperandArg &inOutOpArg);
         public:
-
             // Used during by decoder...
             uint8_t opCodeByte;     // raw opCodeByte
             OperandCode opCode;
             OperandDescription description;
 
-
             uint8_t opSizeAndFamilyCode;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
             OperandSize opSize; // Only if 'description.features & OperandSize' == true
             OperandFamily opFamily;
 
-            uint8_t dstRegAndFlags; // Always set
-            uint8_t srcRegAndFlags; // Only if 'description.features & TwoOperands' == true
-
-            AddressMode dstAddrMode;        // decoded from 'dstRegAndFlags'
-            uint64_t    dstAbsoluteAddr;     //
-            RelativeAddressing dstRelAddrMode;  // decoded from 'dstRegAndFlags'
-            uint8_t dstRegIndex; // decoded like: (dstRegAndFlags>>4) & 15;
-
-            // Only if 'description.features & TwoOperands' == true
-            AddressMode srcAddrMode;        // decoded from srcRegAndFlags
-            uint64_t    srcAbsoluteAddr;     //
-            RelativeAddressing srcRelAddrMode;  // decoded from srcRegAndFlags
-            uint8_t srcRegIndex; // decoded like: (srcRegAndFlags>>4) & 15;
+            OperandArg dstOperand;
+            OperandArg srcOperand;
 
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand

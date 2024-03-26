@@ -211,7 +211,7 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
 }
 
 void VirtualCPU::ExecuteBneInstr(InstructionDecoder::Ref instrDecoder) {
-    if (instrDecoder->dstAddrMode != AddressMode::Immediate) {
+    if (instrDecoder->dstOperand.addrMode != AddressMode::Immediate) {
         // raise exception
         return;
     }
@@ -244,7 +244,7 @@ void VirtualCPU::ExecuteBneInstr(InstructionDecoder::Ref instrDecoder) {
 }
 void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstAddrMode != AddressMode::Immediate) {
+    if (instrDecoder->dstOperand.addrMode != AddressMode::Immediate) {
         // raise exception
         return;
     }
@@ -274,7 +274,7 @@ void VirtualCPU::ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder) {
 
 void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstAddrMode == AddressMode::Immediate) {
+    if (instrDecoder->dstOperand.addrMode == AddressMode::Immediate) {
         // raise exception
         return;
     }
@@ -309,12 +309,12 @@ void VirtualCPU::ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder) {
 
 void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
 
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
+    auto &dstReg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
 
     auto signBefore = MSBForOpSize(instrDecoder->opSize, dstReg);
 
@@ -366,11 +366,11 @@ void VirtualCPU::ExecuteAslInstr(InstructionDecoder::Ref instrDecoder) {
 // See: MoiraALU_cpp.h - could take a few impl. ideas from there..
 void VirtualCPU::ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
-    auto &dstReg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
+    auto &dstReg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
 
     // Fetch the sign-bit..
     uint64_t msb = MSBForOpSize(instrDecoder->opSize, dstReg);
@@ -468,7 +468,7 @@ void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
 // FIXME: Verify and update CPU Status Flags
 void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
@@ -496,7 +496,7 @@ void VirtualCPU::ExecuteLslInstr(InstructionDecoder::Ref instrDecoder) {
 // FIXME: Verify and CPU Status flags
 void VirtualCPU::ExecuteLsrInstr(InstructionDecoder::Ref instrDecoder) {
     auto v = instrDecoder->GetValue();
-    if (instrDecoder->dstAddrMode != AddressMode::Register) {
+    if (instrDecoder->dstOperand.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
@@ -719,14 +719,14 @@ void VirtualCPU::ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder) {
 //
 void VirtualCPU::WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v) {
     // FIXME: Support more address mode
-    if (instrDecoder->dstAddrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
+    if (instrDecoder->dstOperand.addrMode == AddressMode::Register) {
+        auto &reg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
         reg.data = v.data;
-    } else if (instrDecoder->dstAddrMode == AddressMode::Absolute) {
-        WriteToMemoryUnit(instrDecoder->opSize, instrDecoder->dstAbsoluteAddr, v);
-    } else if (instrDecoder->dstAddrMode == AddressMode::Indirect) {
-        auto &reg = GetRegisterValue(instrDecoder->dstRegIndex, instrDecoder->opFamily);
-        auto relativeAddrOfs = instrDecoder->ComputeRelativeAddress(*this, instrDecoder->dstRelAddrMode);
+    } else if (instrDecoder->dstOperand.addrMode == AddressMode::Absolute) {
+        WriteToMemoryUnit(instrDecoder->opSize, instrDecoder->dstOperand.absoluteAddr, v);
+    } else if (instrDecoder->dstOperand.addrMode == AddressMode::Indirect) {
+        auto &reg = GetRegisterValue(instrDecoder->dstOperand.regIndex, instrDecoder->opFamily);
+        auto relativeAddrOfs = instrDecoder->ComputeRelativeAddress(*this, instrDecoder->dstOperand.relAddrMode);
         WriteToMemoryUnit(instrDecoder->opSize, reg.data.longword + relativeAddrOfs, v);
 
 //        auto v = ReadFromMemoryUnit(instrDecoder->opSize, reg.data.longword + relativeAddrOfs);

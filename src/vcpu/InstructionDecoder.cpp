@@ -59,16 +59,21 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     //
     // Decode src/dst handling
     //
-    dstRegAndFlags = 0;
-    srcRegAndFlags = 0;
+    //dstRegAndFlags = 0;
+    //srcRegAndFlags = 0;
+    dstOperand = {};
+    srcOperand = {};
 
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
     if (description.features & OperandDescriptionFlags::OneOperand) {
-        DecodeDstReg(cpu);
+        //DecodeDstReg(cpu);
+        DecodeOperandArg(cpu, dstOperand);
         value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
     } else if (description.features & OperandDescriptionFlags::TwoOperands) {
-        DecodeDstReg(cpu);
-        DecodeSrcReg(cpu);
+        //DecodeDstReg(cpu);
+        //DecodeSrcReg(cpu);
+        DecodeOperandArg(cpu, dstOperand);
+        DecodeOperandArg(cpu, srcOperand);
         value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
     } else {
         // No operands
@@ -79,89 +84,51 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     return true;
 }
 
-void InstructionDecoder::DecodeDstReg(CPUBase &cpu) {
-    dstRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-
-    // Same as below..
-    dstAddrMode = static_cast<AddressMode>(dstRegAndFlags & 0x03);
-    dstRelAddrMode.mode  = static_cast<RelativeAddressMode>((dstRegAndFlags & 0x0c)>>2);
+void InstructionDecoder::DecodeOperandArg(CPUBase &cpu, InstructionDecoder::OperandArg &inOutOpArg) {
+    inOutOpArg.regAndFlags = NextByte(cpu);
+    inOutOpArg.addrMode = static_cast<AddressMode>(inOutOpArg.regAndFlags & 0x03);
+    inOutOpArg.relAddrMode.mode  = static_cast<RelativeAddressMode>((inOutOpArg.regAndFlags & 0x0c)>>2);
 
     // FIXME: This should come after srcRegAndFlags
-    if (dstAddrMode == AddressMode::Indirect) {
+    if (inOutOpArg.addrMode == AddressMode::Indirect) {
         // Do nothing - this is decoded from the data about - details will be decoded further down...
-    } else if (dstAddrMode == AddressMode::Absolute) {
+    } else if (inOutOpArg.addrMode == AddressMode::Absolute) {
         // moving to an absolute address..
-        dstAbsoluteAddr = cpu.FetchFromPhysicalRam<uint64_t>(memoryOffset);
-    } else if (dstAddrMode == AddressMode::Register) {
+        inOutOpArg.absoluteAddr = cpu.FetchFromPhysicalRam<uint64_t>(memoryOffset);
+    } else if (inOutOpArg.addrMode == AddressMode::Register) {
         // nothing to do here
-    } else if (dstAddrMode == AddressMode::Immediate) {
+    } else if (inOutOpArg.addrMode == AddressMode::Immediate) {
         // do something?
     } else {
-        fmt::println("Destination address mode {} not supported!", (int)dstAddrMode);
+        fmt::println("Destination address mode {} not supported!", (int)inOutOpArg.addrMode);
         exit(1);
     }
 
     // Do this here - allows for alot of strange stuff...
-    if ((dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (dstRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
+    if ((inOutOpArg.relAddrMode.mode == RelativeAddressMode::AbsRelative) || (inOutOpArg.relAddrMode.mode == RelativeAddressMode::RegRelative)) {
         auto relative = NextByte(cpu);
         // This is for clarity - just assigning to 'Absolute' would be sufficient..
-        if (dstRelAddrMode.mode == RelativeAddressMode::AbsRelative) {
-            dstRelAddrMode.relativeAddress.absoulte = relative;
+        if (inOutOpArg.relAddrMode.mode == RelativeAddressMode::AbsRelative) {
+            inOutOpArg.relAddrMode.relativeAddress.absoulte = relative;
         } else {
-            dstRelAddrMode.relativeAddress.reg.index = (relative & 0xf0) >> 4;
-            dstRelAddrMode.relativeAddress.reg.shift = (relative & 0x0f);
+            inOutOpArg.relAddrMode.relativeAddress.reg.index = (relative & 0xf0) >> 4;
+            inOutOpArg.relAddrMode.relativeAddress.reg.shift = (relative & 0x0f);
         }
     }
 
-    dstRegIndex = (dstRegAndFlags>>4) & 15;
-
-}
-
-void InstructionDecoder::DecodeSrcReg(CPUBase &cpu) {
-    // Decode source flags and register index and source operand
-    srcRegAndFlags = NextByte(cpu); //cpu.FetchByteFromInstrPtr();
-    // decode source operand details
-    srcAddrMode = static_cast<AddressMode>(srcRegAndFlags & 0x03);
-    srcRelAddrMode.mode  = static_cast<RelativeAddressMode>((srcRegAndFlags & 0x0c)>>2);
-
-    // FIXME: this should after any potential dst info..
-
-    // Switch?
-    if (srcAddrMode == AddressMode::Indirect) {
-
-    } else if (srcAddrMode == AddressMode::Absolute) {
-        srcAbsoluteAddr = cpu.FetchFromPhysicalRam<uint64_t>(memoryOffset);
-    } else if ((srcAddrMode == AddressMode::Immediate) || (srcAddrMode == AddressMode::Register)) {
-        // Nothing to do...
-    } else {
-        fmt::println("Source address mode {} not supported!", (int)srcAddrMode);
-        exit(1);
-    }
-
-    // Do this here - allows for alot of strange stuff...
-    if ((srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) || (srcRelAddrMode.mode == RelativeAddressMode::RegRelative)) {
-        auto relative = NextByte(cpu);
-        // This is for clarity - just assigning to 'Absolute' would be sufficient..
-        if (srcRelAddrMode.mode == RelativeAddressMode::AbsRelative) {
-            srcRelAddrMode.relativeAddress.absoulte = relative;
-        } else {
-            srcRelAddrMode.relativeAddress.reg.index = (relative & 0xf0) >> 4;
-            srcRelAddrMode.relativeAddress.reg.shift = (relative & 0x0f);
-        }
-    }
-
-
-    srcRegIndex = (srcRegAndFlags>>4) & 15;
+    inOutOpArg.regIndex = (inOutOpArg.regAndFlags>>4) & 15;
 }
 
 // Returns a value based on src op decoding
 RegisterValue InstructionDecoder::ReadSrcValue(CPUBase &cpu) {
-    return ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+    return ReadFrom(cpu, opSize, srcOperand.addrMode, srcOperand.absoluteAddr, srcOperand.relAddrMode, srcOperand.regIndex);
+//    return ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
 }
 
 // Returns a value based on dst op decoding
 RegisterValue InstructionDecoder::ReadDstValue(CPUBase &cpu) {
-    return ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
+    return ReadFrom(cpu, opSize, dstOperand.addrMode, dstOperand.absoluteAddr, dstOperand.relAddrMode, dstOperand.regIndex);
+//    return ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
 }
 
 
@@ -236,14 +203,16 @@ std::string InstructionDecoder::ToString() const {
 
     if (desc.features & OperandDescriptionFlags::OneOperand) {
         opString += "\t";
-        opString += DisasmOperand(dstAddrMode, dstAbsoluteAddr, dstRegIndex, dstRelAddrMode);
+        opString += DisasmOperand(dstOperand.addrMode, dstOperand.absoluteAddr, dstOperand.regIndex, dstOperand.relAddrMode);
     }
 
     if (desc.features & OperandDescriptionFlags::TwoOperands) {
         opString += "\t";
-        opString += DisasmOperand(dstAddrMode, dstAbsoluteAddr, dstRegIndex, dstRelAddrMode);
+        opString += DisasmOperand(dstOperand.addrMode, dstOperand.absoluteAddr, dstOperand.regIndex, dstOperand.relAddrMode);
+
         opString += ",";
-        opString += DisasmOperand(srcAddrMode, srcAbsoluteAddr, srcRegIndex, srcRelAddrMode);
+        opString += DisasmOperand(srcOperand.addrMode, srcOperand.absoluteAddr, srcOperand.regIndex, srcOperand.relAddrMode);
+
     }
 
     return opString;
