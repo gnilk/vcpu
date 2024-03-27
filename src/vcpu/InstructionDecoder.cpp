@@ -9,15 +9,6 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-//
-// FIX THIS!
-// 1) - create a structure for all 'dstXYZ' and 'srcXYZ' variables
-//    - change DecodeDst/SrcReg to 'DecodeDstOrSrc'
-// 2) - make the decoder a state machine
-// 3) -
-//
-//
-
 
 const std::string &InstructionDecoder::StateToString(InstructionDecoder::State s) {
     static std::unordered_map<InstructionDecoder::State, std::string> stateNames = {
