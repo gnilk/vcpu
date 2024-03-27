@@ -527,6 +527,8 @@ EmitCodeStatement::EmitCodeStatement() {
 }
 
 bool EmitCodeStatement::Process(gnilk::assembler::CompileUnit &context) {
+    postEmitters.clear();
+
     if(statement->Kind() == ast::NodeType::kNoOpInstrStatement) {
         return ProcessNoOpInstrStmt(std::dynamic_pointer_cast<ast::NoOpInstrStatment>(statement));
     } else if (statement->Kind() == ast::NodeType::kOneOpInstrStatement) {
@@ -538,6 +540,7 @@ bool EmitCodeStatement::Process(gnilk::assembler::CompileUnit &context) {
 }
 
 bool EmitCodeStatement::Finalize(gnilk::assembler::CompileUnit &context) {
+
     if (haveIdentifier) {
         auto currentSegment = context.GetActiveSegment();
         if (currentSegment == nullptr) {
@@ -576,9 +579,28 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::CompileUnit &context) {
 
     return true;
 }
+void EmitCodeStatement::AddPostEmitter(PostEmitOpData emitter) {
+    postEmitters.push_back(emitter);
+}
+
+bool EmitCodeStatement::RunPostEmitters() {
+    for(auto emitter : postEmitters) {
+        if (!emitter()) {
+            return false;
+        }
+    }
+    return true;
+}
 
 bool EmitCodeStatement::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
-    return EmitOpCodeForSymbol(stmt->Symbol());
+    if (!EmitOpCodeForSymbol(stmt->Symbol())) {
+        return false;
+    }
+    // Align op-code base stuff..
+    while(data.size() != 4) {
+        EmitByte(0x00); // instruction is padded with zeros...
+    }
+    return true;
 }
 
 
@@ -595,6 +617,7 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpIn
     auto opClass = *vcpu::GetOperandFromStr(stmt->Symbol());
     auto opDesc = *vcpu::GetOpDescFromClass(opClass);
 
+
     if (!EmitInstrOperand(context, opDesc, opSize, stmt->Operand())) {
         return false;
     }
@@ -603,6 +626,14 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpIn
     if (!(emitFlags & kEmitFlags::kEmitOpSize)) {
         data.insert(data.begin() + opSizeWritePoint, opSize);
     }
+
+    // Align op-code base stuff..
+    while(data.size() < 4) {
+        EmitByte(0x00); // instruction is padded with zeros...
+    }
+
+    // Now emit any left-overs belonging to the operands
+    RunPostEmitters();
 
     return true;
 }
@@ -637,6 +668,9 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
         return false;
     }
 
+    // Now run any post emitters
+    RunPostEmitters();
+
     // If we didn't write the operand size and family, let's do it now...
     if (!(emitFlags & kEmitFlags::kEmitOpSize)) {
         data.insert(data.begin() + opSizeWritePoint, opSize);
@@ -664,6 +698,7 @@ void EmitCodeStatement::EmitRegMode(uint8_t regMode) {
     emitFlags |= kEmitFlags::kEmitRegMode;
     EmitByte(regMode);
 }
+
 
 bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
 
@@ -716,7 +751,11 @@ bool EmitCodeStatement::EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast
 
     // Register|Mode = byte = RRRR | MMMM
     EmitRegMode(regMode);
-    return EmitNumericLiteral(opSize, numLiteral);
+    AddPostEmitter([this, opSize, numLiteral]() -> bool {
+            return EmitNumericLiteral(opSize, numLiteral);
+        });
+    //return EmitNumericLiteral(opSize, numLiteral);
+    return true;
 }
 
 bool EmitCodeStatement::EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral) {
@@ -809,7 +848,10 @@ bool EmitCodeStatement::EmitDereference(CompileUnit &context, ast::DeReferenceEx
                 return false;
             }
             // Output the relative register (mode is discared in this case)
-            return EmitRegisterLiteralWithAddrMode(std::dynamic_pointer_cast<ast::RegisterLiteral>(relativeRegLiteral->RelativeExpression()), 0);
+            AddPostEmitter([this, relativeRegLiteral]()->bool{
+                return EmitRegisterLiteralWithAddrMode(std::dynamic_pointer_cast<ast::RegisterLiteral>(relativeRegLiteral->RelativeExpression()), 0);
+            });
+            return true;
         }
 
         // Relative to an absolute value; (reg + <number>)
@@ -825,7 +867,9 @@ bool EmitCodeStatement::EmitDereference(CompileUnit &context, ast::DeReferenceEx
                 fmt::println(stderr, "Compiler, Absolute relative value {} out range - must be within 0..255", relLiteral->Value());
                 return false;
             }
-            return EmitByte(relLiteral->Value());
+            AddPostEmitter([this, relLiteral]()->bool{return EmitByte(relLiteral->Value());});
+            //return EmitByte(relLiteral->Value());
+            return true;
         }
 
         // Handle shift values...   (a0+d1<<1)
@@ -865,10 +909,14 @@ bool EmitCodeStatement::EmitDereference(CompileUnit &context, ast::DeReferenceEx
                 return false;
             }
 
-            addrMode = shiftNum;
-            if (!EmitRegisterLiteralWithAddrMode(relRegShift->BaseRegister(), addrMode)) {
-                return false;
-            }
+            AddPostEmitter([this, relRegShift, shiftNum]()->bool{
+                return EmitRegisterLiteralWithAddrMode(relRegShift->BaseRegister(), shiftNum);
+            });
+            // ?????
+//            addrMode = shiftNum;
+//            if (!EmitRegisterLiteralWithAddrMode(relRegShift->BaseRegister(), addrMode)) {
+//                return false;
+//            }
             return true;
         }
     }
@@ -901,9 +949,11 @@ bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, ast::Identifier::
     isRelative = false;
     symbol = identifier->Symbol();
     this->opSize = opSize;
-    placeholderAddress = data.size();       // Set address to the location within the instruction
 
-    EmitLWord(0);   // placeholder
+    AddPostEmitter([this]()->bool{
+            placeholderAddress = data.size();       // Set address to the location within the instruction
+            return EmitLWord(0);   // placeholder
+        });
     return true;
 }
 
@@ -944,28 +994,32 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, ast::Iden
     // Register|Mode = byte = RRRR | MMMM
     EmitRegMode(regMode);
 
+
     haveIdentifier = true;
     symbol = identifier->Symbol();
     isRelative = true;
     this->opSize = opSize;
     // not sure if needed
     //ofsRelative = static_cast<uint64_t>(emitData.data.size()) + vcpu::ByteSizeOfOperandSize(opSize);
-    placeholderAddress = data.size();
+    AddPostEmitter([this,opSize](){
+        placeholderAddress = data.size();
 
-    switch(opSize) {
-        case vcpu::OperandSize::Byte :
-            EmitByte(0);
-            break;
-        case vcpu::OperandSize::Word :
-            EmitWord(0);
-            break;
-        case vcpu::OperandSize::DWord :
-            EmitDWord(0);
-            break;
-        default :
-            fmt::println(stderr, "Compiler, Relative Addressing but Absolute value - see: 'EmitRelativeAddress'");
-            return false;
-    }
+        switch(opSize) {
+            case vcpu::OperandSize::Byte :
+                EmitByte(0);
+                break;
+            case vcpu::OperandSize::Word :
+                EmitWord(0);
+                break;
+            case vcpu::OperandSize::DWord :
+                EmitDWord(0);
+                break;
+            default :
+                fmt::println(stderr, "Compiler, Relative Addressing but Absolute value - see: 'EmitRelativeAddress'");
+                return false;
+        }
+        return true;
+    });
     return true;
 }
 

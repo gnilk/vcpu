@@ -200,6 +200,8 @@ namespace gnilk {
         };
 
         class EmitCodeStatement : public EmitStatementBase {
+        private:
+            using PostEmitOpData = std::function<bool(void)>;
         public:
             EmitCodeStatement();
             virtual ~EmitCodeStatement() = default;
@@ -225,6 +227,11 @@ namespace gnilk {
 
 
         private:
+            void AddPostEmitter(PostEmitOpData emitter);
+            bool RunPostEmitters();
+            std::vector<PostEmitOpData> postEmitters;
+
+
             // placeholder stuff here...
             bool haveIdentifier = false;
 
