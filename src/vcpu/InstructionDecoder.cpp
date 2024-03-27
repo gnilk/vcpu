@@ -148,101 +148,13 @@ bool InstructionDecoder::ExecuteTickReadMem(CPUBase &cpu) {
 
 bool InstructionDecoder::Decode(CPUBase &cpu) {
 
-    // Verify instr. pointer alignment - this not needed, but having proper instr. could make the bus more effective...
-    if ((cpu.registers.instrPointer.data.longword & 0x03) != 0x00) {
-        // FIXME: Raise exception here
-        fmt::println(stderr, "InstrDecoder, misaligned instruction at {:x}", cpu.registers.instrPointer.data.longword);
-        //return false;
+    // Decode using the tick functions - this will track number of ticks for the operand
+    state = State::kStateIdle;
+    while(state != State::kStateFinished) {
+        if (!Tick(cpu)) {
+            return false;
+        }
     }
-    // Save the start offset
-    ofsStartInstr = memoryOffset;
-
-    // BEGIN - PIPELINE TICK1, first 32 bits - and enough to compute size
-
-    code.opCodeByte = NextByte(cpu);
-    if (code.opCodeByte == 0xff) {
-        return false;
-    }
-
-    // Decode the op-code
-    code.opCode =  static_cast<OperandCode>(code.opCodeByte);
-    // check if we have this instruction defined
-    if (!gnilk::vcpu::GetInstructionSet().contains(code.opCode)) {
-        return false;
-    }
-
-    code.description = gnilk::vcpu::GetInstructionSet().at(code.opCode);
-
-    //
-    // Decode addressing
-    //
-    code.opSizeAndFamilyCode = NextByte(cpu);
-
-    if (code.description.features & OperandDescriptionFlags::OperandSize) {
-        code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
-        code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
-    } else if (code.opSizeAndFamilyCode != 0) {
-        // FIXME: Raise invalid opsize here exception!
-        fmt::println(stderr, "InstrDecoder, operand size not available for '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
-        return false;
-    }
-
-    //
-    // Decode src/dst handling
-    //
-    opArgDst = {};
-    opArgSrc = {};
-
-    // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
-    if (code.description.features & OperandDescriptionFlags::OneOperand) {
-        DecodeOperandArg(cpu, opArgDst);
-
-        // Alignment byte - we always have 32 bits in the operand, before we read any immediate or extension bits..
-        // This makes pipelining easier...
-        NextByte(cpu);
-
-    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
-        DecodeOperandArg(cpu, opArgDst);
-        DecodeOperandArg(cpu, opArgSrc);
-    } else {
-        // No operands, we three trailing bytes
-        NextByte(cpu);
-        NextByte(cpu);
-    }
-    auto szComputed = ComputeInstrSize();
-    // END PIPELINE - TICK1
-
-    // This can now all be done in another tick!
-    // However, we need a mechanism to 'lock' registers - so the CPU can wait for them to become finished...
-    //
-    // like:
-    //   move d0, 0x01
-    //   add  d0, 0x02  <- can't execute before 'd0' is released -> pipeline stall!
-    //
-
-    // BEGIN PIPELINE - TICK2
-    DecodeOperandArgAddrMode(cpu, opArgDst);
-    DecodeOperandArgAddrMode(cpu, opArgSrc);
-    // END PIPELINE - TICK 2
-
-    // BEGIN PIPELINE - TICK 3
-    if (code.description.features & OperandDescriptionFlags::OneOperand) {
-        value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
-    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
-        value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
-    }
-    // END PIPELINE - TICK 3
-
-
-    // Mark end of instruction decoding...
-    ofsEndInstr = memoryOffset;
-
-    auto szReal = GetInstrSizeInBytes();
-    if (szReal != szComputed) {
-        fmt::println(stderr,"InstrDecoder, instr.size difference detected, computed={}, real={}", szComputed, szReal);
-    }
-
-
     return true;
 }
 

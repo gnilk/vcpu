@@ -89,11 +89,10 @@ bool VirtualCPU::Step() {
 
     InstructionDecoder instrDecoder;
     instrDecoder.Begin(GetInstrPtr().data.longword);
-
     instrDecoder.Decode(*this);
 
-    // Advance forward..
-    AdvanceInstrPtr(instrDecoder.GetInstrSizeInBytes());
+    // Note: The instruction decoder will advance the IP
+
 
     //
     // This would be cool:
