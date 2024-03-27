@@ -44,6 +44,9 @@ bool InstructionDecoder::Tick(CPUBase &cpu) {
     return false;
 }
 
+//
+// This is the first TICK in an instruction - it will ALWAYS read 32bit of the Instr.Ptr...
+//
 bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     memoryOffset = cpu.GetInstrPtr().data.longword;
     ofsStartInstr = 0;
@@ -114,6 +117,11 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     return true;
 }
 
+//
+// this is the second tick - here we decode the Operands
+// relative addressing needs one byte per operand if used
+// Absolute addressing will need op.size bytes will read an additional X bytes (opSize dependent) from the instr.ptr
+//
 bool InstructionDecoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
     DecodeOperandArgAddrMode(cpu, opArgDst);
     DecodeOperandArgAddrMode(cpu, opArgSrc);
@@ -121,6 +129,9 @@ bool InstructionDecoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
     return true;
 }
 
+//
+// This is the third tick, here we fetch any data from from RAM - not following the instr. pointer
+//
 bool InstructionDecoder::ExecuteTickReadMem(CPUBase &cpu) {
     if (code.description.features & OperandDescriptionFlags::OneOperand) {
         value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);

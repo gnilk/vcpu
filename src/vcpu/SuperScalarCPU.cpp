@@ -81,6 +81,12 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
             }
             idLastExec = pipelineDecoder.id;
             decoder.state = InstructionDecoder::State::kStateIdle;
+
+            // should we 'pad' instructions up to next 32 bit boundary?
+            // this would make bus-reads (or in this case L1 cache reads 32 bit - which might simplify things)
+            auto alignMismatch = (cpu.GetInstrPtr().data.dword & 0x03);
+            auto deltaToAlign = (4 - alignMismatch) & 0x03;
+            fmt::println("Pipeline, ip={}, ofAlign={}, deltaToAlign={}", cpu.GetInstrPtr().data.dword, alignMismatch, deltaToAlign);
         }
 
     }
