@@ -1,6 +1,16 @@
 //
 // Created by gnilk on 14.12.23.
 //
+
+/*
+ * This defines a single step single execution CPU implementation.
+ * One instruction is fetched, decoded and executed everytime we call 'Step'.
+ *
+ * See 'SuperScalarCPU' for an in-order pipeline implementation - which does parallel work in tick's rather..
+ */
+
+
+
 /*
     Suggested memory layout:
     address:
@@ -28,16 +38,6 @@
         0x0100 - 0x1000,
 */
 
-// FIX-THIS:
-// 1) Make a pipeline with instr. decoding
-// 2) Pipeline should have a queue of instructions, each instr. have a decoder, the decoder is state-based
-// 3) rename 'step' to 'tick' - it should update the pipeline
-// 4) once an instruction is read into the pipeline the size should be computed and the PipeLine IP moved to this address
-// 5) Pipeline must have it's own address-ptr, so much each instr. decoder
-//
-// Once that is done - impl. some kind of Level1 cache handling and make the pipeline size configurable.
-//
-
 
 #include <stdlib.h>
 #include <functional>
@@ -50,9 +50,6 @@
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
-
-
-
 
 void VirtualCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);

@@ -1,14 +1,14 @@
 //
 // Created by gnilk on 27.03.24.
 //
+// FIX-THIS: Remove inheritence to CPUBase and supply CPUBase as an argument
+//
 
 #include "CPUInstructionBase.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-//
-// Consider moving this a base class - or somewhere else - so we can reuse this both in 'VirtualCPU' and this
 //
 bool CPUInstructionBase::ExecuteInstruction(InstructionDecoder &decoder) {
     switch(decoder.code.opCode) {
