@@ -42,7 +42,6 @@ namespace gnilk {
             InstructionDecoder()  = default;
             virtual ~InstructionDecoder() = default;
             static InstructionDecoder::Ref Create(uint64_t memoryOffset);
-            void Begin(uint64_t ipDecodeStartPoint);
 
             bool Tick(CPUBase &cpu);
             // Make this private when it works

@@ -88,17 +88,10 @@ bool VirtualCPU::Step() {
     }
 
     InstructionDecoder instrDecoder;
-    instrDecoder.Begin(GetInstrPtr().data.longword);
     instrDecoder.Decode(*this);
 
     // Note: The instruction decoder will advance the IP
 
-
-    //
-    // This would be cool:
-    // Also, we should put enough information in the first 2-3 bytes to understand the fully decoded size
-    // This way we can basically have multiple threads decoding instructions -> super scalar emulation
-    //
     if (!ExecuteInstruction(instrDecoder)) {
         return false;
     }
