@@ -42,6 +42,7 @@ namespace gnilk {
             InstructionDecoder()  = default;
             virtual ~InstructionDecoder() = default;
             static InstructionDecoder::Ref Create(uint64_t memoryOffset);
+            void Begin(uint64_t ipDecodeStartPoint);
 
             bool Tick(CPUBase &cpu);
             // Make this private when it works
@@ -66,10 +67,19 @@ namespace gnilk {
             size_t GetInstrSizeInBytes() {
                 return ofsEndInstr - ofsStartInstr;
             }
+            size_t GetInstrSizeInBytes() const {
+                return ofsEndInstr - ofsStartInstr;
+            }
             uint64_t GetInstrStartOfs() {
                 return ofsStartInstr;
             }
+            uint64_t GetInstrStartOfs() const {
+                return ofsStartInstr;
+            }
             uint64_t GetInstrEndOfs() {
+                return ofsEndInstr;
+            }
+            uint64_t GetInstrEndOfs() const {
                 return ofsEndInstr;
             }
 
@@ -131,27 +141,24 @@ namespace gnilk {
             Registers cpuRegistersAfter;
             CPUISRState isrStateBefore;
             CPUISRState isrStateAfter;
-            InstructionDecoder::Ref instrDecoder;
+            InstructionDecoder instrDecoder;
 
             CPUISRState GetISRStateBefore() const {
                 return isrStateBefore;
             }
 
             std::string ToString() const {
-                if (instrDecoder == nullptr) {
-                    return "";
-                }
-                return instrDecoder->ToString();
+                return instrDecoder.ToString();
             }
 
             size_t GetInstrSizeInBytes() const {
-                return instrDecoder->GetInstrSizeInBytes();
+                return instrDecoder.GetInstrSizeInBytes();
             }
             uint64_t GetInstrStartOfs() const {
-                return instrDecoder->GetInstrStartOfs();
+                return instrDecoder.GetInstrStartOfs();
             }
             uint64_t GetInstrEndOfs() const {
-                return instrDecoder->GetInstrEndOfs();
+                return instrDecoder.GetInstrEndOfs();
             }
 
 

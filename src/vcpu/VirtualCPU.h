@@ -10,6 +10,7 @@
 #include <stack>
 #include "fmt/format.h"
 #include "CPUBase.h"
+#include "CPUInstructionBase.h"
 #include "InstructionDecoder.h"
 #include "InstructionSet.h"
 #include "MemoryUnit.h"
@@ -21,7 +22,7 @@ namespace gnilk {
     namespace vcpu {
 
 
-        class VirtualCPU : public CPUBase {
+        class VirtualCPU : public CPUInstructionBase {
         public:
             VirtualCPU() = default;
             virtual ~VirtualCPU() = default;
@@ -35,32 +36,6 @@ namespace gnilk {
                 return &lastDecodedInstruction;
             }
 
-        protected:
-            // one operand instr.
-            void ExecutePushInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecutePopInstr(InstructionDecoder::Ref instrDecoder);
-
-            // two operand instr.
-            void ExecuteSysCallInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteMoveInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteAddInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteSubInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteMulInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteDivInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteCallInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteRetInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteRtiInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteLeaInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteLsrInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteLslInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteAslInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteAsrInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteCmpInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteBeqInstr(InstructionDecoder::Ref instrDecoder);
-            void ExecuteBneInstr(InstructionDecoder::Ref instrDecoder);
-
-
-            void WriteToDst(InstructionDecoder::Ref instrDecoder, const RegisterValue &v);
         private:
             Timer *timer0;
             LastInstruction lastDecodedInstruction;

@@ -38,6 +38,12 @@ InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
     return inst;
 }
 
+void InstructionDecoder::Begin(uint64_t ipDecodeStartPoint) {
+    memoryOffset = ipDecodeStartPoint;
+    ofsStartInstr = 0;
+    ofsEndInstr = 0;
+}
+
 bool InstructionDecoder::Tick(CPUBase &cpu) {
     switch(state) {
         case State::kStateIdle :
