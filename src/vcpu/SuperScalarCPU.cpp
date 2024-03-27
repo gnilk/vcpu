@@ -19,14 +19,15 @@ bool InstructionPipeline::Tick(CPUBase &cpu) {
     if (!Update(cpu)) {
         return false;
     }
-    if (pipeline[idxNextAvail].state == InstructionDecoder::State::kStateIdle) {
+    if (pipeline[idxNextAvail].decoder.state == InstructionDecoder::State::kStateIdle) {
         return BeginNext(cpu);
     }
     return true;
 
 }
 bool InstructionPipeline::IsEmpty() {
-    for(auto &decoder : pipeline) {
+    for(auto &pipelineDecoder : pipeline) {
+        auto &decoder = pipelineDecoder.decoder;
         if (decoder.state != InstructionDecoder::State::kStateIdle) {
             return false;
         }
@@ -35,42 +36,72 @@ bool InstructionPipeline::IsEmpty() {
 }
 
 bool InstructionPipeline::Update(CPUBase &cpu) {
-    for (auto &decoder : pipeline) {
+    for (auto &pipelineDecoder : pipeline) {
+        auto &decoder = pipelineDecoder.decoder;
+
         if (decoder.state == InstructionDecoder::State::kStateIdle) {
             continue;
         }
 
-        if (!decoder.Tick(cpu)) {
-            return false;
-        }
-        // We should check if we are allowed to run - or if there is another instruction queued before us...
-        // This can be a simple if 'instructionID = nextToExecuteID' and have a round-robin kind of scenario
-        // If this is twice the pipeline-size we can't risk overlap's (as some instructions can be quite large to decode)
 
-        if (decoder.state == InstructionDecoder::State::kStateFinished) {
+        if (CanExecute(pipelineDecoder)) {
+
+            idNextExec = NextExecID(idNextExec);
+
+            fmt::println("Pipeline, id={} (idLast={}, idNext={}), ticks={}, instr={}", pipelineDecoder.id, idLastExec, idNextExec, pipelineDecoder.tickCount, decoder.ToString());
             if (cbDecoded != nullptr) {
                 cbDecoded(decoder);
             }
+            idLastExec = pipelineDecoder.id;
             decoder.state = InstructionDecoder::State::kStateIdle;
+        }
+
+        // Tick this unless it was finished (i.e. moved back to idle)
+        if ((decoder.state != InstructionDecoder::State::kStateIdle) && !pipelineDecoder.Tick(cpu)) {
+                return false;
         }
     }
     return true;
 }
+size_t InstructionPipeline::NextExecID(size_t id) {
+    return (id + 1) % (GNK_VCPU_PIPELINE_SIZE << 2);
+}
+
+bool InstructionPipeline::CanExecute(InstructionPipeline::PipeLineDecoder &plDecoder) {
+    if (plDecoder.decoder.state != InstructionDecoder::State::kStateFinished) {
+        return false;
+    }
+    // Enforce in-order execution
+    // Note: the 'idNextExec' enforces in-order execution...
+    //       if removed the instructions are executed as soon as they are properly decoded
+    //       but we currently don't have any 'rules' to guard ordering so that won't probably work...
+    //
+    //       like;
+    //          move.l d0, 0x00         <- this requires 4 ticks
+    //          move.l d1, d0           <- this would be decoded in 3 ticks, but can't execute because it depends on the previous instr...
+    //
+
+    if (plDecoder.id != idNextExec) {
+        // Ok, this instruction is causing a pipe-line stall, we should track this!
+        return false;
+    }
+    return true;
+}
+
 bool InstructionPipeline::BeginNext(CPUBase &cpu) {
     // Next must be idle when we get here...
-    auto &decoder = pipeline[idxNextAvail];
+    auto &pipelineDecoder = pipeline[idxNextAvail];
+
+    auto &decoder = pipelineDecoder.decoder;
     idxNextAvail = (idxNextAvail + 1) % GNK_VCPU_PIPELINE_SIZE;
 
-    if (!decoder.Tick(cpu)) {
+    pipelineDecoder.id = idExec;
+    idExec = NextExecID(idExec);
+
+    if (!pipelineDecoder.Tick(cpu)) {
         return false;
     }
 
-    if (decoder.state == InstructionDecoder::State::kStateFinished) {
-        if (cbDecoded != nullptr) {
-            cbDecoded(decoder);
-        }
-        decoder.state = InstructionDecoder::State::kStateIdle;
-    }
     return true;
 }
 
