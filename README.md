@@ -62,6 +62,22 @@ an assembler instead of directly from the language. So instead
 of finishing the language I started to write an assembler for the
 emulated CPU...  Good riddance!
 
+# Stupidity or proceed?
+I made the initial op-code decoding step to always consume 32 bits of data. Was pondering to make any CPU
+access 32 bit aligned. However, that would waste quite a bit of space - so I decided not to.
+But I will for now be keeping the 32 bit OP-code structure..  Perhaps reverting it later..
+
+Also, changing the format to be strict about the first 32 bits and then additional information in the
+coming X number of bytes is causing a bit of headache in the compiler..
+
+For instance, relative addressing was previously solved as when ADDR mode was decoded the REL.ADDR followed.
+However, this broke the strict 32 bit alignment. Hence, any relative addr. indicators will now come afterwards.
+This made code-emitters in the compiler more complicated as they need to commit some extra bytes AFTER the initial
+32 bits have been emitted... And since I allow this on both src/dst operands I might have trailing oper.data from
+both operands... 
+
+Therefore there now is a 'postEmitter' array - where all post-emitters are placed. They are executed in placement order...
+
 # TO-DO
 ```pre
 - Refactor instruction decoder (and order of details) to enable pipelineing
@@ -138,6 +154,10 @@ Support for the following directives:
   - I2C Bus
   - SPI Bus
   - Other?
+- Piplining
+  + Work on pipelining in 'SuperScalarCPU' - it currently decodes in parallel but executes in-order.
+- Cache handling
+ - Work on L1/L2 caches. 
              
 - emulator
     ! accept elf files as executables
