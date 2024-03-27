@@ -18,6 +18,17 @@ using namespace gnilk::vcpu;
 //
 //
 
+
+const std::string &InstructionDecoder::StateToString(InstructionDecoder::State s) {
+    static std::unordered_map<InstructionDecoder::State, std::string> stateNames = {
+            {InstructionDecoder::State::kStateIdle, "Idle"},
+            {InstructionDecoder::State::kStateDecodeAddrMode, "AddrMode"},
+            {InstructionDecoder::State::kStateReadMem, "ReadMem"},
+            {InstructionDecoder::State::kStateFinished, "Finished"},
+    };
+    return stateNames[s];
+}
+
 InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
 
     auto inst = std::make_shared<InstructionDecoder>();

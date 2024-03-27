@@ -35,6 +35,8 @@ namespace gnilk {
                 kStateFinished,
             };
             State state = {};
+        public:
+            static const std::string &StateToString(State s);
 
         public:
             InstructionDecoder()  = default;

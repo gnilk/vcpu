@@ -16,6 +16,7 @@ using namespace gnilk;
 using namespace gnilk::vcpu;
 
 bool InstructionPipeline::Tick(CPUBase &cpu) {
+    tickCount++;
     if (!Update(cpu)) {
         return false;
     }
@@ -23,8 +24,28 @@ bool InstructionPipeline::Tick(CPUBase &cpu) {
         return BeginNext(cpu);
     }
     return true;
-
 }
+void InstructionPipeline::Flush(CPUBase &cpu) {
+    fmt::println("Pipeline, flushing");
+    for(auto &pipelineDecoder : pipeline) {
+        // We reset the IP to the next instruction that would execute
+        // FIXME: This won't work for out-of-order execution - not sure how to do that...
+        if (pipelineDecoder.id == idNextExec) {
+            fmt::println("  ResetIP to: {}", pipelineDecoder.ip.data.dword);
+            cpu.SetInstrPtr(pipelineDecoder.ip.data.dword);
+        }
+        fmt::println("  id={}, state={} (forcing to idle)", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder.state));
+        pipelineDecoder.decoder.state = InstructionDecoder::State::kStateIdle;
+    }
+}
+
+void InstructionPipeline::DbgDump() {
+    fmt::println("PipeLine @ tick = {}, ID Next To Execute={}, Next decoder Index={}", tickCount, idNextExec, idxNextAvail);
+    for(auto &pipelineDecoder : pipeline) {
+        fmt::println("  id={}, state={}, ticks={}", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder.state), pipelineDecoder.tickCount);
+    }
+}
+
 bool InstructionPipeline::IsEmpty() {
     for(auto &pipelineDecoder : pipeline) {
         auto &decoder = pipelineDecoder.decoder;
@@ -43,12 +64,20 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
             continue;
         }
 
+        // Tick this unless it was finished (i.e. moved back to idle)
+        if ((decoder.state != InstructionDecoder::State::kStateIdle)) {
+            if (!pipelineDecoder.Tick(cpu)) {
+                return false;
+            }
+        }
+
+
 
         if (CanExecute(pipelineDecoder)) {
 
             idNextExec = NextExecID(idNextExec);
 
-            fmt::println("Pipeline, id={} (idLast={}, idNext={}), ticks={}, instr={}", pipelineDecoder.id, idLastExec, idNextExec, pipelineDecoder.tickCount, decoder.ToString());
+            fmt::println("Pipeline, EXECUTE id={} (idLast={}, idNext={}), ticks={}, instr={}", pipelineDecoder.id, idLastExec, idNextExec, pipelineDecoder.tickCount, decoder.ToString());
             if (cbDecoded != nullptr) {
                 cbDecoded(decoder);
             }
@@ -56,10 +85,6 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
             decoder.state = InstructionDecoder::State::kStateIdle;
         }
 
-        // Tick this unless it was finished (i.e. moved back to idle)
-        if ((decoder.state != InstructionDecoder::State::kStateIdle) && !pipelineDecoder.Tick(cpu)) {
-                return false;
-        }
     }
     return true;
 }
@@ -96,8 +121,11 @@ bool InstructionPipeline::BeginNext(CPUBase &cpu) {
     idxNextAvail = (idxNextAvail + 1) % GNK_VCPU_PIPELINE_SIZE;
 
     pipelineDecoder.id = idExec;
+    pipelineDecoder.ip = cpu.GetInstrPtr();
     idExec = NextExecID(idExec);
 
+    fmt::println("PipeLine, begin instr @ {}", cpu.GetInstrPtr().data.dword);
+    ipLastFetch = cpu.GetInstrPtr();
     if (!pipelineDecoder.Tick(cpu)) {
         return false;
     }
@@ -133,6 +161,8 @@ bool SuperScalarCPU::ExecuteInstruction(InstructionDecoder &decoder) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
             registers.statusReg.flags.halt = 1;
+            // Enable this
+            // pipeline.Flush();
             break;
         case NOP :
             break;

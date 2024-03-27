@@ -33,28 +33,18 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
 
     InstructionPipeline pipeline;
     pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoder &decoder){
-        fmt::println("Execute: {}", decoder.ToString());
         cpu.ExecuteInstruction(decoder);
     });
 
     // This currently creates an out-of-order execution...
     while(!cpu.IsHalted()) {
+        pipeline.DbgDump();
         pipeline.Tick(cpu);
     }
-    if (!pipeline.IsEmpty()) {
-        fmt::println("pipeline is not empty");
-        while(!pipeline.IsEmpty()) {
-            pipeline.Tick(cpu);
-        }
-    }
-
-    // Verify intermediate mode reading works for 8,16,32,64 bit sizes
-//    vcpu.Step();
-//    TR_ASSERT(t, regs.dataRegisters[1].data.word == regs.dataRegisters[0].data.word);
-//    vcpu.Step();
-//    TR_ASSERT(t, regs.dataRegisters[1].data.word == regs.dataRegisters[5].data.word);
-//    vcpu.Step();
-//    TR_ASSERT(t, regs.dataRegisters[2].data.byte == regs.dataRegisters[5].data.byte);
+    pipeline.Flush(cpu);
+    fmt::println("******** done ********");
+    pipeline.DbgDump();
+    TR_ASSERT(t, pipeline.IsEmpty());
 
     return kTR_Pass;
 }

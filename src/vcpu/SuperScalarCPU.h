@@ -31,6 +31,7 @@ namespace gnilk {
             struct PipeLineDecoder {
                 size_t id = {};
                 int tickCount = 0;
+                RegisterValue ip;
                 InstructionDecoder decoder;
 
                 bool Tick(CPUBase &cpu) {
@@ -47,6 +48,9 @@ namespace gnilk {
             }
             bool Tick(CPUBase &cpu);    // Progress one tick
             bool IsEmpty();             // Check if pipeline is empty
+            void Flush(CPUBase &cpu);               // Flush pipeline
+
+            void DbgDump();
         protected:
             bool CanExecute(PipeLineDecoder &plDecoder);    // check if we are allowed to execute an instruction
             bool Update(CPUBase &cpu);      // Update the complete pipeline
@@ -59,8 +63,11 @@ namespace gnilk {
 
             size_t idExec = 0;      // this is assigned to the decoder at when the instruction decoding is started
             size_t idNextExec = 0;  // this is used to track which instruction should be executed next
-
             size_t idLastExec = 0;  // debugging - just which id was last executed
+
+            RegisterValue ipLastFetch = {};
+
+            size_t tickCount = 0;
 
             std::array<PipeLineDecoder, GNK_VCPU_PIPELINE_SIZE> pipeline;
         };
