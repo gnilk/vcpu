@@ -9,6 +9,9 @@
 #include <stdint.h>
 #include <unordered_map>
 
+//
+// When refactoring take a look at RISC-V, https://github.com/riscv-software-src/riscv-isa-sim
+//
 namespace gnilk {
     namespace vcpu {
         // DO NOT CHANGE
