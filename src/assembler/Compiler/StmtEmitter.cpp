@@ -596,10 +596,6 @@ bool EmitCodeStatement::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
     if (!EmitOpCodeForSymbol(stmt->Symbol())) {
         return false;
     }
-    // Align op-code base stuff..
-    while(data.size() != 4) {
-        EmitByte(0x00); // instruction is padded with zeros...
-    }
     return true;
 }
 
@@ -625,11 +621,6 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpIn
     // Was opsize genereated - in case not - insert it...
     if (!(emitFlags & kEmitFlags::kEmitOpSize)) {
         data.insert(data.begin() + opSizeWritePoint, opSize);
-    }
-
-    // Align op-code base stuff..
-    while(data.size() < 4) {
-        EmitByte(0x00); // instruction is padded with zeros...
     }
 
     // Now emit any left-overs belonging to the operands

@@ -343,12 +343,12 @@ DLL_EXPORT int test_vcpu_instr_add_reg2reg(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_instr_push(ITesting *t) {
     uint8_t program[]={
-        0x70,0x00,0x01,0x00, 0x43,                       // push.b 0x43
-        0x70,0x01,0x01,0x00, 0x42,0x00,                  // push.w 0x4200
-        0x70,0x02,0x01,0x00, 0x41,0x00,0x00,0x00,        // push.d 0x41000000
-        0x70,0x00,0x03,0x00,                            // push.b d0
-        0x70,0x01,0x13,0x00,                            // push.w d1
-        0x70,0x02,0x23,0x00,                            // push.d d2
+        0x70,0x00,0x01, 0x43,                       // push.b 0x43
+        0x70,0x01,0x01, 0x42,0x00,                  // push.w 0x4200
+        0x70,0x02,0x01, 0x41,0x00,0x00,0x00,        // push.d 0x41000000
+        0x70,0x00,0x03,                            // push.b d0
+        0x70,0x01,0x13,                            // push.w d1
+        0x70,0x02,0x23,                            // push.d d2
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
@@ -385,12 +385,12 @@ DLL_EXPORT int test_vcpu_instr_push(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
     // Must be reversed order form push...
     uint8_t program[]={
-        0x80,0x02,0x03,0x00,                            // pop.d d0
-        0x80,0x01,0x03,0x00,                            // pop.w d0
-        0x80,0x00,0x03,0x00,                            // pop.b d0
-        0x80,0x02,0x03,0x00,                            // pop.d d0
-        0x80,0x01,0x13,0x00,                            // pop.w d1
-        0x80,0x00,0x23,0x00,                            // pop.b d2
+        0x80,0x02,0x03,                            // pop.d d0
+        0x80,0x01,0x03,                            // pop.w d0
+        0x80,0x00,0x03,                            // pop.b d0
+        0x80,0x02,0x03,                            // pop.d d0
+        0x80,0x01,0x13,                            // pop.w d1
+        0x80,0x00,0x23,                            // pop.b d2
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
@@ -442,26 +442,26 @@ DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
     // 0xf1 = NOP
     uint8_t program[]={
-        0xc0,0x00,0x01,0x00, 0x08,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
-        0xf1,0x00,0x00,0x00,                       // 5 <- return address
-        0x00,0x00,0x00,0x00,                       // 9 HALT!
-        0xf1,0x00,0x00,0x00,                       // 13 <- call should go here
-        0xf1,0x00,0x00,0x00,                       // 17
-        0xf0,0x00,0x00,0x00,                       // 21 <- return, should be ip+1 => 5
+        0xc0,0x00,0x01,0x02,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        0xf1,                       // 4 <- return address
+        0x00,                       // 5 HALT!
+        0xf1,                       // 6 <- call should go here
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
     auto &instrPtr = vcpu.GetInstrPtr();
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 13);
+    TR_ASSERT(t, instrPtr.data.longword == 6);
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 17);
+    TR_ASSERT(t, instrPtr.data.longword == 7);
     vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 21);
+    TR_ASSERT(t, instrPtr.data.longword == 8);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 4);
     vcpu.Step();
     TR_ASSERT(t, instrPtr.data.longword == 5);
-    vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 9);
     vcpu.Step();
     // We should be halted now!
     TR_ASSERT(t, vcpu.IsHalted());
@@ -471,10 +471,11 @@ DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
     // FIXME: We should consider this to be a implicit instruction
     uint8_t program[]={
-        0xf1,0x00, 0x00, 0x00,
-        0xf1,0x00, 0x00, 0x00,
-        0xf1,0x00, 0x00, 0x00,
-        0xf1,0x00, 0x00, 0x00,        // 4 nop
+        0xf1,
+        0xf1,
+        0xf1,
+        0xf1,
+        0x00,
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
@@ -482,13 +483,13 @@ DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
     auto &instrPtr = vcpu.GetInstrPtr();
     TR_ASSERT(t, instrPtr.data.longword == 0);
     vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 1);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 2);
+    vcpu.Step();
+    TR_ASSERT(t, instrPtr.data.longword == 3);
+    vcpu.Step();
     TR_ASSERT(t, instrPtr.data.longword == 4);
-    vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 8);
-    vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 12);
-    vcpu.Step();
-    TR_ASSERT(t, instrPtr.data.longword == 16);
 
     return kTR_Pass;
 }
@@ -733,7 +734,7 @@ DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_beq(ITesting *t) {
     uint8_t program[]={
         0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
-        0xd0,0x00,0x01,0x00, 0xf6,            // beq.b -10
+        0xd0,0x00,0x01, 0xf7,            // beq.b -10
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();
@@ -758,7 +759,7 @@ DLL_EXPORT int test_vcpu_instr_beq(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_bne(ITesting *t) {
     uint8_t program[]={
         0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
-        0xd1,0x00,0x01,0x00, 0xf6,            // bne.b -9
+        0xd1,0x00,0x01,0xf7,            // bne.b -9
     };
     VirtualCPU vcpu;
     auto &regs = vcpu.GetRegisters();

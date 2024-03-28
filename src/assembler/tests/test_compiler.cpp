@@ -293,7 +293,7 @@ DLL_EXPORT int test_compiler_add_reg2reg(ITesting *t) {
 
 DLL_EXPORT int test_compiler_nop(ITesting *t) {
     std::vector<uint8_t> expectedBinary = {
-        0xf1,0x00,0x00,0x00
+        0xf1,
     };
     std::vector<std::string> code={
         {"nop"},
@@ -312,12 +312,12 @@ DLL_EXPORT int test_compiler_nop(ITesting *t) {
 
 DLL_EXPORT int test_compiler_push(ITesting *t) {
     std::vector<uint8_t> expectedBinaries[]= {
-        {0x70,0x00,0x01, 0x00, 0x80},                                // push.b 0x43
-        {0x70,0x01,0x01, 0x00, 0x80,0x70},                       // push.w 0x4200
-        {0x70,0x02,0x01, 0x00, 0x80,0x70,0x60,0x50},     // push.d 0x41000000
-        {0x70,0x00,0x03, 0x00},                            // push.b d0
-        {0x70,0x01,0x13, 0x00},                            // push.w d1
-        {0x70,0x02,0x23, 0x00},                            // push.d d2
+        {0x70,0x00,0x01,  0x80},                                // push.b 0x43
+        {0x70,0x01,0x01,  0x80,0x70},                       // push.w 0x4200
+        {0x70,0x02,0x01,  0x80,0x70,0x60,0x50},     // push.d 0x41000000
+        {0x70,0x00,0x03 },                            // push.b d0
+        {0x70,0x01,0x13 },                            // push.w d1
+        {0x70,0x02,0x23 },                            // push.d d2
 
     };
 
@@ -346,12 +346,12 @@ DLL_EXPORT int test_compiler_push(ITesting *t) {
 
 DLL_EXPORT int test_compiler_pop(ITesting *t) {
     std::vector<uint8_t> expectedBinaries[]= {
-        {0x80,0x02,0x03, 0x00},                            // pop.d d0
-        {0x80,0x01,0x03, 0x00},                            // pop.w d0
-        {0x80,0x00,0x03, 0x00},                            // pop.b d0
-        {0x80,0x02,0x03, 0x00},                            // pop.d d0
-        {0x80,0x01,0x13, 0x00},                            // pop.w d1
-        {0x80,0x00,0x23, 0x00},                            // pop.b d2
+        {0x80,0x02,0x03},                            // pop.d d0
+        {0x80,0x01,0x03},                            // pop.w d0
+        {0x80,0x00,0x03},                            // pop.b d0
+        {0x80,0x02,0x03},                            // pop.d d0
+        {0x80,0x01,0x13},                            // pop.w d1
+        {0x80,0x00,0x23},                            // pop.b d2
     };
 
     std::vector<std::string> codes={
@@ -379,16 +379,16 @@ DLL_EXPORT int test_compiler_pop(ITesting *t) {
 
 DLL_EXPORT int test_compiler_call_relative(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0xc0,0x00,0x01,0x00,0x0d,         // 0, Call IP+2   ; from en of instr -> 4+3 => 7
-        0xf1,0,0,0,                       // 5
-        0x00,0,0,0,                       // 9 WHALT!
-        0xf1,0,0,0,                       // 13 <- call should go here
-        0xf1,0,0,0,                       // 17
-        0xf0,0,0,0,                       // 21 <- return, should be ip+1 => 5
+        0xc0,0x00,0x01,0x03,         // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        0xf1,                       // 4
+        0x00,                       // 5 WHALT!
+        0xf1,                       // 6 <- call should go here
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
     };
     std::vector<std::string> codes={
         {
-            "call.b    0x0d\n "\
+            "call.b    0x03\n "\
             "nop      \n"\
             "brk        \n"\
             "label:\n"\
@@ -406,18 +406,20 @@ DLL_EXPORT int test_compiler_call_relative(ITesting *t) {
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
+    // FIXME: Step here to see we are actually doing what we are supposed to do!
+
     return kTR_Pass;
 }
 
 // Test of forward relative
 DLL_EXPORT int test_compiler_call_relative_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0xc0,0x00,0x01,0x00,0x09,        // 0, Call IP+x   ;  => 0x09 - from 0x04 to 0x0d => 0x0d-0x04 => 0x09
-        0xf1,0,0,0,                       // 5
-        0x00,0,0,0,                       // 9 WHALT!
-        0xf1,0,0,0,                       // 13 <- call should go here
-        0xf1,0,0,0,                       // 17
-        0xf0,0,0,0,                       // 21 <- return, should be ip+1 => 5
+        0xc0,0x00,0x01,0x03,        // 0, Call IP+x   ;  => 0x09 - from 0x04 to 0x0d => 0x0d-0x04 => 0x09
+        0xf1,                       // 4
+        0x00,                       // 5 WHALT!
+        0xf1,                       // 6 <- call should go here
+        0xf1,                       // 7
+        0xf0,                       // 8 <- return, should be ip+1 => 5
     };
     std::vector<std::string> codes={
         {
@@ -446,8 +448,8 @@ DLL_EXPORT int test_compiler_call_relative_label(ITesting *t) {
 DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
         0x90,0x00,0x03,0x01,0x33,       // cmp.b d0, 0x33
-        0xd0,0x00,0x01,0x00,0xf6,            // beq.b -9
-        0x00,0x00,0x00,0x00,
+        0xd0,0x00,0x01,0xf7,            // beq.b -9
+        0x00,
     };
     std::vector<std::string> codes={
         {
@@ -473,12 +475,12 @@ DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t) {
 
 DLL_EXPORT int test_compiler_call_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0xc0,0x03,0x01,0x00, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x14,        // 0, Call label, opSize = lword, [reg|mode] = 0|immediate, <address of label> = 0x0d
-        0xf1,0,0,0,                       // 12
-        0x00,0,0,0,                       // 16 WHALT!
-        0xf1,0,0,0,                       // 20 <- call should go here (offset of label)
-        0xf1,0,0,0,                       // 24
-        0xf0,0,0,0,                       // 28 <- return, should be ip+1 => 5
+        0xc0,0x03,0x01, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x0d,        // 0, Call label, opSize = lword, [reg|mode] = 0|immediate, <address of label> = 0x0d
+        0xf1,                       // 12
+        0x00,                       // 16 WHALT!
+        0xf1,                       // 20 <- call should go here (offset of label)
+        0xf1,                       // 24
+        0xf0,                       // 28 <- return, should be ip+1 => 5
     };
 
     std::vector<std::string> codes={
@@ -508,12 +510,12 @@ DLL_EXPORT int test_compiler_call_label(ITesting *t) {
 
 DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0x28,0x03,0x83,0x01, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x14,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
-        0xf1,0,0,0,                       // 12
-        0x00,0,0,0,                       // 16 WHALT!
-        0xf1,0,0,0,                       // 20 <- call should go here (offset of label)
-        0xf1,0,0,0,                       // 24
-        0xf0,0,0,0,                       // 28 <- return, should be ip+1 => 5
+        0x28,0x03,0x83,0x01, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x0e,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
+        0xf1,                       // 12
+        0x00,                       // 13 WHALT!
+        0xf1,                       // 14 Label is here
+        0xf1,                       // 15
+        0xf0,                       // 16 <- return, should be ip+1 => 5
     };
 
     std::vector<std::string> codes={
@@ -543,12 +545,12 @@ DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
 
 DLL_EXPORT int test_compiler_move_indirect(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0x28,0x03,0x83,0x01, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x14,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
-        0x20,0x00,0x03,0x80,              // 12
-        0x00,0,0,0,                       // 16 WHALT!
-        0xf1,0,0,0,                       // 20 <- call should go here (offset of label)
-        0xf1,0,0,0,                       // 24
-        0xf0,0,0,0,                       // 28 <- return, should be ip+1 => 5
+        0x28,0x03,0x83,0x01, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x11,        // 0, Call label, opSize = lword, [reg|mode] = 0|abs, <address of label> = 0x0d
+        0x20,0x00,0x03,0x80,        // 12
+        0x00,                       // 16 WHALT!
+        0xf1,                       // 17 this is the address we should le in...
+        0xf1,                       // 18
+        0xf0,                       // 19 <- return, should be ip+1 => 5
     };
 
     std::vector<std::string> codes={

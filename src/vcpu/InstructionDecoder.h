@@ -63,11 +63,12 @@ namespace gnilk {
                 return value;
             }
 
+            // Remove these
             size_t GetInstrSizeInBytes() {
-                return ofsEndInstr - ofsStartInstr;
+                return ComputeInstrSize();
             }
             size_t GetInstrSizeInBytes() const {
-                return ofsEndInstr - ofsStartInstr;
+                return ComputeInstrSize();
             }
             uint64_t GetInstrStartOfs() {
                 return ofsStartInstr;
@@ -115,8 +116,8 @@ namespace gnilk {
             void DecodeOperandArg(CPUBase &cpu, OperandArg &inOutOpArg);
             void DecodeOperandArgAddrMode(CPUBase &cpu, OperandArg &inOutOpArg);
 
-            size_t ComputeInstrSize();
-            size_t ComputeOpArgSize(OperandArg &opArg);
+            size_t ComputeInstrSize() const;
+            size_t ComputeOpArgSize(const OperandArg &opArg) const;
         public:
             // Used during by decoder...
 

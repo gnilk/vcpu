@@ -49,8 +49,8 @@ bool InstructionDecoder::Tick(CPUBase &cpu) {
 //
 bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     memoryOffset = cpu.GetInstrPtr().data.longword;
-    ofsStartInstr = 0;
-    ofsEndInstr = 0;
+    ofsStartInstr = memoryOffset;
+    ofsEndInstr = memoryOffset;
 
     code.opCodeByte = NextByte(cpu);
     if (code.opCodeByte == 0xff) {
@@ -69,9 +69,8 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     //
     // Decode addressing
     //
-    code.opSizeAndFamilyCode = NextByte(cpu);
-
     if (code.description.features & OperandDescriptionFlags::OperandSize) {
+        code.opSizeAndFamilyCode = NextByte(cpu);
         code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
     } else if (code.opSizeAndFamilyCode != 0) {
@@ -89,19 +88,14 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
     if (code.description.features & OperandDescriptionFlags::OneOperand) {
         DecodeOperandArg(cpu, opArgDst);
-
-        // Alignment byte - we always have 32 bits in the operand, before we read any immediate or extension bits..
-        // This makes pipelining easier...
-        NextByte(cpu);
-
     } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
         DecodeOperandArg(cpu, opArgDst);
         DecodeOperandArg(cpu, opArgSrc);
     } else {
-        // No operands, we three trailing bytes
-        NextByte(cpu);
-        NextByte(cpu);
     }
+
+    ofsEndInstr = memoryOffset;
+
     auto szComputed = ComputeInstrSize();
 
     // now we know how much data to consume for this instruction - advance to next - which allows us to proceed next tick
@@ -154,8 +148,9 @@ bool InstructionDecoder::Decode(CPUBase &cpu) {
     return true;
 }
 
-size_t InstructionDecoder::ComputeInstrSize() {
-    size_t opSize = 4;
+size_t InstructionDecoder::ComputeInstrSize() const {
+    size_t opSize = ofsEndInstr - ofsStartInstr;    // Start here - as operands have different sizes..
+
     if (code.description.features & OperandDescriptionFlags::OneOperand) {
         opSize += ComputeOpArgSize(opArgDst);
     } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
@@ -165,7 +160,7 @@ size_t InstructionDecoder::ComputeInstrSize() {
     return opSize;
 }
 
-size_t InstructionDecoder::ComputeOpArgSize(InstructionDecoder::OperandArg &opArg) {
+size_t InstructionDecoder::ComputeOpArgSize(const InstructionDecoder::OperandArg &opArg) const {
     size_t szOpArg = 0;
     if (opArg.addrMode == AddressMode::Absolute) {
         szOpArg += sizeof(uint64_t);
