@@ -24,7 +24,7 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
             0x20,0x01,0x13,0x03,    // move.w d1, d0
             0x20,0x01,0x53,0x13,    // move.w d5, d1
             0x20,0x00,0x23,0x53,    // move.b d2, d5
-            0x00, 0x00, 0x00, 0x00, // brk
+            0x00,  // brk
     };
     SuperScalarCPU cpu;
     cpu.QuickStart(program, 1024);
@@ -38,9 +38,14 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
     });
 
     // This currently creates an out-of-order execution...
+    int counter = 0;
     while(!cpu.IsHalted()) {
         pipeline.DbgDump();
         pipeline.Tick(cpu);
+        counter++;
+        if(counter > 100) {
+            return kTR_Fail;
+        }
     }
     pipeline.Flush(cpu);
     fmt::println("******** done ********");
@@ -74,7 +79,7 @@ DLL_EXPORT int test_pipeline_instr_move_immediate(ITesting *t) {
             // move.l d5, 0x8877665544332211
             0x20,0x03,0x43,0x01, 0x88,0x77,0x66,0x55,0x44,0x33,0x22,0x11,
             // brk - to halt CPU
-            0x00, 0x00, 0x00, 0x00,
+            0x00,
 
     };
     SuperScalarCPU cpu;
@@ -85,9 +90,14 @@ DLL_EXPORT int test_pipeline_instr_move_immediate(ITesting *t) {
     });
 
     // This currently creates an out-of-order execution...
+    int counter = 0;
     while(!cpu.IsHalted()) {
         pipeline.DbgDump();
         pipeline.Tick(cpu);
+        counter++;
+        if (counter > 200) {
+            return kTR_Fail;
+        }
     }
     pipeline.Flush(cpu);
     fmt::println("******** done ********");

@@ -73,10 +73,6 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
         code.opSizeAndFamilyCode = NextByte(cpu);
         code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
-    } else if (code.opSizeAndFamilyCode != 0) {
-        // FIXME: Raise invalid opsize here exception!
-        fmt::println(stderr, "InstrDecoder, operand size not available for '{}' - must be zero, got: {}", gnilk::vcpu::GetInstructionSet().at(code.opCode).name, code.opSizeAndFamilyCode);
-        return false;
     }
 
     //
