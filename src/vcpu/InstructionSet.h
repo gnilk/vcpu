@@ -15,31 +15,51 @@ namespace gnilk {
     namespace vcpu {
         //
         // It is actually faster by some 10% to have more complicated instr. set...
-        // However, I want the instruction set to be flexible and easier to handle - to I will
+        // However, I want the instruction set to be flexible and easier to handle
         //
 
+        // TO-DO:
+        // - extend this with atomic stuff (use lc/sr or cas?; https://en.wikipedia.org/wiki/Load-link/store-conditional)
+        //      - do I need atomic swap and such?
+        // - 'fence' to sync pipeline
+        // - 'hint' or other instructions to read performance values or update them; see RISC-V ISA
+        // - Need to verify my core control block - most likely must extend this (see RISC-V ISA, Chapter 10 - they have 4096 CSR reg's)
+        //   also see: file:///home/gnilk/Downloads/priv-isa-asciidoc.pdf
+        // - might need something to handle the mmu explicitly...
 
         //
-        // operand decoding like:
+        // Op-Codes are either 1,3 or 4 bytes..
+        // 1 byte - NOP, RET, RTI, CLC, SEC, etc... which operate on predefined flags or simply don't have an argument
+        // 3 byte - single operand code, with opsize and family; call
+        // 4 byte - double operand code, with opsize and family; move, lea, add, sub, etc...
         //
         // Basic two-operand mnemonic layout is 32 bits, like: move <op1>,<op2>
+        // Relative addressing adds one or two bytes for relative modes. It is possible to have 'move (a0+d1<<1),(a1+d2<<2)'
+        //
         //
         //  byte | What
         //  ----------------------------
         //    0  | Op Code
         //    1  | OpSizeAndFamily (rrFF | rrSS)
         //           SS, Size bits 0,1 (0,1,2,3)
-        //           FF, Family bits
+        //           FF, Family bits [0 - integer, 1 - control, 2 - floating]
+        //           rr, Reserved
         //    2  | Dst Register and Flags: RRRR | FFFF => upper 4 bits register index (0..7 => D0..D7, 8..15 => A0..A7)
         //       |  Flags [FFFF] -> [RR|AA]
         //       |      RR : Relative Addressing (None, RegRelative, Absolute, <unused>)
         //       |      AA : Address Mode (Indirect, Immediate, Absolute, Register)
-        //       | if Relative Addressing set (RegRelative or Absolute) another byte will follow.
-        //       |    if RegRelative => RRRR | SSSS, R = RegIndex, S => Shift
-        //       |    if Absoluate   => <offset>
         //       |
         //    3  | Src Register and Flags: RRRR | FFFF => upper 4 bits 16 bit register index (0..7 => D0..D7, 8..15 => A0..A7)
-        //       |  Flags: AddressMode flags (Indirect, Immediate, Absolute, Register) - we have 2 bits spare!
+        //       |  Flags [FFFF] -> [RR|AA]
+        //       |      RR : Relative Addressing (None, RegRelative, Absolute, <unused>)
+        //       |      AA : Address Mode (Indirect, Immediate, Absolute, Register)
+        //
+        // [4..5]| if Relative Addressing set (RegRelative or Absolute) another byte will follow for each operand with rel. addressing
+        //       |    if RegRelative => RRRR | SSSS, R = RegIndex, S => Shift
+        //       |    if Absolute   => <offset>
+        //
+        //   ..  | Absolute or Immediate value
+        //
         // ---------------------------------------------------------------------------
         // Note: Destination Address Mode 'Immediate' is invalid
         //
@@ -48,7 +68,7 @@ namespace gnilk {
         // SrcAddressMode: Immediate
         //  byte | What
         //  ----------------------------------
-        //  0..n | Depedning on Address size 8..64 bits value follows
+        //  0..n | Depending on Address size 8..64 bits value follows
         //
         // Example:
         //  move.b d0, 0x44  => 0x20, 0x00, 0x03, 0x01, 0x44
@@ -85,12 +105,12 @@ namespace gnilk {
         } RelativeAddressMode;
 
         // Operand Size has 1 byte and the following layout
-        //  OpSize: rrff | rrss
+        //  OpSize: rrFF | rrSS
         // where:
         //    rr - reserved, 2 bits
-        //    ff - operand family or class
+        //    FF - operand family or class
         //    rr - reserved, 2 bits
-        //    ss - size
+        //    SS - size
         // Perhaps: Add one bit for 'zero extend'?
         //  OpSize: xxxx | xZSS  ?
         // Perhaps add a family of instructions which always have <byte> size operand
