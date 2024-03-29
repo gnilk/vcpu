@@ -138,8 +138,7 @@ Support for the following directives:
       Currently we fire interrupts even if no handlers are enabled (not good)
       All Interrupts should be disabled on reset...
     + Properly define the memory layout
-      + MMU (emulate an MMU)
-    + ROM/RAM area, Int-Vector table, etc...
+      + ROM/RAM area, Int-Vector table, etc...
     - Raise exceptions
         - Within the CPU using the Int-Vector table
         - To the emulator
@@ -156,9 +155,23 @@ Support for the following directives:
   - Other?
 - Piplining
   + Work on pipelining in 'SuperScalarCPU' - it currently decodes in parallel but executes in-order.
+
++ MMU (emulate an MMU)
+  - Refactor the MMU, just define the table layout
+  - Address Translation
+  - Integrate the Cache mechanism
+    - The MMU should replace the 'RamMemory' class in the Cache impl.
+  - Functions to bypass (i.e. priviledge/supervisor mode -> CPU Cntrl Reg)
+
+- Bios, based on syscall's (for the time beeing)
+  - Alloc/Free, routines - that integrate with the MMU
+    - Need this to start testing MMU and Address Translation
+
 - Cache handling
- - Work on L1/L2 caches. 
-             
+  - Integrate memory cache from Linux Dev Machine
+  - Work on L1/L2 caches (not sure I need L2 at this stage) 
+ 
+        
 - emulator
     ! accept elf files as executables
         
