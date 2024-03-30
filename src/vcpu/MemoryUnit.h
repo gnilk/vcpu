@@ -11,6 +11,12 @@
 
 //
 // When refactoring take a look at RISC-V, https://github.com/riscv-software-src/riscv-isa-sim
+// And: https://ics.uci.edu/~swjun/courses/2021W-CS152/slides/lec10%20-%20Virtual%20memory.pdf
+// Specifically slides 8.. and then 18..
+// Pay care to slide 15 and 16 (TLB)
+// Also decide if cache comes before TLB or after (see slides 25..30)
+//
+// Move this to 'MemorySubSys' and integrate with CPUMemCache
 //
 namespace gnilk {
     namespace vcpu {
