@@ -123,10 +123,11 @@ namespace gnilk {
             Cache() = default;
             virtual ~Cache() = default;
 
+            int GetNumLines() const;
             int GetLineIndex(uint64_t addrDescriptor);
             int NextLineIndex();
 
-            kMESIState GetLineState(int idxLine);
+            kMESIState GetLineState(int idxLine) const;
             kMESIState SetLineState(int idxLine, kMESIState newState);
 
             void ResetLine(int idxLine);
@@ -152,7 +153,9 @@ namespace gnilk {
             int32_t Read(void *dst, const void *src, size_t nBytesToRead);
             int32_t Write(void *dst, const void *src, size_t nBytesToWrite);
 
-
+            const Cache& GetCache() {
+                return cache;
+            }
             void Dump();
         protected:
 

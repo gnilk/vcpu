@@ -80,6 +80,10 @@ void DataBus::WriteMemory(uint64_t addrDescriptor, const void *src) {
 //
 // Cache
 //
+int Cache::GetNumLines() const {
+    return lines.size();
+}
+
 int Cache::GetLineIndex(uint64_t addrDescriptor) {
     // Replace with binary search
     for(size_t i=0;i<lines.size();i++) {
@@ -100,7 +104,7 @@ int Cache::NextLineIndex() {
     return next;
 }
 
-kMESIState Cache::GetLineState(int idxLine) {
+kMESIState Cache::GetLineState(int idxLine) const {
     return lines[idxLine].state;
 }
 
