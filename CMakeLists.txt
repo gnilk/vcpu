@@ -44,10 +44,13 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/MemoryUnit.cpp src/vcpu/MemorySubSys/M
 #
 list(APPEND vcputestsrc tests/test_integration.cpp)
 list(APPEND vcputestsrc tests/test_interrupt.cpp)
-list(APPEND vcputestsrc tests/test_mmu.cpp)
 list(APPEND vcputestsrc tests/test_pipeline.cpp)
 list(APPEND vcputestsrc tests/test_timer.cpp)
 list(APPEND vcputestsrc tests/test_vcpu.cpp)
+# mem subsys tests
+list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu.cpp)
+list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_cache.cpp)
+
 
 
 #
