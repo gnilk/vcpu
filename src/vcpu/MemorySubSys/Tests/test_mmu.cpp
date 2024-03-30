@@ -16,6 +16,7 @@ using namespace gnilk::vcpu;
 
 extern "C" {
     DLL_EXPORT int test_mmu(ITesting *t);
+    DLL_EXPORT int test_mmu_translate(ITesting *t);
     DLL_EXPORT int test_mmu_isvalid(ITesting *t);
     DLL_EXPORT int test_mmu_allocate(ITesting *t);
     DLL_EXPORT int test_mmu_allocate_many(ITesting *t);
@@ -48,6 +49,27 @@ static void DumpBitmapTable(MemoryUnit &mmu, size_t szMax) {
 DLL_EXPORT int test_mmu(ITesting *t) {
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_mmu_translate(ITesting *t) {
+    MemoryUnit mmu;
+    mmu.Initialize(ram, MMU_MAX_MEM);
+    // We need to make sure that RAM doesn't start at address 0...
+    auto virtualAddress = mmu.AllocatePage();
+
+    auto translatedAddress = mmu.TranslateAddress(virtualAddress);
+    TR_ASSERT(t, translatedAddress == MemoryUnit::VIRTUAL_ADDR_SPACE_START);
+    auto translatedAddress2 = mmu.TranslateAddress(virtualAddress+128);
+    TR_ASSERT(t, translatedAddress2 == (MemoryUnit::VIRTUAL_ADDR_SPACE_START + 128));
+
+    // Outside the page - this should not exists
+    auto translatedAddress3 = mmu.TranslateAddress(virtualAddress+5000);
+    TR_ASSERT(t, translatedAddress3 == 0);
+
+    mmu.FreePage(virtualAddress);
+
+    return kTR_Pass;
+}
+
 
 DLL_EXPORT int test_mmu_isvalid(ITesting *t) {
     MemoryUnit mmu;
