@@ -20,6 +20,10 @@
 //
 // Slide 39 provides a nice overview of HW/SW
 //
+// When allocating a page we need to make sure that 'VirtualRAM' doesn't start at address 0
+// Like we can reserve the first 4gb of virtual memory to something else...
+//
+//
 namespace gnilk {
     namespace vcpu {
         // DO NOT CHANGE
@@ -77,7 +81,8 @@ namespace gnilk {
                 PageDescriptor descriptor[VCPU_MMU_MAX_DESCRIPTORS];
             };
 #pragma pack(pop)
-
+            // This is where the virtual address space starts - everything below this is reserved!
+            static const uint64_t VIRTUAL_ADDR_SPACE_START = 0x80000000;
         public:
             MemoryUnit() = default;
             virtual ~MemoryUnit() = default;

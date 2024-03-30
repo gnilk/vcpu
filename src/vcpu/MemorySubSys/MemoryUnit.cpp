@@ -98,7 +98,7 @@ uint64_t MemoryUnit::AllocatePage() {
     uint64_t virtualDesc = (idxDesc << (12 + VCPU_MMU_PAGES_NBITS));
     uint64_t viurtualPage = (idxPage << 12);
 
-    uint64_t virtualAddress = virtualRoot | virtualDesc | viurtualPage;
+    uint64_t virtualAddress = (virtualRoot | virtualDesc | viurtualPage) | VIRTUAL_ADDR_SPACE_START;
 
     // Indicate number of pages, and allocate one..
     rootTables[idxRootTable].descriptor[idxDesc].nPages++;
@@ -199,6 +199,18 @@ bool MemoryUnit::IsAddressValid(uint64_t virtualAddress) {
     return true;
 }
 uint64_t MemoryUnit::TranslateAddress(uint64_t virtualAddress) {
+    // 1) TLB Lookup, hit -> protection check
+    // 2) Page table walk -> not resident in memory -> Page Fault Handler -> OS/Handler load page
+    // 3) Update TLB
+    // 4) Protection check, denied -> Protection Fault
+    // 5) Physical address [update cache]
+
+    auto page = GetPageForAddress(virtualAddress);
+    if (page == nullptr) {
+        // fixme: raise mmu-exception page-no-found
+        return 0;
+    }
+
     return virtualAddress;
 }
 
