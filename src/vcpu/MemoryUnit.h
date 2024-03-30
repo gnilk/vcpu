@@ -18,6 +18,8 @@
 //
 // Move this to 'MemorySubSys' and integrate with CPUMemCache
 //
+// Slide 39 provides a nice overview of HW/SW
+//
 namespace gnilk {
     namespace vcpu {
         // DO NOT CHANGE
