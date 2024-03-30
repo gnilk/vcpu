@@ -35,6 +35,10 @@ list(APPEND vcpusrc src/vcpu/Peripheral.h)
 list(APPEND vcpusrc src/vcpu/SuperScalarCPU.cpp)
 list(APPEND vcpusrc src/vcpu/Timer.cpp src/vcpu/Timer.h)
 list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
+
+# HW emulated memory handling
+list(APPEND vcpusrc src/vcpu/MemorySubSys/CPUMemCache.cpp src/vcpu/MemorySubSys/CPUMemCache.h)
+
 #
 # Virtual CPU unit test sources
 #
