@@ -7,7 +7,7 @@
 #include <testinterface.h>
 
 #include "VirtualCPU.h"
-#include "MemoryUnit.h"
+#include "MemorySubSys/MemoryUnit.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;

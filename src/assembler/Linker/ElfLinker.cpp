@@ -7,7 +7,7 @@
 #include <sstream>
 #include "ElfLinker.h"
 
-#include "MemoryUnit.h"
+#include "MemorySubSys/MemoryUnit.h"
 
 using namespace ELFIO;
 using namespace gnilk::assembler;

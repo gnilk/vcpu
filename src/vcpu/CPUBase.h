@@ -12,7 +12,7 @@
 
 #include "fmt/format.h"
 #include "InstructionSet.h"
-#include "MemoryUnit.h"
+#include "MemorySubSys/MemoryUnit.h"
 #include "Peripheral.h"
 #include "Interrupt.h"
 

@@ -9,7 +9,7 @@
 #include "CPUInstructionBase.h"
 #include "InstructionDecoder.h"
 #include "InstructionSet.h"
-#include "MemoryUnit.h"
+#include "MemorySubSys/MemoryUnit.h"
 #include "Timer.h"
 #include <array>
 
