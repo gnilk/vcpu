@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unordered_map>
+#include "CPUMemCache.h"
 
 //
 // When refactoring take a look at RISC-V, https://github.com/riscv-software-src/riscv-isa-sim
@@ -119,6 +120,13 @@ namespace gnilk {
                 return (virtualAddress >> 12) & (VCPU_MMU_MAX_PAGES_PER_DESC-1);
             }
         private:
+            // FIXME: the MMU needs the cache controller, the cache controller needs access to the data-bus
+            //        there should only be ONE databus per CPU independently of number of cores..
+            //        MMU -> Cache -> DataBus...
+            //        So, the DataBus is shared across CORE's but each CORE has their own MMU/Cache handling
+            //        Which makes sense since MMU Tables should be handled as regular memory access (read/write)
+            //CacheController cacheController;
+
             void *ptrPhysicalRamStart = nullptr;
             size_t szPhysicalRam = 0;
 

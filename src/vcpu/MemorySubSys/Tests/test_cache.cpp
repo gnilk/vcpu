@@ -19,12 +19,14 @@ DLL_EXPORT int test_cache_sync(ITesting *t) {
     int32_t value = 4711;
     uint8_t buffer[2048];
     RamMemory ram(65536);
-    DataBus bus(ram);
+    //DataBus bus(ram);
+    DataBus::Instance().SetRamMemory(&ram);
 
-    CacheController cacheControllerA(bus, 0);
-    CacheController cacheControllerB(bus, 1);
-    CacheController cacheControllerC(bus, 2);
-    CacheController cacheControllerD(bus, 3);
+    CacheController cacheControllerA;
+    CacheController cacheControllerB;
+
+    cacheControllerA.Initialize(0);
+    cacheControllerB.Initialize(1);
 
     //
     // on CoreA (CacheControllerA) we 'write' 4711 (to virtual address 0x4711)

@@ -13,68 +13,6 @@
 
 using namespace gnilk::vcpu;
 
-RamMemory::RamMemory(size_t szRam) {
-    data = new uint8_t[szRam];
-}
-RamMemory::~RamMemory() {
-    delete[] data;
-}
-
-void RamMemory::Write(uint64_t addrDescriptor, const void *src) {
-    memcpy(&data[addrDescriptor], src, GNK_L1_CACHE_LINE_SIZE);
-}
-void RamMemory::Read(void *dst, uint64_t addrDescriptor) {
-    memcpy(dst, &data[addrDescriptor], GNK_L1_CACHE_LINE_SIZE);
-}
-
-
-void DataBus::Subscribe(uint8_t idCore, MessageHandler cbOnMessage) {
-    if (idCore >= GNK_CPU_NUM_CORES) {
-        return;
-    }
-    subscribers[idCore].idCore = idCore;
-    subscribers[idCore].cbOnMessage = std::move(cbOnMessage);
-    nextSubscriber++;
-}
-
-kMESIState DataBus::BroadCastRead(uint8_t idCore, uint64_t addrDescriptor) {
-    return SendMessage(kMemOp::kBusRd, idCore, addrDescriptor);
-}
-void DataBus::BroadCastWrite(uint8_t idCore, uint64_t addrDescriptor) {
-    SendMessage(kMemOp::kBusWr, idCore, addrDescriptor);
-}
-
-kMESIState DataBus::SendMessage(kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
-    // We just want the top bits - the rest is the same regardless, we drag in a full line..
-    // Ergo - it makes sense to align array's to CACHE_LINE_SIZE...
-
-    for(auto &snooper : subscribers) {
-        if (snooper.idCore == sender) {
-            continue;
-        }
-        if (snooper.cbOnMessage == nullptr) {
-            continue;
-        }
-        auto res = snooper.cbOnMessage(op, sender, addrDescriptor);
-        // FIXME: Need to verify this a bit more
-        if (res != kMesi_Invalid) {
-            return res;
-        }
-    }
-    // No one had this memory block!
-    //subscribers[sender].cbOnMessage()
-
-
-    return kMESIState::kMesi_Invalid;
-}
-
-void DataBus::ReadMemory(void *dst, uint64_t addrDescriptor) {
-    ram.Read(dst, addrDescriptor);
-}
-
-void DataBus::WriteMemory(uint64_t addrDescriptor, const void *src) {
-    ram.Write(addrDescriptor, src);
-}
 
 //////////////////////////////////////////////////////////////////////////
 //
@@ -171,11 +109,11 @@ void Cache::DumpCacheLines() {
 // Cache Controller
 //
 
-CacheController::CacheController(DataBus &dataBus, uint8_t coreIdentifier) :
-    bus(dataBus),
-    idCore(coreIdentifier) {
+// This should not be in the CTOR - I hate CTOR's...
+void CacheController::Initialize(uint8_t coreIdentifier) {
+    idCore = coreIdentifier;
 
-    bus.Subscribe(idCore, [this](DataBus::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
+    DataBus::Instance().Subscribe(idCore, [this](DataBus::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
         return OnDataBusMessage(op, sender, addrDescriptor);
     });
 }
@@ -228,7 +166,8 @@ int32_t CacheController::Read(void *dst, const void *src, size_t nBytesToRead) {
     kMESIState state = kMesi_Exclusive;
 
     // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
-    auto res = bus.BroadCastRead(idCore, addrDescriptor);
+
+    auto res = DataBus::Instance().BroadCastRead(idCore, addrDescriptor);
     if (res != kMesi_Invalid) {
         // Shared
         state = kMesi_Shared;
@@ -245,7 +184,7 @@ int32_t CacheController::Read(void *dst, const void *src, size_t nBytesToRead) {
 //
 int32_t CacheController::Write(void *dst, const void *src, size_t nBytesToWrite) {
     uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(dst);
-    bus.BroadCastWrite(idCore, addrDescriptor);
+    DataBus::Instance().BroadCastWrite(idCore, addrDescriptor);
 
     auto idxLine = ReadLine(addrDescriptor, kMESIState::kMesi_Exclusive);
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(dst);
@@ -271,12 +210,12 @@ void CacheController::WriteMemory(int idxLine) {
     uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
 
     cache.ReadLineData(tmp, idxLine);
-    bus.WriteMemory(cache.GetLineAddrDescriptor(idxLine), tmp);
+    DataBus::Instance().WriteMemory(cache.GetLineAddrDescriptor(idxLine), tmp);
 }
 
 void CacheController::ReadMemory(int idxLine, uint64_t addrDescriptor, kMESIState state) {
     uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
-    bus.ReadMemory(tmp, addrDescriptor);
+    DataBus::Instance().ReadMemory(tmp, addrDescriptor);
     cache.WriteLineData(idxLine, tmp, addrDescriptor, state);
 }
 
@@ -285,32 +224,3 @@ void CacheController::Dump() {
     cache.DumpCacheLines();
 }
 
-/*
-int main() {
-    int32_t value = 4711;
-    uint8_t buffer[2048];
-    RamMemory ram(65536);
-    DataBus bus(ram);
-
-    CacheController cacheControllerA(bus, 0);
-    CacheController cacheControllerB(bus, 1);
-    CacheController cacheControllerC(bus, 2);
-    CacheController cacheControllerD(bus, 3);
-
-
-    void *ptrRamDst = ram.TranslateAddress((void *)0x4711);
-    auto nWritten = cacheControllerA.Write(ptrRamDst, &value, sizeof(value));
-    printf("Wrote: %d bytes, value = %d\n", nWritten, value);
-
-    int32_t outValue = 0;
-    auto nRead = cacheControllerB.Read(&outValue, ptrRamDst, sizeof(value));
-    printf("Read: %d bytes, got = %d\n", nRead, outValue);
-
-
-    cacheControllerA.Dump();
-    cacheControllerB.Dump();
-
-
-    return 0;
-}
- */
