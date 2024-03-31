@@ -1,0 +1,56 @@
+Ok, I will try to consolidate some thoughts here instead of scattered across the source..
+
+
+1) Cache should work on virtual addresses
+2) MMU should be _BELOW_ Cache..
+
+so cpu does:
+    memory.read()
+        cache kick's in (is this in L1) -> yes, all good, return
+            talk to MMU to fetch the data
+                MMU de-translates the address
+                    Issues a statement to the DataBus to fetch
+
+Need to consider a few things here - who talks to the MMU?
+Will the DataBus work with already translated addresses?
+Or should the DataBus talk to the MMU - but the DataBus is a singleton - thus - it needs
+to know the MMU (which is a problem). The other way is letting the MMU proxy the DataBus and thus intercept the calls
+and translate on the fly...   => need to isolate this design and test it out..
+
+
+Tech details about how I store virtual addresses:
+        addresses are always 64bit, a mapped pages is looked up like:
+
+        [8][8][8][....][12] =>
+         8 bit table-index
+         8 bit descriptor-index
+         8 bit page-index
+         [12 bits unused]        <- Here we drop in the 'VAddrStart' as 0x8000 0000
+         12 bit page-offset
+
+        static const uint64_t VIRTUAL_ADDR_SPACE_START = 0x80000000;
+
+    // The MMU computes a virtual address according to this formula:
+    uint64_t virtualAddress = (virtualRoot | virtualDesc | viurtualPage) | VIRTUAL_ADDR_SPACE_START;
+
+    This means I am keeping the lower 4gb of memory reserved for the system.
+
+    A page is 4k in size.
+    There are (per process) 3 levels of page-table data, gives: 256*256*256*4096 => 67 Tb of addressable RAM
+    "which should be enough for everyone..."
+
+
+When refactoring take a look at RISC-V, https://github.com/riscv-software-src/riscv-isa-sim
+And: https://ics.uci.edu/~swjun/courses/2021W-CS152/slides/lec10%20-%20Virtual%20memory.pdf
+Specifically slides 8.. and then 18..
+Pay care to slide 15 and 16 (TLB)
+Also decide if cache comes before TLB or after (see slides 25..30)
+
+Move this to 'MemorySubSys' and integrate with CPUMemCache
+
+Slide 39 provides a nice overview of HW/SW
+
+When allocating a page we need to make sure that 'VirtualRAM' doesn't start at address 0
+Like we can reserve the first 4gb of virtual memory to something else...
+
+
