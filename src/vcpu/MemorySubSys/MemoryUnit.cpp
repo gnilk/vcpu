@@ -31,102 +31,57 @@ bool MemoryUnit::Initialize(void *physicalRam, size_t sizeInBytes) {
         return false;
     }
 
-
     ptrPhysicalRamStart = physicalRam;
     szPhysicalRam = sizeInBytes;
-    ptrCurrentPage = static_cast<uint8_t *>(ptrPhysicalRamStart);
+    ptrFirstAvailablePage = static_cast<uint8_t *>(ptrPhysicalRamStart);
 
     phyBitMap = static_cast<uint8_t *>(ptrPhysicalRamStart);
     szBitmapBytes = (VCPU_MMU_MAX_ROOT_TABLES * VCPU_MMU_MAX_DESCRIPTORS * VCPU_MMU_MAX_PAGES_PER_DESC) >> 3;
 
-    ptrCurrentPage += szBitmapBytes;
+    ptrFirstAvailablePage += szBitmapBytes;
 
-    // Allocate one page table for the mmu on initialization
-    rootTables = (PageTable *)ptrCurrentPage;
-    InitializeRootTables();
+    InitializePhysicalBitmap();
 
-    ptrCurrentPage += sizeof(PageTable);
-
+    rootTables = nullptr;
     return true;
+}
+
+// This will replace the mmu control register
+void MemoryUnit::UpdateMMUControl(const RegisterValue &newMMUControl) {
+//    bool bWasEnabled = mmuControl.data.longword & kMMUEnable_Translation;
+    mmuControl = newMMUControl;
+//    if (bWasEnabled) {
+//
+//    }
+}
+
+void MemoryUnit::SetPageTableAddress(const RegisterValue &newVirtualPageTableAddress) {
+    mmuPageTableAddress = newVirtualPageTableAddress;
+
+    if (IsFlagEnabled(kMMU_ResetPageTableOnSet)) {
+        // This will be a pass-through translation if translation is not enabled..
+        auto ptrPhysicalAddrTable = TranslateToPhysical(mmuPageTableAddress.data.longword);
+        memset(ptrPhysicalAddrTable, 0, sizeof(PageTable));
+
+        // Remove the flag..
+        mmuControl.data.longword &= ~uint64_t(kMMU_ResetPageTableOnSet);
+    }
 }
 
 // Internal, initialize the root tables in the current physical RAM
-void MemoryUnit::InitializeRootTables() {
-    // for(int i=0;i<szBitmapBytes;i++) {
-    //     phyBitMap[i] = 0;
-    // }
+void MemoryUnit::InitializePhysicalBitmap() {
     memset(phyBitMap,0, szBitmapBytes);
-    // This replaces the whole loop stuff
-    memset(rootTables, 0, sizeof(PageTable));
 
-
-/*
- * leaving this for the time beeing..
-    for(int i=0;i<VCPU_MMU_MAX_ROOT_TABLES;i++) {
-        rootTables[i].nDescriptors = 0;
-
-        for(int idxDesc=0;idxDesc<VCPU_MMU_MAX_DESCRIPTORS;idxDesc++) {
-            rootTables[i].descriptor[idxDesc].nPages = 0;
-            for(int idxPage=0; idxPage<VCPU_MMU_MAX_PAGES_PER_DESC; idxPage++) {
-                rootTables[i].descriptor[idxDesc].pages[idxPage].ptrPhysical = nullptr;
-                rootTables[i].descriptor[idxDesc].pages[idxPage].bytes = 0;
-                rootTables[i].descriptor[idxDesc].pages[idxPage].flags = 0;
-            }
-        }
-    }
-*/
 }
 
-// Allocates a page from physical RAM
-uint64_t MemoryUnit::AllocatePage() {
-
-    int64_t idxRootTable = FindFreeRootTable();
-    if (idxRootTable < 0) {
-        return 0;
+MemoryUnit::PageTable *MemoryUnit::GetPageTables() const {
+    //rootTables;
+    if (!IsFlagEnabled(kMMU_TranslationEnabled)) {
+        return (MemoryUnit::PageTable *)mmuPageTableAddress.data.nativePtr;
     }
-    int64_t idxDesc = FindFreePageDescriptor(idxRootTable);
-    if (idxDesc < 0) {
-        return 0;
-    }
-    int64_t idxPage = FindFreePage(idxRootTable, idxDesc);
-    if (idxPage < 0) {
-        return 0;
-    }
-
-    // 12 = 4k per page..
-    uint64_t virtualRoot = (idxRootTable<<(12 + VCPU_MMU_DESCRIPTORS_NBITS + VCPU_MMU_PAGES_NBITS));
-    uint64_t virtualDesc = (idxDesc << (12 + VCPU_MMU_PAGES_NBITS));
-    uint64_t viurtualPage = (idxPage << 12);
-
-    uint64_t virtualAddress = (virtualRoot | virtualDesc | viurtualPage) | VIRTUAL_ADDR_SPACE_START;
-
-    // Indicate number of pages, and allocate one..
-    rootTables[idxRootTable].descriptor[idxDesc].nPages++;
-    rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage].bytes = VCPU_MMU_PAGE_SIZE;
-    rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage].ptrPhysical = AllocatePhysicalPage(virtualAddress);
-    rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage].flags = MMU_FLAGS_RWX;
-
-    return virtualAddress;
+    return nullptr;
 }
 
-bool MemoryUnit::FreePage(uint64_t virtualAddress) {
-    uint64_t idxRootTable = IdxRootTableFromVA(virtualAddress);
-    uint64_t idxDesc = IdxDescriptorFromVA(virtualAddress);
-    uint64_t idxPage = IdxPageFromVA(virtualAddress);
-
-    if (rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage].flags == 0x00) {
-        return false;
-    }
-
-    FreePhysicalPage(virtualAddress);
-
-    rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage].flags = 0;
-    rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage].bytes = 0;
-    rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage].ptrPhysical = nullptr;
-    rootTables[idxRootTable].descriptor[idxDesc].nPages -= 1;
-
-    return true;
-}
 
 // Returns the page-table for a virtual address, or null if none
 // this is for debugging and unit-testing purposes...
@@ -140,43 +95,6 @@ const MemoryUnit::Page *MemoryUnit::GetPageForAddress(uint64_t virtualAddress) {
     }
 
     return &rootTables[idxRootTable].descriptor[idxDesc].pages[idxPage];
-}
-
-//
-// I probably need to optimize this quite a bit - have some reading to do in order to figure out a
-// FPGA/HW friendly way to do this...
-//
-
-// Finds a free root table...
-int64_t MemoryUnit::FindFreeRootTable() {
-    for(int i=0;i<VCPU_MMU_MAX_ROOT_TABLES;i++) {
-        // Must be -1 since we will allocate this free slot..
-        if (rootTables[i].nDescriptors < (VCPU_MMU_MAX_DESCRIPTORS-1)) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-// Finds a free page-descriptor within the root table..
-int64_t MemoryUnit::FindFreePageDescriptor(uint64_t idxRootTable) {
-    for(int i=0;i<VCPU_MMU_MAX_DESCRIPTORS;i++) {
-        // Must be -1 since we will allocate this free slot..
-        if (rootTables[idxRootTable].descriptor[i].nPages < VCPU_MMU_MAX_PAGES_PER_DESC) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-// Finds a free page within the descriptor table...
-int64_t MemoryUnit::FindFreePage(uint64_t idxRootTable, uint64_t idxDescriptor) {
-    for(int i=0;i<VCPU_MMU_MAX_PAGES_PER_DESC;i++) {
-        if (rootTables[idxRootTable].descriptor[idxDescriptor].pages[i].flags == 0x00) {
-            return i;
-        }
-    }
-    return -1;
 }
 
 // Checks if a specific virtual address is valid - basically checks if there is a
@@ -198,12 +116,18 @@ bool MemoryUnit::IsAddressValid(uint64_t virtualAddress) {
 
     return true;
 }
+
 uint64_t MemoryUnit::TranslateAddress(uint64_t virtualAddress) {
     // 1) TLB Lookup, hit -> protection check
     // 2) Page table walk -> not resident in memory -> Page Fault Handler -> OS/Handler load page
     // 3) Update TLB
     // 4) Protection check, denied -> Protection Fault
     // 5) Physical address [update cache]
+
+    // In case no translation - just return back the virtual address...
+    if (!IsFlagEnabled(kMMU_TranslationEnabled)) {
+        return virtualAddress;
+    }
 
     auto page = GetPageForAddress(virtualAddress);
     if (page == nullptr) {
@@ -214,11 +138,20 @@ uint64_t MemoryUnit::TranslateAddress(uint64_t virtualAddress) {
     return virtualAddress;
 }
 
-// FIXME: Need a way to track these
-void *MemoryUnit::AllocatePhysicalPage(uint64_t virtualAddress) {
+// This assumes the host is 64bit
+void *MemoryUnit::TranslateToPhysical(uint64_t virtualAddress) {
+    auto phyAddress = TranslateAddress(virtualAddress);
+    return (void *)(phyAddress);
+}
+
+void *MemoryUnit::AllocatePhysicalPage(uint64_t virtualAddress) const {
+    // Remove the VADDR start bit..  This is artifically added to the address..
+    virtualAddress &= ~MemoryUnit::VIRTUAL_ADDR_SPACE_START;
 
     auto bitmapIndex = (virtualAddress>>12) >> 3;
     auto pageBit = (virtualAddress>>12) & 7;
+
+    // Note: the physical bitmap table must be in globally shared RAM...
     if (phyBitMap[bitmapIndex] & (1 << pageBit)) {
         // Page is occupied, we need to start a search...
         int breakme = 1;
@@ -228,15 +161,17 @@ void *MemoryUnit::AllocatePhysicalPage(uint64_t virtualAddress) {
 
     // physical memory, perhaps just '>>12'
     auto phyPageIndex = (virtualAddress>>12);
-    auto ptrPhysical = &ptrCurrentPage[phyPageIndex * VCPU_MMU_PAGE_SIZE];
+    auto ptrPhysical = &ptrFirstAvailablePage[phyPageIndex * VCPU_MMU_PAGE_SIZE];
 
 //    auto *ptr = ptrCurrentPage;
 //    ptrCurrentPage += szPhysicalRam;
     return ptrPhysical;
 }
 
-void MemoryUnit::FreePhysicalPage(uint64_t virtualAddress) {
-    // FIXME: Implement this
+void MemoryUnit::FreePhysicalPage(uint64_t virtualAddress) const {
+    // Remove the VADDR start bit..  This is artifically added to the address..
+    virtualAddress &= ~MemoryUnit::VIRTUAL_ADDR_SPACE_START;
+
     auto bitmapIndex = (virtualAddress>>12) >> 3;
     auto pageBit = (virtualAddress>>12) & 7;
     if (!(phyBitMap[bitmapIndex] & (1 << pageBit))) {

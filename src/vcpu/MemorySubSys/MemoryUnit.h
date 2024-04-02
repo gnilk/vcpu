@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <unordered_map>
 #include "CPUMemCache.h"
+#include "RegisterValue.h"
 
 //
 // When refactoring take a look at RISC-V, https://github.com/riscv-software-src/riscv-isa-sim
@@ -46,12 +47,9 @@ namespace gnilk {
 
         static const uint32_t MMU_FLAGS_RWX =  0x07;    // allow Read|Write|Exec - this is the default..
 
-        // Placeholders to have Control Registers some what marked up
-        struct MMUControl0 {
-            uint64_t empty;
-        };
-        struct MMUControl1 {
-            uint64_t empty;
+        enum kMMUFlagsCR0 {
+            kMMU_TranslationEnabled = 1,
+            kMMU_ResetPageTableOnSet = 2,
         };
 
 
@@ -87,38 +85,55 @@ namespace gnilk {
         public:
             MemoryUnit() = default;
             virtual ~MemoryUnit() = default;
+
+
+            void UpdateMMUControl(const RegisterValue &mmuCntrl);
+            void SetPageTableAddress(const RegisterValue &newVirtualPageTableAddress);
+
+
             bool Initialize(void *physicalRam, size_t sizeInBytes);
             bool IsAddressValid(uint64_t virtualAddress);
 
+            PageTable *GetPageTables() const;
+
             uint64_t TranslateAddress(uint64_t virtualAddress);
-            uint64_t AllocatePage();
-            bool FreePage(uint64_t virtualAddress);
             // debugging / unit-test functionality
             const Page *GetPageForAddress(uint64_t virtualAddress);
+
             const uint8_t *GetPhyBitmapTable() {
                 return phyBitMap;
             }
             size_t GetPhyBitmapTableSize() {
                 return szBitmapBytes;
             }
-        protected:
-            void *AllocatePhysicalPage(uint64_t virtualAddress);
-            void FreePhysicalPage(uint64_t virtualAddress);
-            void InitializeRootTables();
 
-            int64_t FindFreeRootTable();
-            int64_t FindFreePageDescriptor(uint64_t idxRootTable);
-            int64_t FindFreePage(uint64_t idxRootTable, uint64_t idxDescriptor);
-
-            inline uint64_t IdxRootTableFromVA(uint64_t virtualAddress) {
+            inline uint64_t IdxRootTableFromVA(uint64_t virtualAddress) const {
                 return (virtualAddress >> (12 + VCPU_MMU_DESCRIPTORS_NBITS + VCPU_MMU_PAGES_NBITS)) & (VCPU_MMU_MAX_ROOT_TABLES-1);
             }
-            inline uint64_t IdxDescriptorFromVA(uint64_t virtualAddress) {
+            inline uint64_t IdxDescriptorFromVA(uint64_t virtualAddress) const {
                 return (virtualAddress >> (12 + VCPU_MMU_PAGES_NBITS)) & (VCPU_MMU_MAX_DESCRIPTORS - 1);
             }
-            inline uint64_t IdxPageFromVA(uint64_t virtualAddress) {
+            inline uint64_t IdxPageFromVA(uint64_t virtualAddress) const {
                 return (virtualAddress >> 12) & (VCPU_MMU_MAX_PAGES_PER_DESC-1);
             }
+
+
+            void *AllocatePhysicalPage() const;
+            void FreePhysicalPage(void *ptrPhysical) const;
+
+            void *AllocatePhysicalPage(uint64_t virtualAddress) const;
+            void FreePhysicalPage(uint64_t virtualAddress) const;
+
+            __inline bool IsFlagEnabled(kMMUFlagsCR0 flag) const {
+                return (mmuControl.data.longword & flag);
+            }
+
+        protected:
+            void *TranslateToPhysical(uint64_t virtualAddress);
+            void InitializePhysicalBitmap();
+
+            void *RamPtrFromRelAddress(size_t pageIndex) const;
+
         private:
             // FIXME: the MMU needs the cache controller, the cache controller needs access to the data-bus
             //        there should only be ONE databus per CPU independently of number of cores..
@@ -127,14 +142,18 @@ namespace gnilk {
             //        Which makes sense since MMU Tables should be handled as regular memory access (read/write)
             //CacheController cacheController;
 
+            RegisterValue mmuControl = {};
+            RegisterValue mmuPageTableAddress = {};
+
             void *ptrPhysicalRamStart = nullptr;
             size_t szPhysicalRam = 0;
 
-            uint8_t *ptrCurrentPage = nullptr;
+            uint8_t *ptrFirstAvailablePage = nullptr;
             size_t idxCurrentPhysicalPage = 0;
 
             uint8_t *phyBitMap = nullptr;
             size_t szBitmapBytes = 0;
+            // Root tables are in the virtual address space...
             PageTable *rootTables;
         };
     }

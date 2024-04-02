@@ -23,6 +23,18 @@ int Cache::GetNumLines() const {
 }
 
 int Cache::GetLineIndex(uint64_t addrDescriptor) {
+
+    // This is expensive - which is why there are n-way associative caches
+    // In essence this is a 'direct mapped cache, in order to implement this differently
+    // we should limit the search-space. For instance, split/hash the first look up (using some parts from the V-Addr)
+    // then search the array. => n-set associative cache;
+    // set = cachelineSets[hash(vAddr)];    // return search set; this is just an index * n (in n-set); like: index * 8
+    // idxCacheLine = find_set_index(set, vAddr);   // find vAddr in set or not..
+    //
+    // A set is just another way to 'split' the cache-line array - so no need to reorganize the data...
+    //
+    //
+
     // Replace with binary search
     for(size_t i=0;i<lines.size();i++) {
         if ((lines[i].addrDescriptor == addrDescriptor) && (lines[i].state != kMesi_Invalid)) {

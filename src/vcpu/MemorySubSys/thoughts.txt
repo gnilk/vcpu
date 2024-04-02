@@ -1,8 +1,11 @@
 Ok, I will try to consolidate some thoughts here instead of scattered across the source..
 
 
-1) Cache should work on virtual addresses
-2) MMU should be _BELOW_ Cache..
+* L1 Cache should work on virtual addresses, one per core
+* MMU should be _BELOW_ Cache, one MMU per core
+* DataBus below MMU, shared among all cores
+
+NOTE: This is only with respect to Data Cache. An Instr. Cache is more less just hooked up differently...
 
 so cpu does:
     memory.read()
@@ -16,6 +19,9 @@ Will the DataBus work with already translated addresses?
 Or should the DataBus talk to the MMU - but the DataBus is a singleton - thus - it needs
 to know the MMU (which is a problem). The other way is letting the MMU proxy the DataBus and thus intercept the calls
 and translate on the fly...   => need to isolate this design and test it out..
+
+
+
 
 
 Tech details about how I store virtual addresses:
@@ -53,4 +59,44 @@ Slide 39 provides a nice overview of HW/SW
 When allocating a page we need to make sure that 'VirtualRAM' doesn't start at address 0
 Like we can reserve the first 4gb of virtual memory to something else...
 
+Eviction policy - I need to figure this out. Currently we have a counter-based system simulating a 'time' like system.
 
+
+L1 Cache:
+=========
+A cache line is 64bytes. Number of lines 256 => 16kb L1 Cache.
+Note: Most modern CPU's today have 32kb or 64kb L1 cache, but cache-line sizes are more or less all 64bytes.
+Some have longer L2 caches (Apple Silicon, 128bytes).
+
+Cache-Line is currently direct-mapped (i.e linear look-up across all cache-lines).
+We should try limit the search-space. For instance, split/hash the first look up (using some parts from the V-Addr)
+then search the array. => n-set associative cache;
+set = cachelineSets[hash(vAddr)];    // return search set; this is just an index * n (in n-set); like: index * 8
+idxCacheLine = find_set_index(set, vAddr);   // find vAddr in set or not..
+
+A set is just another way to 'split' the cache-line array - so no need to reorganize the data...
+
+Important here is to make the emulation API agnostic to this and allow for different implementations in order to
+test performance across various algorithms for lookup.
+
+Consider data-structure in L1 Cache!
+
+L2 Cache:
+=========
+Currently not simulated/emulated. We will hit the memory bus directly in case of an L1 Cache miss.
+I should include a L2 Cache which is more or less attached to the DataBus. In essence the data-bus can first check
+the L2 cache before fetching from RAM.
+
+
+Questions for myself:
+=====================
+The MMU is 'below' (architecturally - being used by) the L1 Cache. But I would assume when the MMU read's the
+translation table data into memory it will land in the L1 Cache. Otherwise the MMU would need to implement MESI
+which would make it somewhat complicated - and we want to keep it simple.
+
+Same goes for tracking of physical memory pages (the bitmap) in the MMU. This bitmap _MUST_ be shared between the cores.
+Thus, it must be L1/L2 Cache aware. Or is this read/written all the time - explicitly through the MESI Data Bus?
+
+OR - do the MMU have it's own L1 cache?
+
+Some papers suggest that the MMU has it's own (private?) cache. Is this perhaps a separate L1 instance attached to the MMU?

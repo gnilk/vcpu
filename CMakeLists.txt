@@ -31,15 +31,16 @@ list(APPEND vcpusrc src/vcpu/InstructionDecoder.cpp src/vcpu/InstructionDecoder.
 list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
 list(APPEND vcpusrc src/vcpu/Interrupt.h)
 list(APPEND vcpusrc src/vcpu/Peripheral.h)
+list(APPEND vcpusrc src/vcpu/RegisterValue.h)
 list(APPEND vcpusrc src/vcpu/SuperScalarCPU.cpp)
 list(APPEND vcpusrc src/vcpu/Timer.cpp src/vcpu/Timer.h)
 list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 
 # HW emulated memory handling
 list(APPEND vcpusrc src/vcpu/MemorySubSys/CPUMemCache.cpp src/vcpu/MemorySubSys/CPUMemCache.h)
-list(APPEND vcpusrc src/vcpu/MemorySubSys/MemoryUnit.cpp src/vcpu/MemorySubSys/MemoryUnit.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/DataBus.cpp src/vcpu/MemorySubSys/DataBus.h)
-
+list(APPEND vcpusrc src/vcpu/MemorySubSys/MemoryUnit.cpp src/vcpu/MemorySubSys/MemoryUnit.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSys/PageAllocator.h)
 #
 # Virtual CPU unit test sources
 #

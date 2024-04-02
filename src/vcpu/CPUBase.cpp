@@ -54,8 +54,8 @@ bool CPUBase::RegisterSysCall(uint16_t id, const std::string &name, SysCallDeleg
 }
 void CPUBase::UpdateMMU() {
     // FIXME: refactor mmu
-    auto mmuControl0 = registers.cntrlRegisters[0].data.mmuControl0;
-    auto mmuControl1 = registers.cntrlRegisters[1].data.mmuControl1;
+    auto mmuControl0 = registers.cntrlRegisters.named.mmuControl;
+    auto mmuControl1 = registers.cntrlRegisters.named.mmuPageTableAddress;
 //    memoryUnit.SetControl(cr0);
 //    memoryUnit.SetPageTranslationVAddr(cr1);
 }
@@ -101,7 +101,7 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
     auto &intCntrl = GetInterruptCntrl();
 
     // Is this enabled?
-    if (!(intCntrl & mask)) {
+    if (!(intCntrl.data.longword & mask)) {
         return;
     }
 
@@ -118,7 +118,7 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
 
 void CPUBase::EnableInterrupt(CPUIntMask interrupt) {
     auto &intCntrl = GetInterruptCntrl();
-    intCntrl.data.bits |= interrupt;
+    intCntrl.data.longword |= interrupt;
 }
 
 void CPUBase::InvokeISRHandlers() {
@@ -128,7 +128,7 @@ void CPUBase::InvokeISRHandlers() {
     auto &intCntrl = GetInterruptCntrl();
     for(int i=0;i<7;i++) {
         // Is this enabled and raised?
-        if ((intCntrl.data.bits & (1<<i)) && (isrControlBlock.isrState == CPUISRState::Flagged)) {
+        if ((l64a(intCntrl.data.longword & (1<<i))) && (isrControlBlock.isrState == CPUISRState::Flagged)) {
             // Save current registers
             isrControlBlock.registersBefore = registers;
             // Move the ISR type to a register...

@@ -15,32 +15,10 @@
 #include "MemorySubSys/MemoryUnit.h"
 #include "Peripheral.h"
 #include "Interrupt.h"
+#include "RegisterValue.h"
 
 namespace gnilk {
     namespace vcpu {
-
-        struct RegisterValue {
-            union {
-                uint8_t byte;
-                uint16_t word;
-                uint32_t dword;
-                uint64_t longword;
-                // Control registers 0..3
-                CPUIntControl intControl;
-                CPUExceptionControl exceptionControl;
-                MMUControl0 mmuControl0;
-                MMUControl1 mmuControl1;
-            } data;
-            // Make sure this is zero when creating a register..
-            RegisterValue() {
-                data.longword = 0;
-            }
-            explicit RegisterValue(uint8_t v) { data.byte = v; }
-            explicit RegisterValue(uint16_t v) { data.word = v; }
-            explicit RegisterValue(uint32_t v) { data.dword = v; }
-            explicit RegisterValue(uint64_t v) { data.longword = v; }
-        };
-
 
         // perhaps copy M68k status bits...
         struct CPUStatusBits {
@@ -145,7 +123,33 @@ namespace gnilk {
             //  cr5 - CPU ID or similar (feature register)
             //  cr6 - reserved, unused
             //  cr7 - reserved, unused
-            RegisterValue cntrlRegisters[8];
+            struct Control {
+                RegisterValue cr0 = {};
+                RegisterValue cr1 = {};
+                RegisterValue cr2 = {};
+                RegisterValue cr4 = {};
+                RegisterValue cr5 = {};
+                RegisterValue cr6 = {};
+                RegisterValue cr7 = {};
+            };
+            struct NamedControl {
+                RegisterValue intMask = {};
+                RegisterValue exceptionMask = {};
+                RegisterValue statusRegCopy = {};
+                RegisterValue mmuControl = {};
+                RegisterValue mmuPageTableAddress = {};
+                RegisterValue cpuid = {};
+                RegisterValue reservedA = {};
+                RegisterValue reservedB = {};
+            };
+
+            union CntrlRegisters {
+                Control regs;
+                NamedControl named;
+                RegisterValue array[8];
+            };
+            //RegisterValue cntrlRegisters[8];
+            CntrlRegisters cntrlRegisters = {};
 
             // Instruction pointer can't be modified
             RegisterValue instrPointer;
@@ -251,14 +255,12 @@ namespace gnilk {
                 return registers.statusReg;
             }
 
-            CPUIntControl &GetInterruptCntrl() {
-                #define CNTRL_REG_INTERRUPT 0
-                return registers.cntrlRegisters[CNTRL_REG_INTERRUPT].data.intControl;
+            RegisterValue &GetInterruptCntrl() {
+                return registers.cntrlRegisters.named.intMask;
             }
 
-            CPUExceptionControl &GetExceptionCntrl() {
-                #define CNTRL_REG_EXCEPTION 1
-                return registers.cntrlRegisters[CNTRL_REG_EXCEPTION].data.exceptionControl;
+            RegisterValue &GetExceptionCntrl() {
+                return registers.cntrlRegisters.named.exceptionMask;
             }
 
             uint8_t *GetRamPtr() {
@@ -277,13 +279,13 @@ namespace gnilk {
 
             __inline const RegisterValue &GetRegisterValue(int idxRegister, OperandFamily family) const {
                 if (family == OperandFamily::Control) {
-                    return idxRegister>7?registers.cntrlRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
+                    return idxRegister>7?registers.cntrlRegisters.array[idxRegister-8]:registers.dataRegisters[idxRegister];
                 }
                 return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
             }
             __inline RegisterValue &GetRegisterValue(int idxRegister, OperandFamily family) {
                 if (family == OperandFamily::Control) {
-                    return idxRegister>7?registers.cntrlRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
+                    return idxRegister>7?registers.cntrlRegisters.array[idxRegister-8]:registers.dataRegisters[idxRegister];
                 }
                return idxRegister>7?registers.addressRegisters[idxRegister-8]:registers.dataRegisters[idxRegister];
             }

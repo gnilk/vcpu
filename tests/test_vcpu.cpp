@@ -229,11 +229,11 @@ DLL_EXPORT int test_vcpu_instr_move_cntrl(ITesting *t) {
 
     // Verify intermediate mode reading works for 8,16,32,64 bit sizes
     vcpu.Step();
-    TR_ASSERT(t, regs.cntrlRegisters[0].data.longword == regs.dataRegisters[0].data.longword);
+    TR_ASSERT(t, regs.cntrlRegisters.array[0].data.longword == regs.dataRegisters[0].data.longword);
     // Reset and read back..
     regs.dataRegisters[0].data.longword = 0x0;
     vcpu.Step();
-    TR_ASSERT(t, regs.cntrlRegisters[0].data.longword == regs.dataRegisters[0].data.longword);
+    TR_ASSERT(t, regs.cntrlRegisters.array[0].data.longword == regs.dataRegisters[0].data.longword);
 
     fmt::println("{}", vcpu.GetLastDecodedInstr()->ToString());
 
