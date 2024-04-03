@@ -25,6 +25,10 @@ namespace gnilk {
             explicit RegisterValue(uint16_t v) { data.word = v; }
             explicit RegisterValue(uint32_t v) { data.dword = v; }
             explicit RegisterValue(uint64_t v) { data.longword = v; }
+            // Is this correct???
+            RegisterValue(std::initializer_list<uint64_t> lst) {
+                data.longword = *lst.begin();
+            }
         };
     }
 }

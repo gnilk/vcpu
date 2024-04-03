@@ -101,6 +101,7 @@ int64_t PageAllocator::FindFreeRootTable(const MemoryUnit &mmu) {
     return -1;
 }
 
+
 // Finds a free page-descriptor within the root table..
 int64_t PageAllocator::FindFreePageDescriptor(const MemoryUnit &mmu, uint64_t idxRootTable) {
     auto pageTables = mmu.GetPageTables();

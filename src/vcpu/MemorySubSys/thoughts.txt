@@ -61,6 +61,46 @@ Like we can reserve the first 4gb of virtual memory to something else...
 
 Eviction policy - I need to figure this out. Currently we have a counter-based system simulating a 'time' like system.
 
+MMU:
+====
+MMU is per Core.
+Must support mapping of different virtual regions to different physical addresses..
+Virtual => Physical
+0....X  => physical region ABC
+X....Y  => physical region DEF
+Y....Z  => physical region GHI
+.. und so weiter
+
+Each region has it's own data-bus and translation rules (?) => Allows Flash/SPI/Fast/OnChip/etc mapped RAM
+A region is defined by a lower range + size => effectively gives a bit-mask..
+
+Each region also has a control-configuration, residing in the region lower X bytes.
+
+PageTables are fully controlled by the OS. Even physical. The MMU only has the ability to traverse the page-table
+for virtual to physical lookup and raise exceptions depending on flags (or special address, like -1).
+
+In order to emulate this the PageAllocator EMU must be talk to the CPUBase class for any memory access (this allows
+PageTables to be read from emulated RAM through the MMU and in to the L1 cache).
+This allows page-table synchronization to happen automatically as they are loaded on a per-core basis!
+
+Since Page-Tables are unique per process. But the physical memory table is not. We must switch to 'supervisor' mode (disabling
+the mmu) everytime we have to update the physical page bitmap table.
+
+Development wise;
+1) Implement the regions (as of now; reserve 8 control registers in the regions upper part)
+2) Implement supervisor mode (i.e. disabling of address translation) => pass through
+3) Implement a PageAllocation handler which uses the CPU memory functions to handle the page tables
+
+How does 'pass through' work with the L1 cache (should it work with the L1 cache? => YES!)?
+    - Physical Addr => cacheline descriptor?
+    - Need at least a flag to signal this cacheline was physical (MESI states are just 4 bits - we have 4 bits to spare!)
+
+CacheController must call MMU to translate before calling data-bus read/write...
+Make the cache-controller part of the MMU???
+
+The page-table address is in a separate space(?).
+
+
 
 L1 Cache:
 =========

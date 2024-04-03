@@ -52,6 +52,70 @@ namespace gnilk {
             kMMU_ResetPageTableOnSet = 2,
         };
 
+#pragma pack(push,1)
+        // 16 bytes
+        struct Page {
+            void *ptrPhysical = nullptr;    // 64 bit?
+            uint32_t bytes = 0;             // 32 bit, page size - max 4gb continous memory
+            uint32_t flags = 0;  // TBD     // 32 bit
+        };
+        // 16 * VCPU_MMU_MAX_PAGES_PER_DESC + 8
+        struct PageDescriptor {
+            size_t nPages = 0;  // need to remove this - must have better structure!
+            Page pages[VCPU_MMU_MAX_PAGES_PER_DESC];
+        };
+        // VCPU_MMU_MAX_DESCRIPTORS * 16 * VCPU_MMU_MAX_PAGES_PER_DESC + 8 + 8
+        struct PageTable {
+            size_t nDescriptors = 0;    // need to remove this - must have better structure
+            PageDescriptor descriptor[VCPU_MMU_MAX_DESCRIPTORS];
+        };
+#pragma pack(pop)
+
+
+
+        // New version
+        class MMU {
+        public:
+            MMU() = default;
+            virtual ~MMU() = default;
+
+            void SetMMUControl(const RegisterValue &newControl);
+            void SetMMUControl(RegisterValue &&newControl);
+            void SetMMUPageTableAddress(const RegisterValue &newPageTblAddr);
+
+            // Emulated RAM <-> RAM transfers, with cache line handling
+            int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+            int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+
+
+            // External RAM <-> Emulated RAM functions - this will stall the bus!
+            // Read to external address from emulated RAM
+            int32_t CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nBytes);
+            // Write to emulated RAM from external address (native)
+            int32_t CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t nBytes);
+
+
+            uint64_t TranslateAddress(uint64_t address);
+
+            __inline bool IsFlagSet(kMMUFlagsCR0 flag) const {
+                return (mmuControl.data.longword & flag);
+            }
+
+            const CacheController &GetCacheController() const {
+                return cacheController;
+            }
+            CacheController &GetCacheController() {
+                return cacheController;
+            }
+        protected:
+
+        protected:
+            RegisterValue mmuControl;
+            RegisterValue mmuPageTableAddress;
+            CacheController cacheController;
+        };
+
+
 
         // addresses are always 64bit, a mapped pages is looked up like:
         //
@@ -64,22 +128,6 @@ namespace gnilk {
 
         class MemoryUnit {
         public:
-#pragma pack(push,1)
-            // 32 bytes
-            struct Page {
-                void *ptrPhysical = nullptr;    // 64 bit?
-                uint32_t bytes = 0;             // 32 bit, page size - max 4gb continous memory
-                uint32_t flags = 0;  // TBD     // 32 bit
-            };
-            struct PageDescriptor {
-                size_t nPages = 0;
-                Page pages[VCPU_MMU_MAX_PAGES_PER_DESC];
-            };
-            struct PageTable {
-                size_t nDescriptors = 0;
-                PageDescriptor descriptor[VCPU_MMU_MAX_DESCRIPTORS];
-            };
-#pragma pack(pop)
             // This is where the virtual address space starts - everything below this is reserved!
             static const uint64_t VIRTUAL_ADDR_SPACE_START = 0x80000000;
         public:

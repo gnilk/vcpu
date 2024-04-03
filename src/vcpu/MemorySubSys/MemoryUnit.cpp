@@ -8,6 +8,112 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+
+// We need a bunch of zeros
+static uint8_t empty_cache_line[GNK_L1_CACHE_LINE_SIZE] = {};
+
+void MMU::SetMMUControl(const RegisterValue &newControl) {
+    mmuControl = newControl;
+}
+void MMU::SetMMUControl(RegisterValue &&newControl) {
+    mmuControl = newControl;
+}
+
+void MMU::SetMMUPageTableAddress(const gnilk::vcpu::RegisterValue &newPageTblAddr) {
+    mmuPageTableAddress = newPageTblAddr;
+
+    if (IsFlagSet(kMMU_ResetPageTableOnSet)) {
+        uint64_t physicalAddr = TranslateAddress(mmuPageTableAddress.data.longword);
+
+        int32_t nBytesToWrite = sizeof(PageTable);
+
+        // Reset everything to zero...
+        while(nBytesToWrite) {
+            DataBus::Instance().WriteMemory(physicalAddr, empty_cache_line);
+            nBytesToWrite -= GNK_L1_CACHE_LINE_SIZE;
+            if (nBytesToWrite < 0) {
+                nBytesToWrite = 0;
+                int breakme = 0;
+            }
+
+        }
+
+        // Remove the flag..
+        mmuControl.data.longword &= ~uint64_t(kMMU_ResetPageTableOnSet);
+    }
+}
+
+uint64_t MMU::TranslateAddress(uint64_t address) {
+    if (!IsFlagSet(kMMU_TranslationEnabled)) {
+        return address;
+    }
+    // FIXME: Implement address translation
+    return address;
+}
+
+// Read from RAM
+int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
+    // No translation - addresses are physical..
+    uint64_t srcAddress = TranslateAddress((uint64_t)srcPtr);
+    uint64_t dstAddress = TranslateAddress((uint64_t)dstPtr);
+    return cacheController.Read(dstAddress, srcAddress, nBytes);
+}
+
+// Write to RAM
+int32_t MMU::Write(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
+    // No translation - addresses are physical...
+    uint64_t srcAddress = TranslateAddress((uint64_t)srcPtr);
+    uint64_t dstAddress = TranslateAddress((uint64_t)dstPtr);
+    return cacheController.Write(dstAddress, srcAddress, nBytes);
+    return -1;
+}
+
+// Copy to external (native) RAM from the emulated RAM...
+int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nBytes) {
+    static uint8_t tmpCacheLine[GNK_L1_CACHE_LINE_SIZE];
+    if (nBytes > GNK_L1_CACHE_LINE_SIZE) {
+        return -1;
+    }
+    if (nBytes == 0) {
+        return 0;
+    }
+    memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
+    DataBus::Instance().ReadMemory(tmpCacheLine, srcAddress);
+    memcpy(dstPtr, tmpCacheLine, nBytes);
+    return nBytes;
+}
+
+
+// Copy to emulated RAM from native RAM...
+int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t nBytes) {
+    static uint8_t tmpCacheLine[GNK_L1_CACHE_LINE_SIZE];
+    if (nBytes > GNK_L1_CACHE_LINE_SIZE) {
+        return -1;
+    }
+    if (nBytes == 0) {
+        return 0;
+    }
+    memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
+    memcpy(tmpCacheLine, srcAddress, nBytes);
+    DataBus::Instance().WriteMemory(dstAddr, tmpCacheLine);
+    return nBytes;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //
 // Hmm, not sure this should all be part of the MMU or IF some of this should be placed at the 'kernel' / 'bios' level
 // The MMU should basically just translate based on tables defined by the underlying system..
@@ -74,10 +180,10 @@ void MemoryUnit::InitializePhysicalBitmap() {
 
 }
 
-MemoryUnit::PageTable *MemoryUnit::GetPageTables() const {
+PageTable *MemoryUnit::GetPageTables() const {
     //rootTables;
     if (!IsFlagEnabled(kMMU_TranslationEnabled)) {
-        return (MemoryUnit::PageTable *)mmuPageTableAddress.data.nativePtr;
+        return (PageTable *)mmuPageTableAddress.data.nativePtr;
     }
     return nullptr;
 }
@@ -85,7 +191,7 @@ MemoryUnit::PageTable *MemoryUnit::GetPageTables() const {
 
 // Returns the page-table for a virtual address, or null if none
 // this is for debugging and unit-testing purposes...
-const MemoryUnit::Page *MemoryUnit::GetPageForAddress(uint64_t virtualAddress) {
+const Page *MemoryUnit::GetPageForAddress(uint64_t virtualAddress) {
     uint64_t idxRootTable = IdxRootTableFromVA(virtualAddress);
     uint64_t idxDesc = IdxDescriptorFromVA(virtualAddress);
     uint64_t idxPage = IdxPageFromVA(virtualAddress);

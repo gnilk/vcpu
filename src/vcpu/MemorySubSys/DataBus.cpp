@@ -8,6 +8,7 @@ using namespace gnilk::vcpu;
 
 RamMemory::RamMemory(size_t szRam) {
     data = new uint8_t[szRam];
+    numBytes = szRam;
 }
 RamMemory::~RamMemory() {
     delete[] data;

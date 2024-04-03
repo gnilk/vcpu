@@ -85,7 +85,7 @@ void Cache::WriteLineData(int idxLine, const void *src, uint64_t addrDescriptor,
 }
 
 // This copies only data - without any updates or anything...
-size_t Cache::CopyFromLine(void *dst, int idxLine, uint16_t offset, size_t nBytes) {
+size_t Cache::CopyFromLine(uint64_t dstAddress, int idxLine, uint16_t offset, size_t nBytes) {
 
     if ((offset + nBytes) > GNK_L1_CACHE_LINE_SIZE) {
         nBytes = GNK_L1_CACHE_LINE_SIZE - offset;
@@ -93,24 +93,28 @@ size_t Cache::CopyFromLine(void *dst, int idxLine, uint16_t offset, size_t nByte
     if (!nBytes) {
         return 0;
     }
+
+    // Now - let's translate this - so we can actually do the memcpy to our internal stuff..
+    auto dst = DataBus::Instance().RamPtr(dstAddress);
 
     memcpy(dst, &lines[idxLine].data[offset], nBytes);
     return nBytes;
 }
 
-size_t Cache::CopyToLine(int idxLine, uint16_t offset, const void *src, size_t nBytes) {
+size_t Cache::CopyToLine(int idxLine, uint16_t offset, const uint64_t srcAddress, size_t nBytes) {
     if ((offset + nBytes) > GNK_L1_CACHE_LINE_SIZE) {
         nBytes = GNK_L1_CACHE_LINE_SIZE - offset;
     }
     if (!nBytes) {
         return 0;
     }
+    auto src = DataBus::Instance().RamPtr(srcAddress);
     memcpy(&lines[idxLine].data[offset], src, nBytes);
     lines[idxLine].state = kMesi_Modified;
     return nBytes;
 }
 
-void Cache::DumpCacheLines() {
+void Cache::DumpCacheLines() const {
     for(int i=0;i<lines.size();i++) {
         printf("  %d  state=%s, time=%d, desc=0x%x\n",i, MESIStateToString(lines[i].state).c_str(), lines[i].time, (int)lines[i].addrDescriptor);
     }
@@ -173,8 +177,8 @@ void CacheController::OnMsgBusWr(uint64_t addrDescriptor) {
 //
 // Read from cache - 'src' is a cache-line address, dst is somewhere the user wants it
 //
-int32_t CacheController::Read(void *dst, const void *src, size_t nBytesToRead) {
-    uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(src);
+int32_t CacheController::Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToRead) {
+    uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(srcAddress);
     kMESIState state = kMesi_Exclusive;
 
     // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
@@ -186,22 +190,22 @@ int32_t CacheController::Read(void *dst, const void *src, size_t nBytesToRead) {
     }
     auto idxLine = ReadLine(addrDescriptor, state);
 
-    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(src);
+    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(srcAddress);
 
-    return cache.CopyFromLine(dst, idxLine, offset, nBytesToRead);
+    return cache.CopyFromLine(dstAddress, idxLine, offset, nBytesToRead);
 }
 
 //
 // Write to cache - dst is a cached address, src is whatever the user supplied
 //
-int32_t CacheController::Write(void *dst, const void *src, size_t nBytesToWrite) {
-    uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(dst);
+int32_t CacheController::Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite) {
+    uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(dstAddress);
     DataBus::Instance().BroadCastWrite(idCore, addrDescriptor);
 
     auto idxLine = ReadLine(addrDescriptor, kMESIState::kMesi_Exclusive);
-    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(dst);
+    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(dstAddress);
 
-    return cache.CopyToLine(idxLine, offset, src, nBytesToWrite);
+    return cache.CopyToLine(idxLine, offset, srcAddress, nBytesToWrite);
 
 }
 
@@ -218,6 +222,17 @@ int32_t CacheController::ReadLine(uint64_t addrDescriptor, kMESIState state) {
     }
     return idxLine;
 }
+
+void CacheController::Flush() {
+
+    for (auto i = 0; i<cache.GetNumLines();i++) {
+        if (cache.GetLineState(i) == kMesi_Modified) {
+            WriteMemory(i);
+            cache.ResetLine(i);
+        }
+    }
+}
+
 void CacheController::WriteMemory(int idxLine) {
     uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
 
@@ -231,8 +246,20 @@ void CacheController::ReadMemory(int idxLine, uint64_t addrDescriptor, kMESIStat
     cache.WriteLineData(idxLine, tmp, addrDescriptor, state);
 }
 
-void CacheController::Dump() {
+void CacheController::Dump() const {
     printf("CacheController, id=%d\n",idCore);
     cache.DumpCacheLines();
 }
+int CacheController::GetInvalidLineCount() const {
+    int nInvalid = 0;
+    auto nLines = cache.GetNumLines();
+    for(auto i=0;i<nLines;i++) {
+        auto state = cache.GetLineState(i);
+        if (state & kMesi_Invalid) {
+            nInvalid++;
+        }
+    }
+    return nInvalid;
+}
+
 

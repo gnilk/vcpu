@@ -41,8 +41,13 @@ DLL_EXPORT int test_cache_sync(ITesting *t) {
         TR_ASSERT(t, cacheB.GetLineState(i) == kMesi_Invalid);
 
     }
-    void *ptrRamDst = ram.TranslateAddress((void *)0x4711);
-    auto nWritten = cacheControllerA.Write(ptrRamDst, &value, sizeof(value));
+
+    // Make sure we have this value in our emulated RAM
+    uint64_t ramAddressOfValue = 0;
+    memcpy(ram.PtrToRamAddress(ramAddressOfValue), &value, sizeof(value));
+
+
+    auto nWritten = cacheControllerA.Write(0x4711, ramAddressOfValue, sizeof(value));
     TR_ASSERT(t, nWritten == 4);
 
     // Here we will only see one line on CoreA that has state 'modified'
@@ -67,8 +72,14 @@ DLL_EXPORT int test_cache_sync(ITesting *t) {
     // on CoreB we read from address 0x4711. This data resides in the cache for CoreA. This will cause a flush of CoreA
     // and then CoreB will be able to fetch the value and change the line to shared...
     //
+
+    uint64_t ramAddressOfRead = 128;
     int32_t outValue = 0;
-    auto nRead = cacheControllerB.Read(&outValue, ptrRamDst, sizeof(value));
+    auto nRead = cacheControllerB.Read(ramAddressOfRead, ramAddressOfValue, sizeof(value));
+
+    // Make sure we got it copied..
+    memcpy(&outValue, ram.PtrToRamAddress(ramAddressOfRead), sizeof(value));
+
     TR_ASSERT(t, nRead == 4);
     TR_ASSERT(t, outValue == 4711);
 

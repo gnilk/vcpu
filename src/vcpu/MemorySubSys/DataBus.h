@@ -52,7 +52,8 @@ namespace gnilk {
         // this is my 'mmu' kind of
         class RamMemory {
         public:
-            RamMemory(size_t szRam);
+            RamMemory() = delete;
+            explicit RamMemory(size_t szRam);
             virtual ~RamMemory();
 
             // Well - we need something...
@@ -63,9 +64,25 @@ namespace gnilk {
                 //return &data[dummy];
             }
 
+            // the raw pointers here - are 'HW' - ergo, they are not part of the emulated RAM - instead
+            // they emulate the cache hardware buffers outside of the RAM address...
             void Write(uint64_t addrDescriptor, const void *src);
             void Read(void *dst, uint64_t addrDescriptor);
+
+            // Emulation functions, use this to fetch an native address to the emulated RAM..
+            // Note: This should mainly be used by unit testing and debugging to either inspect or place/modify
+            //       values in the emulated RAM...
+            void *PtrToRamAddress(uint64_t address) const {
+                if (address > numBytes) {
+                    return nullptr;
+                }
+                return &data[address];
+            }
+            size_t GetSizeInBytes() const {
+                return numBytes;
+            }
         private:
+            size_t numBytes = 0;
             uint8_t *data = nullptr;
         };
 
@@ -108,8 +125,10 @@ namespace gnilk {
             void WriteMemory(uint64_t addrDescriptor, const void *src);
             void ReadMemory(void *dst, uint64_t addrDescriptor);
 
-
-
+            // Emulation helpers
+            void *RamPtr(uint64_t address) const {
+                return ram->PtrToRamAddress(address);
+            }
         protected:
             // ???
             RamMemory *ram;

@@ -28,6 +28,7 @@ namespace gnilk {
         };
 
 
+        // The cache is exclusively for emulated RAM transfers - NO external memory mappings ends up here!
         class Cache { ;
         public:
             struct CacheLine {
@@ -50,18 +51,19 @@ namespace gnilk {
             void ResetLine(int idxLine);
 
             uint64_t GetLineAddrDescriptor(int idxLine);
-            size_t CopyFromLine(void *dst, int idxLine, uint16_t offset, size_t nBytes);
-            size_t CopyToLine(int idxLine, uint16_t offset, const void *src, size_t nBytes);
+            size_t CopyFromLine(uint64_t dstAddress, int idxLine, uint16_t offset, size_t nBytes);
+            size_t CopyToLine(int idxLine, uint16_t offset, const uint64_t srcAddress, size_t nBytes);
 
             void ReadLineData(void *dst, int idxLine);
             void WriteLineData(int idxLine, const void *src, uint64_t addrDescriptor, kMESIState state);
 
-            void DumpCacheLines();
+            void DumpCacheLines() const;
         protected:
             std::array<CacheLine, GNK_L1_CACHE_NUM_LINES> lines = {};
         };
 
         // This is attached to each 'core'
+        // The cache is exclusively for emulated RAM transfers - NO external memory mappings ends up here!
         class CacheController : public MemoryBase {
         public:
             CacheController() = default;
@@ -69,13 +71,21 @@ namespace gnilk {
 
             void Initialize(uint8_t coreIdentifier);
 
-            int32_t Read(void *dst, const void *src, size_t nBytesToRead);
-            int32_t Write(void *dst, const void *src, size_t nBytesToWrite);
+            // So read/write are essentially the same - the only difference is that we track the
+            // 'writes' as destructive - and hence, if any other core operates on the same address
+            // their caches will be updated..  Read's however are not destructive - as long as they are
+            // not written to..  Ergo - there is a semantic difference between read/write operations
+            // (even though their interface is the same and on a basic level there is just a memcpy)
+            int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToRead);
+            int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite);
+
+            void Flush();
 
             const Cache& GetCache() {
                 return cache;
             }
-            void Dump();
+            int GetInvalidLineCount() const;
+            void Dump() const;
         protected:
 
             kMESIState OnDataBusMessage(DataBus::kMemOp op, uint8_t sender, uint64_t addrDescriptor);

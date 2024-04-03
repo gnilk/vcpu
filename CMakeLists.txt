@@ -52,6 +52,7 @@ list(APPEND vcputestsrc tests/test_vcpu.cpp)
 # mem subsys tests
 list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu.cpp)
 list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_cache.cpp)
+list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu_new.cpp)
 
 
 

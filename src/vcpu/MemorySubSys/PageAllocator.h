@@ -20,7 +20,6 @@ namespace gnilk {
             int64_t FindFreeRootTable(const MemoryUnit &mmu);
             int64_t FindFreePageDescriptor(const MemoryUnit &mmu, uint64_t idxRootTable);
             int64_t FindFreePage(const MemoryUnit &mmu, uint64_t idxRootTable, uint64_t idxDescriptor);
-
         };
     }
 }
