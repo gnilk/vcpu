@@ -201,6 +201,12 @@ namespace gnilk {
             SysCallDelegate cbHandler;
         };
 
+        // CPUBase is more of a 'Core'
+        // Not sure if I should compose this with a 'Core' class that holds
+        // - CPU emulation (instr. decoding)
+        // - MMU
+        // The 'CORE' would then be placed on the SOC level...
+        // SOC holds the DataBus and so forth...
 
         class InstructionDecoder;
         class CPUBase : public InterruptController {

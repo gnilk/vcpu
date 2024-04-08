@@ -1,5 +1,12 @@
 Ok, I will try to consolidate some thoughts here instead of scattered across the source..
 
+I need another structure; like a 'SoC' kind of structure..
+This should hold:
+- Memory regions (as they are shared across the CORE's and therefore shared between the MMU's)
+- DataBus, connected to the respective region
+- Hardware peripherials and their implementation..
+
+
 
 * L1 Cache should work on virtual addresses, one per core
 * MMU should be _BELOW_ Cache, one MMU per core

@@ -18,6 +18,7 @@ using namespace gnilk::vcpu;
 
 extern "C" {
 DLL_EXPORT int test_mmu2(ITesting *t);
+DLL_EXPORT int test_mmu2_mapregion(ITesting *t);
 DLL_EXPORT int test_mmu2_regionfromaddr(ITesting *t);
 DLL_EXPORT int test_mmu2_offsetfromaddr(ITesting *t);
 DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t);
@@ -29,6 +30,39 @@ DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t);
 
 
 DLL_EXPORT int test_mmu2(ITesting *t) {
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_mmu2_mapregion_handler(ITesting *t) {
+    MMU mmu;
+
+    auto handler = [](DataBus::kMemOp op, uint64_t address) {
+        printf("Accessing: 0x%x\n", (uint32_t)address);
+    };
+
+    mmu.Initialize();
+    mmu.MapRegion(0x01, kRegionFlag_Read, 0x0000'0000'0000'0000, 0x0000'0000'0000'ffff, handler);
+    TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'0000));
+    TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'1234));
+    TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'ffff));
+    // These are above the defined address range...
+    TR_ASSERT(t, !mmu.IsAddressValid(0x0100'0000'0001'0000));
+    TR_ASSERT(t, !mmu.IsAddressValid(0x0100'0000'1234'0000));
+
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_mmu2_mapregion(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize();
+    mmu.MapRegion(0x01, kRegionFlag_Read, 0x0000'0000'0000'0000, 0x0000'0000'0000'ffff);
+    TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'0000));
+    TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'1234));
+    TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'ffff));
+    // These are above the defined address range...
+    TR_ASSERT(t, !mmu.IsAddressValid(0x0100'0000'0001'0000));
+    TR_ASSERT(t, !mmu.IsAddressValid(0x0100'0000'1234'0000));
+
     return kTR_Pass;
 }
 

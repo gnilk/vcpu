@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unordered_map>
+
+#include "System.h"
 #include "CPUMemCache.h"
 #include "RegisterValue.h"
 
@@ -29,7 +31,6 @@
 namespace gnilk {
     namespace vcpu {
         // DO NOT CHANGE
-        static const size_t VCPU_MMU_MAX_REGIONS = 16;      // we have 16 memory regions...
 
         static const size_t VCPU_MMU_MAX_ROOT_TABLES = 16;
         static const size_t VCPU_MMU_ROOT_TABLES_NBITS = 4;        // Should be the bit position of 16
@@ -72,16 +73,6 @@ namespace gnilk {
             PageTableDescriptor descriptor[VCPU_MMU_MAX_DESCRIPTORS];
         };
 
-        using MemoryAccessHandler = std::function<void(uint8_t op, uint64_t address)>;
-        struct MemoryRegion {
-            uint64_t rangeStart, rangeEnd;
-            uint8_t flags = 0;
-            MemoryAccessHandler cbAccessHandler = nullptr;
-
-            // EMU stuff - we can assign physically allocated stuff here
-            void *ptrMemory = nullptr;
-            size_t szMemory = 0;
-        };
 #pragma pack(pop)
 
 //        Upper 32                            |              Lower 32
@@ -147,33 +138,31 @@ namespace gnilk {
         static const uint64_t VCPU_MMU_PAGE_TABLE_IDX_MASK = 0x0000'000f'f000'0000;
         static const uint64_t VCPU_MMU_PAGE_TABLE_SHIFT = (12+16);
 
-        static const uint64_t VCPU_MMU_REGION_MASK = 0xff00'0000'0000'0000;
-        static const uint64_t VCPU_MMU_REGION_SHIFT = (64-8);
-
 
         // New version
         class MMU {
-        public:
-            // Do I need this?
-            struct AddressDescriptor {
-                uint16_t offset;                    // 12bit, AAAA AAAA AAAA
-                uint8_t pageTableEntryIndex;        // 8 bit, PPPP PPPP
-                uint8_t pageTableDescriptorIndex;   // 8 bit, DDDD DDDD
-                uint8_t pageTableIndex;             // 8 bit, TTTT TTTT
-                uint8_t memoryRegionIndex;          // 4 bit, BBBB BBBB
-            };
         public:
             MMU() = default;
             virtual ~MMU() = default;
 
             void Initialize();
 
+            void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end);
+            void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler);
+
+            const MemoryRegion &GetMemoryRegionFromAddress(uint64_t address);
+            bool IsAddressValid(uint64_t address);
+
+
             __inline uint8_t constexpr RegionFromAddress(uint64_t address) {
-                uint8_t region = (address & VCPU_MMU_REGION_MASK) >> (VCPU_MMU_REGION_SHIFT);
+                uint8_t region = (address & VCPU_SOC_REGION_MASK) >> (VCPU_SOC_REGION_SHIFT);
                 return region;
             }
 
-
+            __inline uint64_t constexpr RegionFromIndex(uint64_t regionIndex) {
+                uint8_t region = (regionIndex & 0x0f) << (VCPU_SOC_REGION_SHIFT);
+                return region;
+            }
 
             __inline uint64_t constexpr PageTableIndexFromAddress(uint64_t address) {
                 uint64_t offset = (address & VCPU_MMU_PAGE_TABLE_IDX_MASK) >> (VCPU_MMU_PAGE_TABLE_SHIFT);
@@ -227,7 +216,7 @@ namespace gnilk {
             RegisterValue mmuControl;
             RegisterValue mmuPageTableAddress;
             CacheController cacheController;
-            MemoryRegion regions[VCPU_MMU_MAX_REGIONS];
+            MemoryRegion regions[VCPU_SOC_MAX_REGIONS];
         };
 
 

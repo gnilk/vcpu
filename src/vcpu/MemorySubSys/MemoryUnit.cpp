@@ -17,10 +17,46 @@ using namespace gnilk::vcpu;
 static uint8_t empty_cache_line[GNK_L1_CACHE_LINE_SIZE] = {};
 
 void MMU::Initialize() {
-    regions[0].cbAccessHandler = nullptr;
-    regions[0].rangeStart = 0x0080'0000'0000'0000;
-    regions[0].rangeEnd = 0x00ff'ffff'ffff'ffff;
+    // We should have a 'data-bus' here...
+
+    MapRegion(0,  kRegionFlag_Read | kRegionFlag_Write | kRegionFlag_Execute | kRegionFlag_Cache, 0x0000'0000'0000'0000, 0x000f'ffff'ffff'ffff);
 }
+
+void MMU::MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end) {
+    regions[region].flags = flags | kRegionFlag_Valid;
+    regions[region].rangeStart = start;
+    regions[region].rangeEnd = end;
+}
+
+void MMU::MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler) {
+    regions[region].flags = flags | kRegionFlag_Valid;
+    regions[region].rangeStart = start;
+    regions[region].rangeEnd = end;
+    regions[region].cbAccessHandler = handler;
+}
+
+const MemoryRegion &MMU::GetMemoryRegionFromAddress(uint64_t address) {
+    auto idxRegion = RegionFromAddress(address);
+    return regions[idxRegion];
+}
+
+bool MMU::IsAddressValid(uint64_t address) {
+    auto idxRegion = RegionFromAddress(address);
+    if (!(regions[idxRegion].flags & kRegionFlag_Valid)) {
+        return false;
+    }
+
+    // Now, remove the reserved upper bits from the address
+    address &= VCPU_SOC_ADDR_MASK;
+
+    // Outside region address range?
+    if (address < regions[idxRegion].rangeStart) return false;
+    if (address > regions[idxRegion].rangeEnd) return false;
+
+    // Ok, we are good..
+    return true;
+}
+
 
 void MMU::SetMMUControl(const RegisterValue &newControl) {
     mmuControl = newControl;
@@ -57,16 +93,54 @@ uint64_t MMU::TranslateAddress(uint64_t address) {
     if (!IsFlagSet(kMMU_TranslationEnabled)) {
         return address;
     }
-    // FIXME: Implement address translation
-    return address;
+    // Remove the region index
+    return address & VCPU_SOC_ADDR_MASK;
 }
 
 // Read from RAM
 int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
-    // No translation - addresses are physical..
+    // This is fully bogus...
+    if (!IsFlagSet(kMMU_TranslationEnabled)) {
+        return cacheController.Read(dstPtr, srcPtr, nBytes);
+    }
+
+
+    if (!IsAddressValid(dstPtr)) {
+        // FIXME: Raise MMU Invalid Address Exception
+        return -1;
+    }
+    if (!IsAddressValid(srcPtr)) {
+        // FIXME: Raise MMU Invalid Address Exception
+        return -1;
+    }
+
+    auto regionDst = RegionFromAddress(dstPtr);
+    auto regionSrc = RegionFromAddress(srcPtr);
+    if (regionSrc != regionDst) {
+        // Inter Region Transfer => DMA
+        return -1;
+    }
+
+
     uint64_t srcAddress = TranslateAddress((uint64_t)srcPtr);
     uint64_t dstAddress = TranslateAddress((uint64_t)dstPtr);
-    return cacheController.Read(dstAddress, srcAddress, nBytes);
+    //
+    // We can only cache when
+    // 1) cache is enabled (for both src/dst)
+    // 2) region is same
+    //
+    // In case we do inter-regional transfers this is a type of DMA
+
+
+    // Need to figure out if can/should cache this..
+    if (regions[regionSrc].cbAccessHandler != nullptr) {
+        regions[regionSrc].cbAccessHandler(DataBus::kMemOp::kBusRd, srcAddress);
+    }
+    if (regions[regionDst].cbAccessHandler != nullptr) {
+        regions[regionDst].cbAccessHandler(DataBus::kMemOp::kBusWr, dstAddress);
+    }
+    return -1;
+
 }
 
 // Write to RAM
