@@ -71,6 +71,8 @@ X....Y  => physical region DEF
 Y....Z  => physical region GHI
 .. und so weiter
 
+
+
 Each region has it's own data-bus and translation rules (?) => Allows Flash/SPI/Fast/OnChip/etc mapped RAM
 A region is defined by a lower range + size => effectively gives a bit-mask..
 
@@ -87,6 +89,61 @@ Since Page-Tables are unique per process. But the physical memory table is not. 
 the mmu) everytime we have to update the physical page bitmap table.
 
 Development wise;
+1) Define the address bit pattern for effective translation
+   64 bits addresses
+   0..12, page-offset, this is passed through as the index of what we are trying to read
+
+        Upper 32                            |              Lower 32
+        bit   63                                                                              0
+        RRRR BBBB 0000 0000 0000 0000 0000 TTTT | TTTT DDDD DDDD PPPP PPPP AAAA AAAA AAAA
+
+        This gives 36 bit linear address space per mapped region!
+        Easily extended to 42 bits (just more levels of tables).
+
+      BBBB - Region, the region is a 16 bit lookup inside the MMU - regions are predefined and can not change in runtime
+             Ex:
+      TTTT - Table index
+      DDDD - Descriptor index
+      PPPP - Page Table Entry index
+      X - Virtual address space start marker (this will limit the max contingious block to 2GB - smart?)
+          Any address below is reserved..
+          Which means if you do 'void *ptr = 0x1234'    <- 'marker' not set, this will be an illegal address and considered for OS use..
+      AAAA - 12 bit page offset, pass through... This is used in the physical index map...
+
+      A region defines:
+        Valid Address Range; up to 56 bits [start/stop 64bit addresses - must be maskable]
+        FLAGS
+            Cache-able -> should be pulled in/out of the L1 Cache or is to be treated as pass-through
+            R/W/X -> Read/Write/Execute
+
+            DMA -> can be addressed through the DMA
+        Access Exception Handler
+            What to call in case of access; void AccessExceptionHandler(Operation, Address)
+            When the AccessExceptionHandler is hit, the CPU will read/write a full page of data and copy that to RAM.
+
+        For EMU
+            some kind of subsystem indicator
+            ptr to memory area
+
+      Region '0' is used for FastRAM (SRAM) addresses               8                     8
+        Valid Address Range; 0..X (where X is MAX_RAM-1), like; 0x00800000 00000000 - 0x00800000 0000ffff (if we give it 64k of RAM)
+        This is managed by the emulated EMU when 'SetRam' is called on the MMU
+
+
+      Region '1' is HW mapped registers and busses (4gb)
+        Valid Address Range: 0x01000000 00000000 - 0x01000000 ffffffff      (this is the maximum range)
+        This is managed by the CPU which defines this table and gives it to the MMU
+
+      Region '2' is Ext. RAM
+        Valid Address Range: 0x02000000 00000000 - 0x01000000 ffffffff
+
+      Region '3' is Flash or non-volatile storage
+        Valid Address Range: 0x03000000 00000000 - 0x01000000 ffffffff
+
+
+
+
+
 1) Implement the regions (as of now; reserve 8 control registers in the regions upper part)
 2) Implement supervisor mode (i.e. disabling of address translation) => pass through
 3) Implement a PageAllocation handler which uses the CPU memory functions to handle the page tables

@@ -18,6 +18,9 @@ using namespace gnilk::vcpu;
 
 extern "C" {
 DLL_EXPORT int test_mmu2(ITesting *t);
+DLL_EXPORT int test_mmu2_regionfromaddr(ITesting *t);
+DLL_EXPORT int test_mmu2_offsetfromaddr(ITesting *t);
+DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t);
 DLL_EXPORT int test_mmu2_copyext(ITesting *t);
 DLL_EXPORT int test_mmu2_writeext_read(ITesting *t);
 DLL_EXPORT int test_mmu2_write_read(ITesting *t);
@@ -29,11 +32,56 @@ DLL_EXPORT int test_mmu2(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_mmu2_regionfromaddr(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize();
+
+    auto region = mmu.RegionFromAddress(0x0100'0000'0000'0000);
+    TR_ASSERT(t, region == 0x01);
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_mmu2_offsetfromaddr(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize();
+
+    auto ofs = mmu.PageOffsetFromAddress(0x0000'0000'0000'0123);
+    TR_ASSERT(t, ofs == 0x123);
+
+    // 12 bit offsets used, thus 0x1012 = 4096+0x12 => 0x1000+12 => 0x12
+    ofs = mmu.PageOffsetFromAddress(0x0000'0000'0000'1012);
+    TR_ASSERT(t, ofs == 0x12);
+
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize();
+
+    uint64_t address = 0x0000'0001'2345'6789;
+    auto pte = mmu.PageTableEntryIndexFromAddress(address);
+    auto desc = mmu.PageDescriptorIndexFromAddress(address);
+    auto tbl = mmu.PageTableIndexFromAddress(address);
+
+    TR_ASSERT(t, tbl == 0x12);
+    TR_ASSERT(t, desc = 0x34);
+    TR_ASSERT(t, pte = 0x56);
+
+    return kTR_Pass;
+
+}
+
+
+//
+// This copies data to/from external (outside of emulation control) RAM..
+//
 DLL_EXPORT int test_mmu2_copyext(ITesting *t) {
     RamMemory ramMemory(MMU_MAX_MEM);
     DataBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
+    mmu.Initialize();
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 0;
@@ -59,6 +107,7 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
     DataBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
+    mmu.Initialize();
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 0;
@@ -84,11 +133,15 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
 
 }
 
+//
+// this of write/read through l1 cache
+//
 DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
     RamMemory ramMemory(MMU_MAX_MEM);
     DataBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
+    mmu.Initialize();
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 0;
@@ -142,6 +195,7 @@ DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
     DataBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
+    mmu.Initialize();
     mmu.SetMMUControl({kMMU_ResetPageTableOnSet});
 
     mmu.SetMMUPageTableAddress({0});

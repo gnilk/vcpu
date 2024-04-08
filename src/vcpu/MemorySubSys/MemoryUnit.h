@@ -29,6 +29,8 @@
 namespace gnilk {
     namespace vcpu {
         // DO NOT CHANGE
+        static const size_t VCPU_MMU_MAX_REGIONS = 16;      // we have 16 memory regions...
+
         static const size_t VCPU_MMU_MAX_ROOT_TABLES = 16;
         static const size_t VCPU_MMU_ROOT_TABLES_NBITS = 4;        // Should be the bit position of 16
 
@@ -60,24 +62,136 @@ namespace gnilk {
             uint32_t flags = 0;  // TBD     // 32 bit
         };
         // 16 * VCPU_MMU_MAX_PAGES_PER_DESC + 8
-        struct PageDescriptor {
+        struct PageTableDescriptor {
             size_t nPages = 0;  // need to remove this - must have better structure!
             Page pages[VCPU_MMU_MAX_PAGES_PER_DESC];
         };
         // VCPU_MMU_MAX_DESCRIPTORS * 16 * VCPU_MMU_MAX_PAGES_PER_DESC + 8 + 8
-        struct PageTable {
+        struct PageTableEntry {
             size_t nDescriptors = 0;    // need to remove this - must have better structure
-            PageDescriptor descriptor[VCPU_MMU_MAX_DESCRIPTORS];
+            PageTableDescriptor descriptor[VCPU_MMU_MAX_DESCRIPTORS];
+        };
+
+        using MemoryAccessHandler = std::function<void(uint8_t op, uint64_t address)>;
+        struct MemoryRegion {
+            uint64_t rangeStart, rangeEnd;
+            uint8_t flags = 0;
+            MemoryAccessHandler cbAccessHandler = nullptr;
+
+            // EMU stuff - we can assign physically allocated stuff here
+            void *ptrMemory = nullptr;
+            size_t szMemory = 0;
         };
 #pragma pack(pop)
 
+//        Upper 32                            |              Lower 32
+//        bit   63                                                                              0
+//        RRRR BBBB 0000 0000 0000 0000 0000 TTTT | TTTT DDDD DDDD PPPP PPPP AAAA AAAA AAAA
+//
+//        This gives 36 bit linear address space per mapped region!
+//        Easily extended to 42 bits (just more levels of tables).
+//
+//
+//       Not quite sure how I should handle these...
+//
+//                BBBB - Region, the region is a 16 bit lookup inside the MMU - regions are predefined and can not change in runtime
+//                Ex:
+//        TTTT - Table index
+//        DDDD - Descriptor index
+//        PPPP - Page Table Entry index
+//        X - Virtual address space start marker (will this impose a stupid limit somewhere?)
+//        Any address below is reserved..
+//        Which means if you do 'void *ptr = 0x1234'    <- 'marker' not set, this will be an illegal address and considered for OS use..
+//        AAAA - 12 bit page offset
+//
+//                A region defines:
+//        Valid Address Range; up to 56 bits [start/stop 64bit addresses - must be maskable]
+//        FLAGS
+//                Cache-able -> should be pulled in/out of the L1 Cache or is to be treated as pass-through
+//                R/W/X -> Read/Write/Execute
+//
+//                DMA -> can be addressed through the DMA
+//        Access Exception Handler
+//                What to call in case of access; void AccessExceptionHandler(Operation, Address)
+//        When the AccessExceptionHandler is hit, the CPU will read/write a full page of data and copy that to RAM.
+//
+//        For EMU
+//        some kind of subsystem indicator
+//                ptr to memory area
+//
+//                Region '0' is used for FastRAM (SRAM) addresses               8                     8
+//        Valid Address Range; 0..X (where X is MAX_RAM-1), like; 0x00800000 00000000 - 0x00800000 0000ffff (if we give it 64k of RAM)
+//        This is managed by the emulated EMU when 'SetRam' is called on the MMU
+//
+//
+//                Region '1' is HW mapped registers and busses (4gb)
+//        Valid Address Range: 0x01000000 00000000 - 0x01000000 ffffffff      (this is the maximum range)
+//        This is managed by the CPU which defines this table and gives it to the MMU
+//
+//        Region '2' is Ext. RAM
+//                Valid Address Range: 0x02000000 00000000 - 0x01000000 ffffffff
+//
+//                Region '3' is Flash or non-volatile storage
+//                Valid Address Range: 0x03000000 00000000 - 0x01000000 ffffffff
+//
+
+
+        static const uint64_t VCPU_MMU_PAGE_OFFSET_MASK = 0x0000'0000'0000'0fff;
+
+        static const uint64_t VCPU_MMU_PAGE_ENTRY_IDX_MASK = 0x0000'0000'000f'f000;
+        static const uint64_t VCPU_MMU_PAGE_ENTRY_SHIFT = (12);
+
+        static const uint64_t VCPU_MMU_PAGE_DESC_IDX_MASK = 0x0000'0000'0ff0'0000;
+        static const uint64_t VCPU_MMU_PAGE_DESC_SHIFT = (12+8);
+
+        static const uint64_t VCPU_MMU_PAGE_TABLE_IDX_MASK = 0x0000'000f'f000'0000;
+        static const uint64_t VCPU_MMU_PAGE_TABLE_SHIFT = (12+16);
+
+        static const uint64_t VCPU_MMU_REGION_MASK = 0xff00'0000'0000'0000;
+        static const uint64_t VCPU_MMU_REGION_SHIFT = (64-8);
 
 
         // New version
         class MMU {
         public:
+            // Do I need this?
+            struct AddressDescriptor {
+                uint16_t offset;                    // 12bit, AAAA AAAA AAAA
+                uint8_t pageTableEntryIndex;        // 8 bit, PPPP PPPP
+                uint8_t pageTableDescriptorIndex;   // 8 bit, DDDD DDDD
+                uint8_t pageTableIndex;             // 8 bit, TTTT TTTT
+                uint8_t memoryRegionIndex;          // 4 bit, BBBB BBBB
+            };
+        public:
             MMU() = default;
             virtual ~MMU() = default;
+
+            void Initialize();
+
+            __inline uint8_t constexpr RegionFromAddress(uint64_t address) {
+                uint8_t region = (address & VCPU_MMU_REGION_MASK) >> (VCPU_MMU_REGION_SHIFT);
+                return region;
+            }
+
+
+
+            __inline uint64_t constexpr PageTableIndexFromAddress(uint64_t address) {
+                uint64_t offset = (address & VCPU_MMU_PAGE_TABLE_IDX_MASK) >> (VCPU_MMU_PAGE_TABLE_SHIFT);
+                return offset;
+            }
+            __inline uint64_t constexpr PageDescriptorIndexFromAddress(uint64_t address) {
+                uint64_t offset = (address & VCPU_MMU_PAGE_DESC_IDX_MASK) >> (VCPU_MMU_PAGE_DESC_SHIFT);
+                return offset;
+            }
+            __inline uint64_t constexpr PageTableEntryIndexFromAddress(uint64_t address) {
+                uint64_t offset = (address & VCPU_MMU_PAGE_ENTRY_IDX_MASK) >> (VCPU_MMU_PAGE_ENTRY_SHIFT);
+                return offset;
+            }
+            __inline uint64_t constexpr PageOffsetFromAddress(uint64_t address) {
+                uint64_t offset = (address & VCPU_MMU_PAGE_OFFSET_MASK);
+                return offset;
+            }
+
 
             void SetMMUControl(const RegisterValue &newControl);
             void SetMMUControl(RegisterValue &&newControl);
@@ -113,18 +227,14 @@ namespace gnilk {
             RegisterValue mmuControl;
             RegisterValue mmuPageTableAddress;
             CacheController cacheController;
+            MemoryRegion regions[VCPU_MMU_MAX_REGIONS];
         };
 
 
 
-        // addresses are always 64bit, a mapped pages is looked up like:
         //
-        // [8][8][8][....][12] =>
-        //  8 bit table-index
-        //  8 bit descriptor-index
-        //  8 bit page-index
-        //  [12 bits unused]
-        //  12 bit page-offset
+        // This is the old MMU
+        //
 
         class MemoryUnit {
         public:
@@ -142,7 +252,8 @@ namespace gnilk {
             bool Initialize(void *physicalRam, size_t sizeInBytes);
             bool IsAddressValid(uint64_t virtualAddress);
 
-            PageTable *GetPageTables() const;
+
+            PageTableEntry *GetPageTables() const;
 
             uint64_t TranslateAddress(uint64_t virtualAddress);
             // debugging / unit-test functionality
@@ -202,7 +313,7 @@ namespace gnilk {
             uint8_t *phyBitMap = nullptr;
             size_t szBitmapBytes = 0;
             // Root tables are in the virtual address space...
-            PageTable *rootTables;
+            PageTableEntry *rootTables;
         };
     }
 }

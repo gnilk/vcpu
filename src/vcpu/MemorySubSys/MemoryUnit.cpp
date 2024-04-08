@@ -8,9 +8,19 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+//
+//
+//
+
 
 // We need a bunch of zeros
 static uint8_t empty_cache_line[GNK_L1_CACHE_LINE_SIZE] = {};
+
+void MMU::Initialize() {
+    regions[0].cbAccessHandler = nullptr;
+    regions[0].rangeStart = 0x0080'0000'0000'0000;
+    regions[0].rangeEnd = 0x00ff'ffff'ffff'ffff;
+}
 
 void MMU::SetMMUControl(const RegisterValue &newControl) {
     mmuControl = newControl;
@@ -25,7 +35,7 @@ void MMU::SetMMUPageTableAddress(const gnilk::vcpu::RegisterValue &newPageTblAdd
     if (IsFlagSet(kMMU_ResetPageTableOnSet)) {
         uint64_t physicalAddr = TranslateAddress(mmuPageTableAddress.data.longword);
 
-        int32_t nBytesToWrite = sizeof(PageTable);
+        int32_t nBytesToWrite = sizeof(PageTableEntry);
 
         // Reset everything to zero...
         while(nBytesToWrite) {
@@ -130,7 +140,7 @@ bool MemoryUnit::Initialize(void *physicalRam, size_t sizeInBytes) {
     // Minimum memory required to hold our data..
     // for a 16x16x16 config this is about 1kb (1041 bytes)...
     // This the amount of RAM we steal to hold our meta-data
-    size_t minMemRequired = sizeof(PageTable) + ((VCPU_MMU_MAX_ROOT_TABLES * VCPU_MMU_MAX_DESCRIPTORS * VCPU_MMU_MAX_PAGES_PER_DESC) >> 3);
+    size_t minMemRequired = sizeof(PageTableEntry) + ((VCPU_MMU_MAX_ROOT_TABLES * VCPU_MMU_MAX_DESCRIPTORS * VCPU_MMU_MAX_PAGES_PER_DESC) >> 3);
 
     if (sizeInBytes < minMemRequired) {
         // FIXME: Raise low-memory exception - we need AT LEAST some bytes
@@ -167,7 +177,7 @@ void MemoryUnit::SetPageTableAddress(const RegisterValue &newVirtualPageTableAdd
     if (IsFlagEnabled(kMMU_ResetPageTableOnSet)) {
         // This will be a pass-through translation if translation is not enabled..
         auto ptrPhysicalAddrTable = TranslateToPhysical(mmuPageTableAddress.data.longword);
-        memset(ptrPhysicalAddrTable, 0, sizeof(PageTable));
+        memset(ptrPhysicalAddrTable, 0, sizeof(PageTableEntry));
 
         // Remove the flag..
         mmuControl.data.longword &= ~uint64_t(kMMU_ResetPageTableOnSet);
@@ -180,10 +190,10 @@ void MemoryUnit::InitializePhysicalBitmap() {
 
 }
 
-PageTable *MemoryUnit::GetPageTables() const {
+PageTableEntry *MemoryUnit::GetPageTables() const {
     //rootTables;
     if (!IsFlagEnabled(kMMU_TranslationEnabled)) {
-        return (PageTable *)mmuPageTableAddress.data.nativePtr;
+        return (PageTableEntry *)mmuPageTableAddress.data.nativePtr;
     }
     return nullptr;
 }
