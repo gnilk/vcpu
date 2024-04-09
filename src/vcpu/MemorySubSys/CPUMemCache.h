@@ -43,8 +43,6 @@ namespace gnilk {
             Cache() = default;
             virtual ~Cache() = default;
 
-            void Initialize(MesiBusBase::Ref bus);
-
             int GetNumLines() const;
             int GetLineIndex(uint64_t addrDescriptor);
             int NextLineIndex();
@@ -66,7 +64,6 @@ namespace gnilk {
             int32_t CopyToLineFromExternal(int idxLine, uint16_t offset, const void *src, size_t nBytes);
             int32_t CopyFromLineToExternal(void *dst, int idxLine, uint16_t offset, size_t nBytes);
         protected:
-            MesiBusBase::Ref databus = nullptr;
             std::array<CacheLine, GNK_L1_CACHE_NUM_LINES> lines = {};
         };
 
@@ -79,7 +76,7 @@ namespace gnilk {
             CacheController() = default;
             virtual ~CacheController() = default;
 
-            void Initialize(uint8_t coreIdentifier, MesiBusBase::Ref bus);
+            void Initialize(uint8_t coreIdentifier);
 
             void Touch(const uint64_t address);
 
@@ -107,7 +104,7 @@ namespace gnilk {
         protected:
 
             kMESIState OnDataBusMessage(MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor);
-            int32_t ReadLine(uint64_t addrDescriptor, kMESIState state);
+            int32_t ReadLine(MesiBusBase::Ref bus, uint64_t addrDescriptor, kMESIState state);
             kMESIState OnMsgBusRd(uint64_t addrDescriptor);
             void OnMsgBusWr(uint64_t addrDescriptor);
 
@@ -119,19 +116,21 @@ namespace gnilk {
             // their caches will be updated..  Read's however are not destructive - as long as they are
             // not written to..  Ergo - there is a semantic difference between read/write operations
             // (even though their interface is the same and on a basic level there is just a memcpy)
-            int32_t ReadInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToRead);
-            int32_t WriteInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite);
+
+            // Note: We don't supply the bus here since dst/src can be using different busses
+            // Note2: This function should go away...
+            //int32_t ReadInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToRead);
+            //int32_t WriteInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite);
 
         private:
             int32_t WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes);
             void ReadInternalToExternal(void *dst, const uint64_t address, size_t nBytes);
 
-            void WriteMemory(int idxLine);
-            void ReadMemory(int idxLine, uint64_t addrDescriptor, kMESIState state);
+            void WriteMemory(MesiBusBase::Ref bus, int idxLine);
+            void ReadMemory(MesiBusBase::Ref bus, int idxLine, uint64_t addrDescriptor, kMESIState state);
 
         private:
             uint8_t idCore = 0;
-            MesiBusBase::Ref databus = nullptr;
             Cache cache;
         };
     }

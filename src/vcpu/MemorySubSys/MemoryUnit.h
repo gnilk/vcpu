@@ -51,7 +51,7 @@ namespace gnilk {
         static const uint32_t MMU_FLAGS_RWX =  0x07;    // allow Read|Write|Exec - this is the default..
 
         enum kMMUFlagsCR0 {
-            kMMU_TranslationEnabled = 1,
+            kMMU_TranslationEnabled = 1,        // if we should look up address in the page-translation table..
             kMMU_ResetPageTableOnSet = 2,
         };
 
@@ -145,12 +145,8 @@ namespace gnilk {
             MMU() = default;
             virtual ~MMU() = default;
 
-            void Initialize(uint8_t coreId, MesiBusBase::Ref bus);
+            void Initialize(uint8_t newCoreId);
 
-            void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end);
-            void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler);
-
-            const MemoryRegion &GetMemoryRegionFromAddress(uint64_t address);
             bool IsAddressValid(uint64_t address);
 
 
@@ -225,20 +221,24 @@ namespace gnilk {
             }
         protected:
             // Emulated RAM <-> RAM transfers, with cache line handling
-            int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
-            int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+            //int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+            //int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
 
             int32_t WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes);
             void ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes);
 
         protected:
+            uint8_t coreId = 0;
             RegisterValue mmuControl;
             RegisterValue mmuPageTableAddress;
+            // IF I have a cache controller per region, I can't mix the cache (i.e. only cache within a region or per databus)
+            // IF I have a mixed cache controlled => across regions => I MUST look up which bus to use everytime I need to talk to the bus
+            // Same goes for responding to bus-messages
+            CacheController cacheController;
 
             // FIXME: Move these two out of here
-            MesiBusBase::Ref databus;
-            CacheController cacheController;
-            MemoryRegion regions[VCPU_SOC_MAX_REGIONS];
+            //MesiBusBase::Ref databus;
+            //MemoryRegion regions[VCPU_SOC_MAX_REGIONS];
         };
 
 
@@ -246,7 +246,7 @@ namespace gnilk {
         //
         // This is the old MMU
         //
-
+/*
         class MemoryUnit {
         public:
             // This is where the virtual address space starts - everything below this is reserved!
@@ -326,6 +326,7 @@ namespace gnilk {
             // Root tables are in the virtual address space...
             PageTableEntry *rootTables;
         };
+*/
     }
 }
 

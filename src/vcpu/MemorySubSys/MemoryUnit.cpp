@@ -16,44 +16,16 @@ using namespace gnilk::vcpu;
 // We need a bunch of zeros
 static uint8_t empty_cache_line[GNK_L1_CACHE_LINE_SIZE] = {};
 
-void MMU::Initialize(uint8_t coreId, MesiBusBase::Ref bus) {
-    // We should have a 'data-bus' here...
-    databus= bus;
-    cacheController.Initialize(coreId, databus);
-    MapRegion(0,  kRegionFlag_Read | kRegionFlag_Write | kRegionFlag_Execute | kRegionFlag_Cache, 0x0000'0000'0000'0000, 0x000f'ffff'ffff'ffff);
+void MMU::Initialize(uint8_t newCoreId) {
+    coreId = newCoreId;
+    cacheController.Initialize(coreId);
 }
 
-void MMU::MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end) {
-    regions[region].flags = flags | kRegionFlag_Valid;
-    regions[region].rangeStart = start;
-    regions[region].rangeEnd = end;
-}
-
-void MMU::MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler) {
-    regions[region].flags = flags | kRegionFlag_Valid;
-    regions[region].rangeStart = start;
-    regions[region].rangeEnd = end;
-    regions[region].cbAccessHandler = handler;
-}
-
-const MemoryRegion &MMU::GetMemoryRegionFromAddress(uint64_t address) {
-    auto idxRegion = RegionFromAddress(address);
-    return regions[idxRegion];
-}
 
 bool MMU::IsAddressValid(uint64_t address) {
-    auto idxRegion = RegionFromAddress(address);
-    if (!(regions[idxRegion].flags & kRegionFlag_Valid)) {
+    if (!SoC::Instance().HaveRegionForAddress(address)) {
         return false;
     }
-
-    // Now, remove the reserved upper bits from the address
-    address &= VCPU_SOC_ADDR_MASK;
-
-    // Outside region address range?
-    if (address < regions[idxRegion].rangeStart) return false;
-    if (address > regions[idxRegion].rangeEnd) return false;
-
     // Ok, we are good..
     return true;
 }
@@ -69,25 +41,33 @@ void MMU::SetMMUControl(RegisterValue &&newControl) {
 void MMU::SetMMUPageTableAddress(const gnilk::vcpu::RegisterValue &newPageTblAddr) {
     mmuPageTableAddress = newPageTblAddr;
 
-    if (IsFlagSet(kMMU_ResetPageTableOnSet)) {
-        uint64_t physicalAddr = TranslateAddress(mmuPageTableAddress.data.longword);
+    if (!IsFlagSet(kMMU_ResetPageTableOnSet)) {
+        return;
+    }
+    if (!IsAddressValid(mmuPageTableAddress.data.longword)) {
+        // FIXME: Raise valid exception here
+        return;
+    }
 
-        int32_t nBytesToWrite = sizeof(PageTableEntry);
 
-        // Reset everything to zero...
-        while(nBytesToWrite) {
-            databus->WriteLine(physicalAddr, empty_cache_line);
-            nBytesToWrite -= GNK_L1_CACHE_LINE_SIZE;
-            if (nBytesToWrite < 0) {
-                nBytesToWrite = 0;
-                int breakme = 0;
-            }
+    auto databus = SoC::Instance().GetDataBusForAddress(mmuPageTableAddress.data.longword);
 
+    uint64_t physicalAddr = TranslateAddress(mmuPageTableAddress.data.longword);
+    int32_t nBytesToWrite = sizeof(PageTableEntry);
+
+    // Reset everything to zero...
+    while(nBytesToWrite) {
+        databus->WriteLine(physicalAddr, empty_cache_line);
+        nBytesToWrite -= GNK_L1_CACHE_LINE_SIZE;
+        if (nBytesToWrite < 0) {
+            nBytesToWrite = 0;
+            int breakme = 0;
         }
 
-        // Remove the flag..
-        mmuControl.data.longword &= ~uint64_t(kMMU_ResetPageTableOnSet);
     }
+
+    // Remove the flag..
+    mmuControl.data.longword &= ~uint64_t(kMMU_ResetPageTableOnSet);
 }
 
 uint64_t MMU::TranslateAddress(uint64_t address) {
@@ -98,7 +78,8 @@ uint64_t MMU::TranslateAddress(uint64_t address) {
     return address & VCPU_SOC_ADDR_MASK;
 }
 
-// Read from RAM
+// Read from RAM => and this interface should go away...
+/*
 int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
     // This is fully bogus...
     if (!IsFlagSet(kMMU_TranslationEnabled)) {
@@ -134,12 +115,12 @@ int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
 
 
     // Need to figure out if can/should cache this..
-    if (regions[regionSrc].cbAccessHandler != nullptr) {
-        regions[regionSrc].cbAccessHandler(MesiBusBase::kMemOp::kBusRd, srcAddress);
-    }
-    if (regions[regionDst].cbAccessHandler != nullptr) {
-        regions[regionDst].cbAccessHandler(MesiBusBase::kMemOp::kBusWr, dstAddress);
-    }
+//    if (regions[regionSrc].cbAccessHandler != nullptr) {
+//        regions[regionSrc].cbAccessHandler(MesiBusBase::kMemOp::kBusRd, srcAddress);
+//    }
+//    if (regions[regionDst].cbAccessHandler != nullptr) {
+//        regions[regionDst].cbAccessHandler(MesiBusBase::kMemOp::kBusWr, dstAddress);
+//    }
     return -1;
 
 }
@@ -152,6 +133,7 @@ int32_t MMU::Write(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
     return cacheController.WriteInternal(dstAddress, srcAddress, nBytes);
     return -1;
 }
+ */
 
 int32_t MMU::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
     // FIXME: Address translation
@@ -172,6 +154,11 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nB
     if (nBytes == 0) {
         return 0;
     }
+    if (!SoC::Instance().HaveRegionForAddress(srcAddress)) {
+        // FIXME: Raise exception
+        return 0;
+    }
+    auto databus = SoC::Instance().GetDataBusForAddress(srcAddress);
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     databus->ReadLine(tmpCacheLine, srcAddress);
     memcpy(dstPtr, tmpCacheLine, nBytes);
@@ -188,9 +175,16 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
     if (nBytes == 0) {
         return 0;
     }
+    if (!SoC::Instance().HaveRegionForAddress(dstAddr)) {
+        // FIXME: Raise exception
+        return 0;
+    }
+    auto databus = SoC::Instance().GetDataBusForAddress(dstAddr);
+
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     memcpy(tmpCacheLine, srcAddress, nBytes);
     databus->WriteLine(dstAddr, tmpCacheLine);
+
     return nBytes;
 }
 
@@ -198,7 +192,7 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
 
 
 
-
+/*
 
 
 
@@ -276,11 +270,7 @@ void MemoryUnit::InitializePhysicalBitmap() {
 }
 
 PageTableEntry *MemoryUnit::GetPageTables() const {
-    //rootTables;
-    if (!IsFlagEnabled(kMMU_TranslationEnabled)) {
-        return (PageTableEntry *)mmuPageTableAddress.data.nativePtr;
-    }
-    return nullptr;
+    return (PageTableEntry *)mmuPageTableAddress.data.nativePtr;
 }
 
 
@@ -327,7 +317,8 @@ uint64_t MemoryUnit::TranslateAddress(uint64_t virtualAddress) {
 
     // In case no translation - just return back the virtual address...
     if (!IsFlagEnabled(kMMU_TranslationEnabled)) {
-        return virtualAddress;
+        // Mask out reserved bits from this virtual address and return it..
+        return (virtualAddress & VCPU_SOC_ADDR_MASK);
     }
 
     auto page = GetPageForAddress(virtualAddress);
@@ -383,3 +374,4 @@ void MemoryUnit::FreePhysicalPage(uint64_t virtualAddress) const {
     phyBitMap[bitmapIndex] = phyBitMap[bitmapIndex] & ((1<<pageBit) ^ 0xff);
 }
 
+*/

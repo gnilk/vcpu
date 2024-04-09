@@ -26,6 +26,7 @@ namespace gnilk {
         public:
             RamMemory() = delete;
             explicit RamMemory(size_t szRam);
+            RamMemory(void *ptr, size_t szRam);
             virtual ~RamMemory();
 
             // Well - we need something...
@@ -54,6 +55,7 @@ namespace gnilk {
                 return numBytes;
             }
         private:
+            bool isExternallyManaged = false;
             size_t numBytes = 0;
             uint8_t *data = nullptr;
         };

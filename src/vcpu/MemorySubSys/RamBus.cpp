@@ -10,12 +10,22 @@ using namespace gnilk::vcpu;
 RamMemory::RamMemory(size_t szRam) {
     data = new uint8_t[szRam];
     numBytes = szRam;
+    isExternallyManaged = false;
     memset(data,0,numBytes);
 }
 
-RamMemory::~RamMemory() {
-    delete[] data;
+RamMemory::RamMemory(void *ptr, size_t szRam) {
+    data = static_cast<uint8_t *>(ptr);
+    numBytes = szRam;
+    isExternallyManaged = true;
 }
+
+RamMemory::~RamMemory() {
+    if (!isExternallyManaged) {
+        delete[] data;
+    }
+}
+
 
 void RamMemory::Write(uint64_t addrDescriptor, const void *src) {
     memcpy(&data[addrDescriptor], src, GNK_L1_CACHE_LINE_SIZE);

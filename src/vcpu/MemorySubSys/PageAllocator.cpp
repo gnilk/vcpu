@@ -7,7 +7,7 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-uint64_t PageAllocator::AllocatePage(const MemoryUnit &mmu) {
+uint64_t PageAllocator::AllocatePage(const MMU &mmu) {
 
     // The page allocation handling is only used to track virtual to physical address space mapping of the 4k pages
     int64_t idxRootTable = FindFreeRootTable(mmu);
@@ -23,11 +23,16 @@ uint64_t PageAllocator::AllocatePage(const MemoryUnit &mmu) {
         return 0;
     }
 
+    return 0;
+
     // 12 = 4k per page..
 
     //
     // This translation belongs in the MMU
     //
+/*
+ * FIXME: This is not yet part of the new MMU
+ *
     uint64_t virtualRoot = (idxRootTable<<(12 + VCPU_MMU_DESCRIPTORS_NBITS + VCPU_MMU_PAGES_NBITS));
     uint64_t virtualDesc = (idxDesc << (12 + VCPU_MMU_PAGES_NBITS));
     uint64_t viurtualPage = (idxPage << 12);
@@ -52,15 +57,18 @@ uint64_t PageAllocator::AllocatePage(const MemoryUnit &mmu) {
 
     // If translation is disabled we store the virtual address...
     pageTables[idxRootTable].descriptor[idxDesc].pages[idxPage].ptrPhysical = (void *)virtualAddress;
+
     return (uint64_t)phyAddress;
+*/
 }
 
-bool PageAllocator::FreePage(const MemoryUnit &mmu, uint64_t virtualAddress) {
-    if (!mmu.IsFlagEnabled(kMMU_TranslationEnabled)) {
+bool PageAllocator::FreePage(const MMU &mmu, uint64_t virtualAddress) {
+    if (!mmu.IsFlagSet(kMMU_TranslationEnabled)) {
         // FIXME: Not sure what a good way - I can blow up the page-tables - or not..
         // The MMU currently have the 'bitmap' table - is this a good idea??
         return true;
     }
+/*
     auto pageTables = mmu.GetPageTables();
 
 
@@ -81,6 +89,8 @@ bool PageAllocator::FreePage(const MemoryUnit &mmu, uint64_t virtualAddress) {
     pageTables[idxRootTable].descriptor[idxDesc].nPages -= 1;
 
     return true;
+*/
+    return false;
 }
 
 //
@@ -89,7 +99,8 @@ bool PageAllocator::FreePage(const MemoryUnit &mmu, uint64_t virtualAddress) {
 //
 
 // Finds a free root table...
-int64_t PageAllocator::FindFreeRootTable(const MemoryUnit &mmu) {
+int64_t PageAllocator::FindFreeRootTable(const MMU &mmu) {
+/*
     auto pageTables = mmu.GetPageTables();
 
     for(int i=0;i<VCPU_MMU_MAX_ROOT_TABLES;i++) {
@@ -98,12 +109,14 @@ int64_t PageAllocator::FindFreeRootTable(const MemoryUnit &mmu) {
             return i;
         }
     }
+*/
     return -1;
 }
 
 
 // Finds a free page-descriptor within the root table..
-int64_t PageAllocator::FindFreePageDescriptor(const MemoryUnit &mmu, uint64_t idxRootTable) {
+int64_t PageAllocator::FindFreePageDescriptor(const MMU &mmu, uint64_t idxRootTable) {
+/*
     auto pageTables = mmu.GetPageTables();
     for(int i=0;i<VCPU_MMU_MAX_DESCRIPTORS;i++) {
         // Must be -1 since we will allocate this free slot..
@@ -111,16 +124,19 @@ int64_t PageAllocator::FindFreePageDescriptor(const MemoryUnit &mmu, uint64_t id
             return i;
         }
     }
+*/
     return -1;
 }
 
 // Finds a free page within the descriptor table...
-int64_t PageAllocator::FindFreePage(const MemoryUnit &mmu, uint64_t idxRootTable, uint64_t idxDescriptor) {
+int64_t PageAllocator::FindFreePage(const MMU &mmu, uint64_t idxRootTable, uint64_t idxDescriptor) {
+/*
     auto pageTables = mmu.GetPageTables();
     for(int i=0;i<VCPU_MMU_MAX_PAGES_PER_DESC;i++) {
         if (pageTables[idxRootTable].descriptor[idxDescriptor].pages[i].flags == 0x00) {
             return i;
         }
     }
+*/
     return -1;
 }

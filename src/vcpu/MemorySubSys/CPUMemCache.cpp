@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unordered_map>
 
+#include "System.h"
 #include "CPUMemCache.h"
 
 //
@@ -18,9 +19,6 @@ using namespace gnilk::vcpu;
 //
 // Cache
 //
-void Cache::Initialize(MesiBusBase::Ref bus) {
-    databus = bus;
-}
 
 int Cache::GetNumLines() const {
     return lines.size();
@@ -98,7 +96,8 @@ size_t Cache::CopyFromLine(uint64_t dstAddress, int idxLine, uint16_t offset, si
         return 0;
     }
 
-    databus->WriteLine(dstAddress, &lines[idxLine].data);
+    auto bus = SoC::Instance().GetDataBusForAddress(dstAddress);
+    bus->WriteLine(dstAddress, &lines[idxLine].data);
     return nBytes;
 }
 
@@ -110,7 +109,9 @@ size_t Cache::CopyToLine(int idxLine, uint16_t offset, const uint64_t srcAddress
         return 0;
     }
 
-    databus->ReadLine(lines[idxLine].data, srcAddress);
+    auto bus = SoC::Instance().GetDataBusForAddress(srcAddress);
+    // FIXME: Assert bus != nullptr
+    bus->ReadLine(lines[idxLine].data, srcAddress);
     // Update the cache line state...
     lines[idxLine].state = kMesi_Modified;
     return nBytes;
@@ -159,15 +160,21 @@ void Cache::DumpCacheLines() const {
 //
 
 // This should not be in the CTOR - I hate CTOR's...
-void CacheController::Initialize(uint8_t coreIdentifier, MesiBusBase::Ref bus) {
+void CacheController::Initialize(uint8_t coreIdentifier) {
     idCore = coreIdentifier;
-    databus = bus;
 
-    cache.Initialize(bus);
 
-    databus->Subscribe(idCore, [this](MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
-        return OnDataBusMessage(op, sender, addrDescriptor);
-    });
+    std::vector<MemoryRegion *> regions;
+    SoC::Instance().GetCacheableRegions(regions);
+
+    // Let's assume we subscribe to all cacheable regions...
+    for(auto r : regions) {
+        if (r->bus != nullptr) {
+            r->bus->Subscribe(idCore, [this](MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
+                return OnDataBusMessage(op, sender, addrDescriptor);
+            });
+        }
+    }
 }
 
 kMESIState CacheController::OnDataBusMessage(MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
@@ -192,7 +199,8 @@ kMESIState CacheController::OnMsgBusRd(uint64_t addrDescriptor) {
         return kMesi_Invalid;
     }
     if (cache.GetLineState(idxLine) == kMesi_Modified) {
-        WriteMemory(idxLine);
+        auto bus = SoC::Instance().GetDataBusForAddress(addrDescriptor);
+        WriteMemory(bus, idxLine);
     }
     return cache.SetLineState(idxLine, kMesi_Shared);
 }
@@ -205,7 +213,8 @@ void CacheController::OnMsgBusWr(uint64_t addrDescriptor) {
     }
 
     if (cache.GetLineState(idxLine) == kMesi_Modified) {
-        WriteMemory(idxLine);
+        auto bus = SoC::Instance().GetDataBusForAddress(addrDescriptor);
+        WriteMemory(bus, idxLine);
         cache.ResetLine(idxLine);
     }
 }
@@ -214,12 +223,13 @@ void CacheController::OnMsgBusWr(uint64_t addrDescriptor) {
 void CacheController::Touch(const uint64_t address) {
     uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(address);
     kMESIState state = kMesi_Exclusive;
-    auto res = databus->BroadCastRead(idCore, addrDescriptor);
+    MesiBusBase::Ref bus = SoC::Instance().GetDataBusForAddress(address);
+    auto res = bus->BroadCastRead(idCore, addrDescriptor);
     if (res != kMesi_Invalid) {
         // Shared
         state = kMesi_Shared;
     }
-    ReadLine(addrDescriptor, state);
+    ReadLine(bus, addrDescriptor, state);
 }
 
 // Private - this is called from 'Write<T>' - which is a wrapper so we can copy absolute values to the
@@ -227,9 +237,10 @@ void CacheController::Touch(const uint64_t address) {
 int32_t CacheController::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
     // Make sure our address is in the cache...
     uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(address);
-    databus->BroadCastWrite(idCore, dstAddrDesc);
+    auto bus = SoC::Instance().GetDataBusForAddress(address);
+    bus->BroadCastWrite(idCore, dstAddrDesc);
 
-    auto idxLine = ReadLine(dstAddrDesc, kMESIState::kMesi_Exclusive);
+    auto idxLine = ReadLine(bus, dstAddrDesc, kMESIState::kMesi_Exclusive);
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(address);
 
     return cache.CopyToLineFromExternal(idxLine, offset, src, nBytes);
@@ -240,13 +251,14 @@ void CacheController::ReadInternalToExternal(void *dst, const uint64_t address, 
     kMESIState state = kMesi_Exclusive;
 
     // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
-
-    auto res = databus->BroadCastRead(idCore, addrDescriptor);
+    auto bus = SoC::Instance().GetDataBusForAddress(address);
+    auto res = bus->BroadCastRead(idCore, addrDescriptor);
     if (res != kMesi_Invalid) {
         // Shared
         state = kMesi_Shared;
     }
-    auto idxLine = ReadLine(addrDescriptor, state);
+    // pass the bus here - avoid lookup twice...
+    auto idxLine = ReadLine(bus, addrDescriptor, state);
 
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(address);
     cache.CopyFromLineToExternal(dst, idxLine, offset, nBytes);
@@ -256,18 +268,20 @@ void CacheController::ReadInternalToExternal(void *dst, const uint64_t address, 
 //
 // Read from cache - 'src' is a cache-line address, dst is somewhere the user wants it
 //
+/*
 int32_t CacheController::ReadInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToRead) {
     uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(srcAddress);
     kMESIState state = kMesi_Exclusive;
 
     // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
+    auto srcBus = SoC::Instance().GetDataBusForAddress(addrDescriptor);
 
-    auto res = databus->BroadCastRead(idCore, addrDescriptor);
+    auto res = srcBus->BroadCastRead(idCore, addrDescriptor);
     if (res != kMesi_Invalid) {
         // Shared
         state = kMesi_Shared;
     }
-    auto idxLine = ReadLine(addrDescriptor, state);
+    auto idxLine = ReadLine(srcBus, addrDescriptor, state);
 
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(srcAddress);
     return cache.CopyFromLine(dstAddress, idxLine, offset, nBytesToRead);
@@ -278,24 +292,26 @@ int32_t CacheController::ReadInternal(uint64_t dstAddress, const uint64_t srcAdd
 //
 int32_t CacheController::WriteInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite) {
     uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(dstAddress);
-    databus->BroadCastWrite(idCore, dstAddrDesc);
+    auto dstBus = SoC::Instance().GetDataBusForAddress(dstAddress);
 
-    auto idxLine = ReadLine(dstAddrDesc, kMESIState::kMesi_Exclusive);
+    dstBus->BroadCastWrite(idCore, dstAddrDesc);
+    auto idxLine = ReadLine(dstBus, dstAddrDesc, kMESIState::kMesi_Exclusive);
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(dstAddress);
 
     return cache.CopyToLine(idxLine, offset, srcAddress, nBytesToWrite);
 
 }
+*/
 
-int32_t CacheController::ReadLine(uint64_t addrDescriptor, kMESIState state) {
+int32_t CacheController::ReadLine(MesiBusBase::Ref bus, uint64_t addrDescriptor, kMESIState state) {
     auto idxLine = cache.GetLineIndex(addrDescriptor);
     auto idxNext = cache.NextLineIndex();
     // Miss?
     if (idxLine < 0) {
         if (cache.GetLineState(idxNext) == kMesi_Modified) {
-            WriteMemory(idxNext);
+            WriteMemory(bus, idxNext);
         }
-        ReadMemory(idxNext, addrDescriptor, state);
+        ReadMemory(bus, idxNext, addrDescriptor, state);
         idxLine = idxNext;
     }
     return idxLine;
@@ -305,22 +321,23 @@ void CacheController::Flush() {
 
     for (auto i = 0; i<cache.GetNumLines();i++) {
         if (cache.GetLineState(i) == kMesi_Modified) {
-            WriteMemory(i);
+            auto bus = SoC::Instance().GetDataBusForAddress(cache.lines[i].addrDescriptor);
+            WriteMemory(bus, i);
             cache.ResetLine(i);
         }
     }
 }
 
-void CacheController::WriteMemory(int idxLine) {
+void CacheController::WriteMemory(MesiBusBase::Ref bus, int idxLine) {
     uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
 
     cache.ReadLineData(tmp, idxLine);
-    databus->WriteLine(cache.GetLineAddrDescriptor(idxLine), tmp);
+    bus->WriteLine(cache.GetLineAddrDescriptor(idxLine), tmp);
 }
 
-void CacheController::ReadMemory(int idxLine, uint64_t addrDescriptor, kMESIState state) {
+void CacheController::ReadMemory(MesiBusBase::Ref bus, int idxLine, uint64_t addrDescriptor, kMESIState state) {
     uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
-    databus->ReadLine(tmp, addrDescriptor);
+    bus->ReadLine(tmp, addrDescriptor);
     cache.WriteLineData(idxLine, tmp, addrDescriptor, state);
 }
 
