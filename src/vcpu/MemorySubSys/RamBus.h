@@ -2,8 +2,8 @@
 // Created by gnilk on 31.03.2024.
 //
 
-#ifndef VCPU_DATABUS_H
-#define VCPU_DATABUS_H
+#ifndef VCPU_RAMBUS_H
+#define VCPU_RAMBUS_H
 
 #include <string>
 #include <unordered_map>
@@ -86,23 +86,9 @@ namespace gnilk {
             uint8_t *data = nullptr;
         };
 
-        class BusBase {
+        class MesiBusBase {
         public:
-            using Ref = std::shared_ptr<BusBase>;
-        public:
-            BusBase() = default;
-            virtual ~BusBase() = default;
-
-            void WriteMemory(uint64_t addrDescriptor, const void *src) {}
-            void ReadMemory(void *dst, uint64_t addrDescriptor) {}
-        protected:
-        };
-
-
-        // The bus is used to send messages
-        // There is only one bus
-        class DataBus {
-        public:
+            using Ref = std::shared_ptr<MesiBusBase>;
             // See: https://en.wikipedia.org/wiki/MESI_protocol
             enum class kMemOp {
                 kProcRd,    // Processor Read Request
@@ -117,16 +103,10 @@ namespace gnilk {
                 uint8_t idCore = 0;
                 MessageHandler cbOnMessage = nullptr;
             };
+
         public:
-            DataBus() = default; //(RamMemory &memory) : ram(memory) {}
-            virtual ~DataBus() = default;
-
-            static DataBus &Instance();
-
-            // TEMP
-            void SetRamMemory(RamMemory *memory) {
-                ram = memory;
-            }
+            MesiBusBase() = default;
+            virtual ~MesiBusBase() = default;
 
             void Subscribe(uint8_t idCore, MessageHandler cbOnMessage);
             kMESIState SendMessage(kMemOp, uint8_t sender, uint64_t addrDescriptor);
@@ -134,8 +114,30 @@ namespace gnilk {
             kMESIState BroadCastRead(uint8_t idCore, uint64_t addrDescriptor);
             void BroadCastWrite(uint8_t idCore, uint64_t addrDescriptor);
 
-            void WriteMemory(uint64_t addrDescriptor, const void *src);
-            void ReadMemory(void *dst, uint64_t addrDescriptor);
+
+            virtual void WriteLine(uint64_t addrDescriptor, const void *src) = 0;
+            virtual void ReadLine(void *dst, uint64_t addrDescriptor) = 0;
+        protected:
+            size_t nextSubscriber = 0;
+            std::array<MemBusSnooper, GNK_CPU_NUM_CORES> subscribers = {};
+        };
+
+
+        // RAM Bus
+        class RamBus : public MesiBusBase {
+        public:
+            RamBus() = default; //(RamMemory &memory) : ram(memory) {}
+            virtual ~RamBus() = default;
+
+            static RamBus &Instance();
+
+            // TEMP
+            void SetRamMemory(RamMemory *memory) {
+                ram = memory;
+            }
+
+            void WriteLine(uint64_t addrDescriptor, const void *src) override;
+            void ReadLine(void *dst, uint64_t addrDescriptor) override;
 
             // Emulation helpers
             void *RamPtr(uint64_t address) const {
@@ -144,11 +146,9 @@ namespace gnilk {
         protected:
             // ???
             RamMemory *ram;
-            size_t nextSubscriber = 0;
-            std::array<MemBusSnooper, GNK_CPU_NUM_CORES> subscribers = {};
         };
 
     }
 }
 
-#endif //VCPU_DATABUS_H
+#endif //VCPU_RAMBUS_H

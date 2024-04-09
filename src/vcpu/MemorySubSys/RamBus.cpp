@@ -2,7 +2,7 @@
 // Created by gnilk on 31.03.2024.
 //
 
-#include "DataBus.h"
+#include "RamBus.h"
 #include <string.h>
 
 using namespace gnilk::vcpu;
@@ -24,12 +24,12 @@ void RamMemory::Read(void *dst, uint64_t addrDescriptor) {
     memcpy(dst, &data[addrDescriptor], GNK_L1_CACHE_LINE_SIZE);
 }
 
-DataBus &DataBus::Instance() {
-    static DataBus glbBus;
+RamBus &RamBus::Instance() {
+    static RamBus glbBus;
     return glbBus;
 }
 
-void DataBus::Subscribe(uint8_t idCore, MessageHandler cbOnMessage) {
+void MesiBusBase::Subscribe(uint8_t idCore, MessageHandler cbOnMessage) {
     if (idCore >= GNK_CPU_NUM_CORES) {
         return;
     }
@@ -38,14 +38,14 @@ void DataBus::Subscribe(uint8_t idCore, MessageHandler cbOnMessage) {
     nextSubscriber++;
 }
 
-kMESIState DataBus::BroadCastRead(uint8_t idCore, uint64_t addrDescriptor) {
+kMESIState MesiBusBase::BroadCastRead(uint8_t idCore, uint64_t addrDescriptor) {
     return SendMessage(kMemOp::kBusRd, idCore, addrDescriptor);
 }
-void DataBus::BroadCastWrite(uint8_t idCore, uint64_t addrDescriptor) {
+void MesiBusBase::BroadCastWrite(uint8_t idCore, uint64_t addrDescriptor) {
     SendMessage(kMemOp::kBusWr, idCore, addrDescriptor);
 }
 
-kMESIState DataBus::SendMessage(kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
+kMESIState MesiBusBase::SendMessage(kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
     // We just want the top bits - the rest is the same regardless, we drag in a full line..
     // Ergo - it makes sense to align array's to CACHE_LINE_SIZE...
 
@@ -69,11 +69,11 @@ kMESIState DataBus::SendMessage(kMemOp op, uint8_t sender, uint64_t addrDescript
     return kMESIState::kMesi_Invalid;
 }
 
-void DataBus::ReadMemory(void *dst, uint64_t addrDescriptor) {
+void RamBus::ReadLine(void *dst, uint64_t addrDescriptor) {
     ram->Read(dst, addrDescriptor);
 }
 
-void DataBus::WriteMemory(uint64_t addrDescriptor, const void *src) {
+void RamBus::WriteLine(uint64_t addrDescriptor, const void *src) {
     ram->Write(addrDescriptor, src);
 }
 

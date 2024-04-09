@@ -75,7 +75,7 @@ void MMU::SetMMUPageTableAddress(const gnilk::vcpu::RegisterValue &newPageTblAdd
 
         // Reset everything to zero...
         while(nBytesToWrite) {
-            DataBus::Instance().WriteMemory(physicalAddr, empty_cache_line);
+            RamBus::Instance().WriteLine(physicalAddr, empty_cache_line);
             nBytesToWrite -= GNK_L1_CACHE_LINE_SIZE;
             if (nBytesToWrite < 0) {
                 nBytesToWrite = 0;
@@ -134,10 +134,10 @@ int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
 
     // Need to figure out if can/should cache this..
     if (regions[regionSrc].cbAccessHandler != nullptr) {
-        regions[regionSrc].cbAccessHandler(DataBus::kMemOp::kBusRd, srcAddress);
+        regions[regionSrc].cbAccessHandler(RamBus::kMemOp::kBusRd, srcAddress);
     }
     if (regions[regionDst].cbAccessHandler != nullptr) {
-        regions[regionDst].cbAccessHandler(DataBus::kMemOp::kBusWr, dstAddress);
+        regions[regionDst].cbAccessHandler(RamBus::kMemOp::kBusWr, dstAddress);
     }
     return -1;
 
@@ -172,7 +172,7 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nB
         return 0;
     }
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
-    DataBus::Instance().ReadMemory(tmpCacheLine, srcAddress);
+    RamBus::Instance().ReadLine(tmpCacheLine, srcAddress);
     memcpy(dstPtr, tmpCacheLine, nBytes);
     return nBytes;
 }
@@ -189,7 +189,7 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
     }
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     memcpy(tmpCacheLine, srcAddress, nBytes);
-    DataBus::Instance().WriteMemory(dstAddr, tmpCacheLine);
+    RamBus::Instance().WriteLine(dstAddr, tmpCacheLine);
     return nBytes;
 }
 

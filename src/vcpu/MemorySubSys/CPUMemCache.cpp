@@ -94,9 +94,7 @@ size_t Cache::CopyFromLine(uint64_t dstAddress, int idxLine, uint16_t offset, si
         return 0;
     }
 
-    // This writes the actual data in the cache line to the RAM memory..
-    auto dst = DataBus::Instance().RamPtr(dstAddress);
-    memcpy(dst, &lines[idxLine].data[offset], nBytes);
+    RamBus::Instance().WriteLine(dstAddress, &lines[idxLine].data);
     return nBytes;
 }
 
@@ -108,10 +106,8 @@ size_t Cache::CopyToLine(int idxLine, uint16_t offset, const uint64_t srcAddress
         return 0;
     }
 
-    // FIXME: This pull's the actual data in..
-    auto src = DataBus::Instance().RamPtr(srcAddress);
-    memcpy(&lines[idxLine].data[offset], src, nBytes);
-
+    RamBus::Instance().ReadLine(lines[idxLine].data, srcAddress);
+    // Update the cache line state...
     lines[idxLine].state = kMesi_Modified;
     return nBytes;
 }
@@ -162,18 +158,18 @@ void Cache::DumpCacheLines() const {
 void CacheController::Initialize(uint8_t coreIdentifier) {
     idCore = coreIdentifier;
 
-    DataBus::Instance().Subscribe(idCore, [this](DataBus::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
+    RamBus::Instance().Subscribe(idCore, [this](MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
         return OnDataBusMessage(op, sender, addrDescriptor);
     });
 }
 
-kMESIState CacheController::OnDataBusMessage(DataBus::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
+kMESIState CacheController::OnDataBusMessage(MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor) {
     // printf("CacheController::OnDataBusMessage\n");
 
     switch(op) {
-        case DataBus::kMemOp::kBusRd :
+        case MesiBusBase::kMemOp::kBusRd :
             return OnMsgBusRd(addrDescriptor);
-        case DataBus::kMemOp::kBusWr :
+        case MesiBusBase::kMemOp::kBusWr :
             OnMsgBusWr(addrDescriptor);
             return kMesi_Invalid;
         default:
@@ -211,7 +207,7 @@ void CacheController::OnMsgBusWr(uint64_t addrDescriptor) {
 void CacheController::Touch(const uint64_t address) {
     uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(address);
     kMESIState state = kMesi_Exclusive;
-    auto res = DataBus::Instance().BroadCastRead(idCore, addrDescriptor);
+    auto res = RamBus::Instance().BroadCastRead(idCore, addrDescriptor);
     if (res != kMesi_Invalid) {
         // Shared
         state = kMesi_Shared;
@@ -224,7 +220,7 @@ void CacheController::Touch(const uint64_t address) {
 int32_t CacheController::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
     // Make sure our address is in the cache...
     uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(address);
-    DataBus::Instance().BroadCastWrite(idCore, dstAddrDesc);
+    RamBus::Instance().BroadCastWrite(idCore, dstAddrDesc);
 
     auto idxLine = ReadLine(dstAddrDesc, kMESIState::kMesi_Exclusive);
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(address);
@@ -238,7 +234,7 @@ void CacheController::ReadInternalToExternal(void *dst, const uint64_t address, 
 
     // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
 
-    auto res = DataBus::Instance().BroadCastRead(idCore, addrDescriptor);
+    auto res = RamBus::Instance().BroadCastRead(idCore, addrDescriptor);
     if (res != kMesi_Invalid) {
         // Shared
         state = kMesi_Shared;
@@ -259,7 +255,7 @@ int32_t CacheController::ReadInternal(uint64_t dstAddress, const uint64_t srcAdd
 
     // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
 
-    auto res = DataBus::Instance().BroadCastRead(idCore, addrDescriptor);
+    auto res = RamBus::Instance().BroadCastRead(idCore, addrDescriptor);
     if (res != kMesi_Invalid) {
         // Shared
         state = kMesi_Shared;
@@ -275,7 +271,7 @@ int32_t CacheController::ReadInternal(uint64_t dstAddress, const uint64_t srcAdd
 //
 int32_t CacheController::WriteInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite) {
     uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(dstAddress);
-    DataBus::Instance().BroadCastWrite(idCore, dstAddrDesc);
+    RamBus::Instance().BroadCastWrite(idCore, dstAddrDesc);
 
     auto idxLine = ReadLine(dstAddrDesc, kMESIState::kMesi_Exclusive);
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(dstAddress);
@@ -312,12 +308,12 @@ void CacheController::WriteMemory(int idxLine) {
     uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
 
     cache.ReadLineData(tmp, idxLine);
-    DataBus::Instance().WriteMemory(cache.GetLineAddrDescriptor(idxLine), tmp);
+    RamBus::Instance().WriteLine(cache.GetLineAddrDescriptor(idxLine), tmp);
 }
 
 void CacheController::ReadMemory(int idxLine, uint64_t addrDescriptor, kMESIState state) {
     uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
-    DataBus::Instance().ReadMemory(tmp, addrDescriptor);
+    RamBus::Instance().ReadLine(tmp, addrDescriptor);
     cache.WriteLineData(idxLine, tmp, addrDescriptor, state);
 }
 

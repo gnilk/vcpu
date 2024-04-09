@@ -9,7 +9,7 @@
 #include "VirtualCPU.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "MemorySubSys/PageAllocator.h"
-#include "MemorySubSys/DataBus.h"
+#include "MemorySubSys/RamBus.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -36,7 +36,7 @@ DLL_EXPORT int test_mmu2(ITesting *t) {
 DLL_EXPORT int test_mmu2_mapregion_handler(ITesting *t) {
     MMU mmu;
 
-    auto handler = [](DataBus::kMemOp op, uint64_t address) {
+    auto handler = [](RamBus::kMemOp op, uint64_t address) {
         printf("Accessing: 0x%x\n", (uint32_t)address);
     };
 
@@ -112,7 +112,7 @@ DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t) {
 //
 DLL_EXPORT int test_mmu2_copyext(ITesting *t) {
     RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
+    RamBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
     mmu.Initialize();
@@ -138,7 +138,7 @@ DLL_EXPORT int test_mmu2_copyext(ITesting *t) {
 // We write a native value into the emulated RAM then we read it...
 DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
     RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
+    RamBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
     mmu.Initialize();
@@ -167,7 +167,7 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
 //
 DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
     RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
+    RamBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
     mmu.Initialize();
@@ -222,7 +222,7 @@ DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
     RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
+    RamBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
     mmu.Initialize();

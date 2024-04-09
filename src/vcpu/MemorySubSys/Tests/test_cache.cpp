@@ -24,7 +24,7 @@ DLL_EXPORT int test_cache_touch(ITesting *t) {
     uint8_t buffer[2048];
     RamMemory ram(65536);
     //DataBus bus(ram);
-    DataBus::Instance().SetRamMemory(&ram);
+    RamBus::Instance().SetRamMemory(&ram);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;
@@ -59,7 +59,7 @@ DLL_EXPORT int test_cache_read(ITesting *t) {
     uint8_t buffer[2048];
     RamMemory ram(65536);
     //DataBus bus(ram);
-    DataBus::Instance().SetRamMemory(&ram);
+    RamBus::Instance().SetRamMemory(&ram);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;
@@ -101,7 +101,7 @@ DLL_EXPORT int test_cache_write(ITesting *t) {
     uint8_t buffer[2048];
     RamMemory ram(65536);
     //DataBus bus(ram);
-    DataBus::Instance().SetRamMemory(&ram);
+    RamBus::Instance().SetRamMemory(&ram);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;
@@ -135,7 +135,7 @@ DLL_EXPORT int test_cache_write(ITesting *t) {
 DLL_EXPORT int test_cache_sync(ITesting *t) {
     RamMemory ram(65536);
     //DataBus bus(ram);
-    DataBus::Instance().SetRamMemory(&ram);
+    RamBus::Instance().SetRamMemory(&ram);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;

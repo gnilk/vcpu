@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <functional>
 
-#include "DataBus.h"
+#include "RamBus.h"
 
 namespace gnilk {
     namespace vcpu {
@@ -103,7 +103,7 @@ namespace gnilk {
             void Dump() const;
         protected:
 
-            kMESIState OnDataBusMessage(DataBus::kMemOp op, uint8_t sender, uint64_t addrDescriptor);
+            kMESIState OnDataBusMessage(MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor);
             int32_t ReadLine(uint64_t addrDescriptor, kMESIState state);
             kMESIState OnMsgBusRd(uint64_t addrDescriptor);
             void OnMsgBusWr(uint64_t addrDescriptor);

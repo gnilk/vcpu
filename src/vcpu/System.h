@@ -8,7 +8,7 @@
 #include <functional>
 #include <stdint.h>
 
-#include "MemorySubSys/DataBus.h"
+#include "MemorySubSys/RamBus.h"
 namespace gnilk {
     namespace vcpu {
 
@@ -22,12 +22,14 @@ namespace gnilk {
             kRegionFlag_Cache = 0x10,   // Should this region be cached or not
         };
 
-        using MemoryAccessHandler = std::function<void(DataBus::kMemOp op, uint64_t address)>;
+        using MemoryAccessHandler = std::function<void(RamBus::kMemOp op, uint64_t address)>;
         // Should each region be tied to a memory bus - or is this optional?
         // Also - a region is global across all MMU instances...
         struct MemoryRegion {
             uint64_t rangeStart, rangeEnd;
             MemoryAccessHandler cbAccessHandler = nullptr;
+
+            MesiBusBase::Ref bus = nullptr;
             uint8_t flags = 0;
 
             // EMU stuff - we can assign physically allocated stuff here
