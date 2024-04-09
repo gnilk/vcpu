@@ -16,9 +16,10 @@ using namespace gnilk::vcpu;
 // We need a bunch of zeros
 static uint8_t empty_cache_line[GNK_L1_CACHE_LINE_SIZE] = {};
 
-void MMU::Initialize() {
+void MMU::Initialize(uint8_t coreId, MesiBusBase::Ref bus) {
     // We should have a 'data-bus' here...
-
+    databus= bus;
+    cacheController.Initialize(coreId, databus);
     MapRegion(0,  kRegionFlag_Read | kRegionFlag_Write | kRegionFlag_Execute | kRegionFlag_Cache, 0x0000'0000'0000'0000, 0x000f'ffff'ffff'ffff);
 }
 
@@ -75,7 +76,7 @@ void MMU::SetMMUPageTableAddress(const gnilk::vcpu::RegisterValue &newPageTblAdd
 
         // Reset everything to zero...
         while(nBytesToWrite) {
-            RamBus::Instance().WriteLine(physicalAddr, empty_cache_line);
+            databus->WriteLine(physicalAddr, empty_cache_line);
             nBytesToWrite -= GNK_L1_CACHE_LINE_SIZE;
             if (nBytesToWrite < 0) {
                 nBytesToWrite = 0;
@@ -134,10 +135,10 @@ int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
 
     // Need to figure out if can/should cache this..
     if (regions[regionSrc].cbAccessHandler != nullptr) {
-        regions[regionSrc].cbAccessHandler(RamBus::kMemOp::kBusRd, srcAddress);
+        regions[regionSrc].cbAccessHandler(MesiBusBase::kMemOp::kBusRd, srcAddress);
     }
     if (regions[regionDst].cbAccessHandler != nullptr) {
-        regions[regionDst].cbAccessHandler(RamBus::kMemOp::kBusWr, dstAddress);
+        regions[regionDst].cbAccessHandler(MesiBusBase::kMemOp::kBusWr, dstAddress);
     }
     return -1;
 
@@ -172,7 +173,7 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nB
         return 0;
     }
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
-    RamBus::Instance().ReadLine(tmpCacheLine, srcAddress);
+    databus->ReadLine(tmpCacheLine, srcAddress);
     memcpy(dstPtr, tmpCacheLine, nBytes);
     return nBytes;
 }
@@ -189,7 +190,7 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
     }
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     memcpy(tmpCacheLine, srcAddress, nBytes);
-    RamBus::Instance().WriteLine(dstAddr, tmpCacheLine);
+    databus->WriteLine(dstAddr, tmpCacheLine);
     return nBytes;
 }
 

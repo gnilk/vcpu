@@ -66,7 +66,8 @@ namespace gnilk {
             RamBus() = default; //(RamMemory &memory) : ram(memory) {}
             virtual ~RamBus() = default;
 
-            static RamBus &Instance();
+            static MesiBusBase::Ref Create(RamMemory *ptrRam);
+            static MesiBusBase::Ref Create(size_t szRam);
 
             // TEMP
             void SetRamMemory(RamMemory *memory) {

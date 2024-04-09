@@ -145,7 +145,7 @@ namespace gnilk {
             MMU() = default;
             virtual ~MMU() = default;
 
-            void Initialize();
+            void Initialize(uint8_t coreId, MesiBusBase::Ref bus);
 
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end);
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler);
@@ -234,6 +234,9 @@ namespace gnilk {
         protected:
             RegisterValue mmuControl;
             RegisterValue mmuPageTableAddress;
+
+            // FIXME: Move these two out of here
+            MesiBusBase::Ref databus;
             CacheController cacheController;
             MemoryRegion regions[VCPU_SOC_MAX_REGIONS];
         };

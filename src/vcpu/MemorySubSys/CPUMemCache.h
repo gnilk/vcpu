@@ -43,6 +43,8 @@ namespace gnilk {
             Cache() = default;
             virtual ~Cache() = default;
 
+            void Initialize(MesiBusBase::Ref bus);
+
             int GetNumLines() const;
             int GetLineIndex(uint64_t addrDescriptor);
             int NextLineIndex();
@@ -64,6 +66,7 @@ namespace gnilk {
             int32_t CopyToLineFromExternal(int idxLine, uint16_t offset, const void *src, size_t nBytes);
             int32_t CopyFromLineToExternal(void *dst, int idxLine, uint16_t offset, size_t nBytes);
         protected:
+            MesiBusBase::Ref databus = nullptr;
             std::array<CacheLine, GNK_L1_CACHE_NUM_LINES> lines = {};
         };
 
@@ -76,7 +79,7 @@ namespace gnilk {
             CacheController() = default;
             virtual ~CacheController() = default;
 
-            void Initialize(uint8_t coreIdentifier);
+            void Initialize(uint8_t coreIdentifier, MesiBusBase::Ref bus);
 
             void Touch(const uint64_t address);
 
@@ -127,7 +130,8 @@ namespace gnilk {
             void ReadMemory(int idxLine, uint64_t addrDescriptor, kMESIState state);
 
         private:
-            uint8_t idCore;
+            uint8_t idCore = 0;
+            MesiBusBase::Ref databus = nullptr;
             Cache cache;
         };
     }

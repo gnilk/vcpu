@@ -16,21 +16,25 @@ DLL_EXPORT int test_cache_read(ITesting *t);
 DLL_EXPORT int test_cache_write(ITesting *t);
 DLL_EXPORT int test_cache_sync(ITesting *t);
 }
+
+#define RAM_SIZE 65536
+
 DLL_EXPORT int test_cache(ITesting *t) {
     return kTR_Pass;
 }
 DLL_EXPORT int test_cache_touch(ITesting *t) {
     int32_t value = 4711;
     uint8_t buffer[2048];
-    RamMemory ram(65536);
-    //DataBus bus(ram);
-    RamBus::Instance().SetRamMemory(&ram);
+//    RamMemory ram(65536);
+//    //DataBus bus(ram);
+//    RamBus::Instance().SetRamMemory(&ram);
+    auto rambus = RamBus::Create(RAM_SIZE);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;
 
-    cacheControllerA.Initialize(0);
-    cacheControllerB.Initialize(1);
+    cacheControllerA.Initialize(0, rambus);
+    cacheControllerB.Initialize(1, rambus);
 
     // This should give us ONE line in the cache.
     cacheControllerA.Touch(0x4711);
@@ -57,15 +61,14 @@ DLL_EXPORT int test_cache_touch(ITesting *t) {
 
 DLL_EXPORT int test_cache_read(ITesting *t) {
     uint8_t buffer[2048];
-    RamMemory ram(65536);
-    //DataBus bus(ram);
-    RamBus::Instance().SetRamMemory(&ram);
+    RamMemory ram(RAM_SIZE);
+    auto rambus = RamBus::Create(&ram);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;
 
-    cacheControllerA.Initialize(0);
-    cacheControllerB.Initialize(1);
+    cacheControllerA.Initialize(0,rambus);
+    cacheControllerB.Initialize(1,rambus);
 
     // Plan a value in the emulated RAM - bypassing the cache
     int plantedValue = 4711;
@@ -99,15 +102,14 @@ DLL_EXPORT int test_cache_read(ITesting *t) {
 DLL_EXPORT int test_cache_write(ITesting *t) {
     int32_t value = 4711;
     uint8_t buffer[2048];
-    RamMemory ram(65536);
-    //DataBus bus(ram);
-    RamBus::Instance().SetRamMemory(&ram);
+    RamMemory ram(RAM_SIZE);
+    auto rambus = RamBus::Create(&ram);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;
 
-    cacheControllerA.Initialize(0);
-    cacheControllerB.Initialize(1);
+    cacheControllerA.Initialize(0, rambus);
+    cacheControllerB.Initialize(1, rambus);
 
     // This should give us ONE line in the cache.
     cacheControllerA.Write<int>(0x4711, 0x1234);
@@ -133,15 +135,14 @@ DLL_EXPORT int test_cache_write(ITesting *t) {
 
 }
 DLL_EXPORT int test_cache_sync(ITesting *t) {
-    RamMemory ram(65536);
-    //DataBus bus(ram);
-    RamBus::Instance().SetRamMemory(&ram);
+    RamMemory ram(RAM_SIZE);
+    auto rambus = RamBus::Create(&ram);
 
     CacheController cacheControllerA;
     CacheController cacheControllerB;
 
-    cacheControllerA.Initialize(0);
-    cacheControllerB.Initialize(1);
+    cacheControllerA.Initialize(0, rambus);
+    cacheControllerB.Initialize(1, rambus);
 
     // Issue a write on Core 0
     cacheControllerA.Write<int>(0x4711, 0x1234);

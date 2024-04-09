@@ -40,8 +40,10 @@ DLL_EXPORT int test_mmu2_mapregion_handler(ITesting *t) {
         printf("Accessing: 0x%x\n", (uint32_t)address);
     };
 
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
     mmu.MapRegion(0x01, kRegionFlag_Read, 0x0000'0000'0000'0000, 0x0000'0000'0000'ffff, handler);
+
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'0000));
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'1234));
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'ffff));
@@ -54,7 +56,8 @@ DLL_EXPORT int test_mmu2_mapregion_handler(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_mapregion(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
     mmu.MapRegion(0x01, kRegionFlag_Read, 0x0000'0000'0000'0000, 0x0000'0000'0000'ffff);
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'0000));
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'1234));
@@ -68,7 +71,8 @@ DLL_EXPORT int test_mmu2_mapregion(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_regionfromaddr(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
 
     auto region = mmu.RegionFromAddress(0x0100'0000'0000'0000);
     TR_ASSERT(t, region == 0x01);
@@ -77,7 +81,8 @@ DLL_EXPORT int test_mmu2_regionfromaddr(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_offsetfromaddr(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
 
     auto ofs = mmu.PageOffsetFromAddress(0x0000'0000'0000'0123);
     TR_ASSERT(t, ofs == 0x123);
@@ -91,7 +96,8 @@ DLL_EXPORT int test_mmu2_offsetfromaddr(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
 
     uint64_t address = 0x0000'0001'2345'6789;
     auto pte = mmu.PageTableEntryIndexFromAddress(address);
@@ -111,11 +117,10 @@ DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t) {
 // This copies data to/from external (outside of emulation control) RAM..
 //
 DLL_EXPORT int test_mmu2_copyext(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    RamBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 0;
@@ -137,11 +142,9 @@ DLL_EXPORT int test_mmu2_copyext(ITesting *t) {
 
 // We write a native value into the emulated RAM then we read it...
 DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    RamBus::Instance().SetRamMemory(&ramMemory);
-
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 0;
@@ -166,11 +169,9 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
 // this of write/read through l1 cache
 //
 DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    RamBus::Instance().SetRamMemory(&ramMemory);
-
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 96;
@@ -221,11 +222,9 @@ DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
 }
 
 DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    RamBus::Instance().SetRamMemory(&ramMemory);
-
     MMU mmu;
-    mmu.Initialize();
+    auto rambus = RamBus::Create(MMU_MAX_MEM);
+    mmu.Initialize(0, rambus);
     mmu.SetMMUControl({kMMU_ResetPageTableOnSet});
 
     mmu.SetMMUPageTableAddress({0});

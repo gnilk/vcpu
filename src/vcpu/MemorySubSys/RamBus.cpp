@@ -12,6 +12,7 @@ RamMemory::RamMemory(size_t szRam) {
     numBytes = szRam;
     memset(data,0,numBytes);
 }
+
 RamMemory::~RamMemory() {
     delete[] data;
 }
@@ -24,9 +25,16 @@ void RamMemory::Read(void *dst, uint64_t addrDescriptor) {
     memcpy(dst, &data[addrDescriptor], GNK_L1_CACHE_LINE_SIZE);
 }
 
-RamBus &RamBus::Instance() {
-    static RamBus glbBus;
-    return glbBus;
+///////////
+MesiBusBase::Ref RamBus::Create(size_t szRam) {
+    auto instance = std::make_shared<RamBus>();
+    instance->SetRamMemory(new RamMemory(szRam));
+    return instance;
+}
+MesiBusBase::Ref RamBus::Create(RamMemory *ptrRam) {
+    auto instance = std::make_shared<RamBus>();
+    instance->SetRamMemory(ptrRam);
+    return instance;
 }
 
 
