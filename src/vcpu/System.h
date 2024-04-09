@@ -24,6 +24,7 @@ namespace gnilk {
             kRegionFlag_Write = 0x04,
             kRegionFlag_Execute = 0x08,
             kRegionFlag_Cache = 0x10,   // Should this region be cached or not
+            kRegionFlag_NonVolatile = 0x20, // Non-volatile memory - will be preserved when 'Reset' is called
         };
 
         using MemoryAccessHandler = std::function<void(RamBus::kMemOp op, uint64_t address)>;
@@ -66,11 +67,13 @@ namespace gnilk {
 
             static SoC &Instance();
 
+            // Reset the System - all non-volatile memory is lost (i.e. non-flash)
             void Reset();
-            void SetDefaults();
 
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end);
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler);
+
+            MemoryRegion *GetFirstRegionMatching(uint8_t kRegionFlags);
             const MemoryRegion &GetMemoryRegionFromAddress(uint64_t address);
 
             __inline MemoryRegion &RegionFromAddress(uint64_t address) {
@@ -118,6 +121,8 @@ namespace gnilk {
             }
         protected:
             void Initialize();
+            void SetDefaults();
+
             MemoryRegion &GetRegion(size_t idxRegion);
             void CreateDefaultRAMRegion(size_t idxRegion);
             void CreateDefaultHWRegion(size_t idxRegion);

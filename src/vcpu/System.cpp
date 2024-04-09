@@ -25,6 +25,7 @@ void SoC::Initialize() {
 void SoC::Reset() {
     for(int i=0;i<VCPU_SOC_MAX_REGIONS;i++) {
         if (!regions[i].flags & kRegionFlag_Valid) continue;
+        if (regions[i].flags & kRegionFlag_NonVolatile) continue;
         if (regions[i].ptrPhysical == nullptr) continue;
 
         memset(regions[i].ptrPhysical,0,regions[i].szPhysical);
@@ -66,17 +67,29 @@ void SoC::CreateDefaultHWRegion(size_t idxRegion) {
 
 void SoC::CreateDefaultFlashRegion(size_t idxRegion) {
     auto &region = GetRegion(idxRegion);
-    region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Execute;
+    region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Execute |  kRegionFlag_NonVolatile;
     region.rangeStart = 0x0000'0000'0000'0000;
     region.rangeEnd   = 0x0000'0000'0000'ffff;
     region.szPhysical = 65536;
     region.ptrPhysical = new uint8_t[region.szPhysical];
+    // make sure we do this...
+    memset(region.ptrPhysical, 0, region.szPhysical);
+
     // FIXME: Should have some kind of bus...
     region.cbAccessHandler = nullptr;
 }
 
 MemoryRegion &SoC::GetRegion(size_t idxRegion) {
     return regions[idxRegion];
+}
+
+MemoryRegion *SoC::GetFirstRegionMatching(uint8_t kRegionFlags) {
+    for(int i=0;i<VCPU_SOC_MAX_REGIONS;i++) {
+        if ((regions[i].flags & kRegionFlags) == kRegionFlags) {
+            return &regions[i];
+        }
+    }
+    return nullptr;
 }
 
 void SoC::MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end) {
