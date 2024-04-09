@@ -186,16 +186,29 @@ namespace gnilk {
             void SetMMUControl(RegisterValue &&newControl);
             void SetMMUPageTableAddress(const RegisterValue &newPageTblAddr);
 
-            // Emulated RAM <-> RAM transfers, with cache line handling
-            int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
-            int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+
+            template<typename T>
+            int32_t Write(uint64_t address, const T &value) {
+                static_assert(std::is_integral_v<T> == true);
+                return WriteInternalFromExternal(address, &value, sizeof(T));
+            }
+
+            template<typename T>
+            T Read(uint64_t address) {
+                static_assert(std::is_integral_v<T> == true);
+                T value;
+                ReadInternalToExternal(&value, address, sizeof(T));
+                return value;
+            }
 
 
+            // These two functions will bypass the cache!!!
             // External RAM <-> Emulated RAM functions - this will stall the bus!
             // Read to external address from emulated RAM
             int32_t CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nBytes);
             // Write to emulated RAM from external address (native)
             int32_t CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t nBytes);
+
 
 
             uint64_t TranslateAddress(uint64_t address);
@@ -211,6 +224,12 @@ namespace gnilk {
                 return cacheController;
             }
         protected:
+            // Emulated RAM <-> RAM transfers, with cache line handling
+            int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+            int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+
+            int32_t WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes);
+            void ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes);
 
         protected:
             RegisterValue mmuControl;

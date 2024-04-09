@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <functional>
 #include <stdint.h>
-
+#include <memory>
 
 
 namespace gnilk {
@@ -84,6 +84,18 @@ namespace gnilk {
         private:
             size_t numBytes = 0;
             uint8_t *data = nullptr;
+        };
+
+        class BusBase {
+        public:
+            using Ref = std::shared_ptr<BusBase>;
+        public:
+            BusBase() = default;
+            virtual ~BusBase() = default;
+
+            void WriteMemory(uint64_t addrDescriptor, const void *src) {}
+            void ReadMemory(void *dst, uint64_t addrDescriptor) {}
+        protected:
         };
 
 

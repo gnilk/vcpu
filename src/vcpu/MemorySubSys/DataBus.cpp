@@ -3,12 +3,14 @@
 //
 
 #include "DataBus.h"
+#include <string.h>
 
 using namespace gnilk::vcpu;
 
 RamMemory::RamMemory(size_t szRam) {
     data = new uint8_t[szRam];
     numBytes = szRam;
+    memset(data,0,numBytes);
 }
 RamMemory::~RamMemory() {
     delete[] data;

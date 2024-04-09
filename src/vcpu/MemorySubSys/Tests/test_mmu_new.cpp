@@ -155,12 +155,7 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
 
 
     // Read to address 64 - this is above the cacheline handling
-    mmu.Read(64,0,sizeof(writeValue));
-    TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() != GNK_L1_CACHE_NUM_LINES);
-
-    // Now read back from this address
-    uint32_t readValue = 0;
-    mmu.CopyToExtFromRam(&readValue, 64, sizeof(readValue));
+    uint32_t readValue = mmu.Read<uint32_t>(0);
     TR_ASSERT(t, readValue == writeValue);
 
     return kTR_Pass;
@@ -178,48 +173,49 @@ DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
     mmu.Initialize();
     mmu.SetMMUControl({});
 
-    uint64_t ramMemoryAddr = 0;
+    uint64_t ramMemoryAddr = 96;
     uint32_t writeValue = 0x4711;
-    uint32_t writeValueEmu = 0x1234;
+
+    // Read a raw value directly from RAM - bypassing cache, should be 0
+    uint32_t raw;
+    mmu.CopyToExtFromRam(&raw, 0, sizeof(raw));
+    printf("RAM Before Write: 0x%x\n", raw);
+
+    TR_ASSERT(t, raw == 0);
 
     // Start state - all should be invalid..
     TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() == GNK_L1_CACHE_NUM_LINES);
 
-    // put 0x4711 => emulated_ram[0]
-    mmu.CopyToRamFromExt(ramMemoryAddr, &writeValue, sizeof(writeValue));
-    TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() == GNK_L1_CACHE_NUM_LINES);
+    // Write a 32-bit value, this will pull the memory into the cache and the cache line will be updated
+    mmu.Write<uint32_t>(ramMemoryAddr, writeValue);
 
-    // emulated_ram[64] <= emulated_ram[0]
+    // Copy from RAW ram (bypassing cache) - this should still be zero...
+    mmu.CopyToExtFromRam(&raw, ramMemoryAddr, sizeof(raw));
+    printf("RAM After Write: 0x%x\n", raw);
+    TR_ASSERT(t, raw == 0);
 
-    // Read to address 64 - this is above the cacheline handling
-    mmu.Read(64,0,sizeof(writeValue));
-    TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() != GNK_L1_CACHE_NUM_LINES);
-    printf("After 'Read' to address 64 from address 0\n");
-    mmu.GetCacheController().Dump();
-
-    // Now read back from this address
-    uint32_t readValue = 0;
-    mmu.CopyToExtFromRam(&readValue, 64, sizeof(readValue));
+    // Read from RAM through cache - this should return the value in the cache
+    auto readValue = mmu.Read<uint32_t>(ramMemoryAddr);
     TR_ASSERT(t, readValue == writeValue);
-
-    readValue = 0x1234;
-    mmu.CopyToRamFromExt(64, &readValue, sizeof(readValue));
-
-    mmu.Write(0, 64, sizeof(readValue));
-    printf("After write to 0 from 64\n");
     mmu.GetCacheController().Dump();
-    // Issue a read - so we change the state...
-    mmu.Read(128,0, sizeof(readValue));
-    printf("After Read to 128 from 0\n");
 
+    // Copy from RAW ram (bypassing cache) - this should still be zero, as RAM is not yet updated
+    mmu.CopyToExtFromRam(&raw, ramMemoryAddr, sizeof(raw));
+    TR_ASSERT(t, raw == 0);
+    printf("RAW After Read: 0x%x\n", raw);
+
+    mmu.GetCacheController().Dump();
+
+    // Flush the cache to RAM
     mmu.GetCacheController().Flush();
 
-    uint32_t readValue2 = 0;
-    mmu.CopyToExtFromRam(&readValue2, 0, sizeof(readValue));
-    TR_ASSERT(t, readValue2 == 0x1234);
+    // Copy from RAW ram (bypassing cache) - we should now have the same value as during the write/read cycle as
+    // the cacheline should have been written back to RAM...
+    mmu.CopyToExtFromRam(&raw, ramMemoryAddr, sizeof(raw));
+    TR_ASSERT(t, raw == writeValue);
+    printf("RAW After Flush: 0x%x\n", raw);
 
     mmu.GetCacheController().Dump();
-
 
     return kTR_Pass;
 }

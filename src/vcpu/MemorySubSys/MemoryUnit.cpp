@@ -101,7 +101,7 @@ uint64_t MMU::TranslateAddress(uint64_t address) {
 int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
     // This is fully bogus...
     if (!IsFlagSet(kMMU_TranslationEnabled)) {
-        return cacheController.Read(dstPtr, srcPtr, nBytes);
+        return cacheController.ReadInternal(dstPtr, srcPtr, nBytes);
     }
 
 
@@ -148,9 +148,19 @@ int32_t MMU::Write(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
     // No translation - addresses are physical...
     uint64_t srcAddress = TranslateAddress((uint64_t)srcPtr);
     uint64_t dstAddress = TranslateAddress((uint64_t)dstPtr);
-    return cacheController.Write(dstAddress, srcAddress, nBytes);
+    return cacheController.WriteInternal(dstAddress, srcAddress, nBytes);
     return -1;
 }
+
+int32_t MMU::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
+    // FIXME: Address translation
+    return cacheController.WriteInternalFromExternal(address, src, nBytes);
+}
+void MMU::ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes) {
+    // FIXME: Address translation
+    cacheController.ReadInternalToExternal(dst, address, nBytes);
+}
+
 
 // Copy to external (native) RAM from the emulated RAM...
 int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nBytes) {
