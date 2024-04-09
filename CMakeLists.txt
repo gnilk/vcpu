@@ -41,6 +41,7 @@ list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/CPUMemCache.cpp src/vcpu/MemorySubSys/CPUMemCache.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/MemoryUnit.cpp src/vcpu/MemorySubSys/MemoryUnit.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/MesiBusBase.cpp src/vcpu/MemorySubSys/MesiBusBase.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/FlashBus.cpp src/vcpu/MemorySubSys/FlashBus.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/RamBus.cpp src/vcpu/MemorySubSys/RamBus.h)
 # temp...
 list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSys/PageAllocator.h)

@@ -231,14 +231,8 @@ namespace gnilk {
             uint8_t coreId = 0;
             RegisterValue mmuControl;
             RegisterValue mmuPageTableAddress;
-            // IF I have a cache controller per region, I can't mix the cache (i.e. only cache within a region or per databus)
-            // IF I have a mixed cache controlled => across regions => I MUST look up which bus to use everytime I need to talk to the bus
-            // Same goes for responding to bus-messages
+            // This cache controller has ability to cache any kind of memory access...
             CacheController cacheController;
-
-            // FIXME: Move these two out of here
-            //MesiBusBase::Ref databus;
-            //MemoryRegion regions[VCPU_SOC_MAX_REGIONS];
         };
 
 

@@ -67,8 +67,9 @@ namespace gnilk {
             std::array<CacheLine, GNK_L1_CACHE_NUM_LINES> lines = {};
         };
 
-        // This is attached to each 'core'
-        // The cache is exclusively for emulated RAM transfers - NO external memory mappings ends up here!
+        // This is attached to each 'core' through the MMU
+        // TO-DO:
+        //   - Check the regional-flag if a memory address is cacheable
         class MMU;
         class CacheController : public MemoryBase {
             friend MMU;

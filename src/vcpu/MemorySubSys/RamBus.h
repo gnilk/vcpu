@@ -16,12 +16,6 @@
 namespace gnilk {
     namespace vcpu {
 
-
-
-
-
-
-        // this is my 'mmu' kind of
         class RamMemory {
         public:
             RamMemory() = delete;
@@ -29,18 +23,15 @@ namespace gnilk {
             RamMemory(void *ptr, size_t szRam);
             virtual ~RamMemory();
 
-            // Well - we need something...
-            void *TranslateAddress(void *ptr) {
-                uint64_t dummy = (uint64_t)ptr;
-                dummy = dummy & 0xffff;
-                return (void *)dummy;
-                //return &data[dummy];
-            }
-
             // the raw pointers here - are 'HW' - ergo, they are not part of the emulated RAM - instead
             // they emulate the cache hardware buffers outside of the RAM address...
             void Write(uint64_t addrDescriptor, const void *src);
             void Read(void *dst, uint64_t addrDescriptor);
+
+            // TEMP - for volatile memory - we can write differently
+            void WriteVolatile(uint64_t addrDescriptor, const void *src, size_t nBytes);
+            void ReadVolatile(void *dst, uint64_t addrDescriptor, size_t nBytes);
+
 
             // Emulation functions, use this to fetch an native address to the emulated RAM..
             // Note: This should mainly be used by unit testing and debugging to either inspect or place/modify
@@ -71,7 +62,6 @@ namespace gnilk {
             static MesiBusBase::Ref Create(RamMemory *ptrRam);
             static MesiBusBase::Ref Create(size_t szRam);
 
-            // TEMP
             void SetRamMemory(RamMemory *memory) {
                 ram = memory;
             }

@@ -32,11 +32,13 @@ namespace gnilk {
         // Also - a region is global across all MMU instances...
         struct MemoryRegion {
             uint64_t rangeStart, rangeEnd;
+            uint64_t firstVirtualAddr = 0;
             MemoryAccessHandler cbAccessHandler = nullptr;
             uint8_t flags = 0;
 
             // Cache handling...
-            MesiBusBase::Ref bus = nullptr;
+            //MesiBusBase::Ref bus = nullptr;
+            BusBase::Ref bus = nullptr;
 
             // EMU stuff - we can assign physically allocated stuff here
             void *ptrPhysical = nullptr;
@@ -73,6 +75,14 @@ namespace gnilk {
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end);
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler);
 
+            bool IsAddressCacheable(uint64_t address) {
+                auto &region = RegionFromAddress(address);
+                if (!(region.flags & kRegionFlag_Cache)) {
+                    return false;
+                }
+                return true;
+            }
+
             MemoryRegion *GetFirstRegionMatching(uint8_t kRegionFlags);
             const MemoryRegion &GetMemoryRegionFromAddress(uint64_t address);
 
@@ -81,12 +91,22 @@ namespace gnilk {
                 return regions[region];
             }
 
-            MesiBusBase::Ref GetDataBusForAddress(uint64_t address) {
+            BusBase::Ref GetDataBusForAddress(uint64_t address) {
                 if (!HaveRegionForAddress(address)) {
                     return nullptr;
                 }
                 auto &region = RegionFromAddress(address);
                 return region.bus;
+            }
+
+            template<typename T>
+            std::shared_ptr<T> GetDataBusForAddressAs(uint64_t address) {
+                if (!HaveRegionForAddress(address)) {
+                    return nullptr;
+                }
+                auto &region = RegionFromAddress(address);
+                auto bus = std::reinterpret_pointer_cast<T>(region.bus);
+                return bus;
             }
 
             size_t GetCacheableRegions(std::vector<MemoryRegion *> &outRegions) {

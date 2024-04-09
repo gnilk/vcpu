@@ -17,6 +17,7 @@ DLL_EXPORT int test_soc(ITesting *t);
 DLL_EXPORT int test_soc_defaults(ITesting *t);
 DLL_EXPORT int test_soc_getflashregion(ITesting *t);
 DLL_EXPORT int test_soc_resetram(ITesting *t);
+DLL_EXPORT int test_soc_regionfromaddr(ITesting *t);
 }
 
 DLL_EXPORT int test_soc(ITesting *t) {
@@ -88,4 +89,11 @@ DLL_EXPORT int test_soc_resetram(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_soc_regionfromaddr(ITesting *t) {
+    uint64_t addr = 0x0200'0000'0000'0000;
+    auto index = SoC::Instance().RegionIndexFromAddress(addr);
+    TR_ASSERT(t, index == 2);
+    auto &region = SoC::Instance().GetMemoryRegionFromAddress(addr);
 
+    return kTR_Pass;
+}

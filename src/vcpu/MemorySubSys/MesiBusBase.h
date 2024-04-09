@@ -44,7 +44,17 @@ namespace gnilk {
             };
             return stateNames[state];
         }
-        class MesiBusBase {
+
+        // Let bus-base be very stupid...
+        class BusBase {
+        public:
+            using Ref = std::shared_ptr<BusBase>;
+        public:
+            BusBase() = default;
+            virtual ~BusBase() = default;
+        };
+
+        class MesiBusBase : public BusBase {
         public:
             using Ref = std::shared_ptr<MesiBusBase>;
             // See: https://en.wikipedia.org/wiki/MESI_protocol

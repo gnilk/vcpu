@@ -49,8 +49,9 @@ void MMU::SetMMUPageTableAddress(const gnilk::vcpu::RegisterValue &newPageTblAdd
         return;
     }
 
+    // FIXME: need to check if we can do this...
 
-    auto databus = SoC::Instance().GetDataBusForAddress(mmuPageTableAddress.data.longword);
+    auto databus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(mmuPageTableAddress.data.longword);
 
     uint64_t physicalAddr = TranslateAddress(mmuPageTableAddress.data.longword);
     int32_t nBytesToWrite = sizeof(PageTableEntry);
@@ -158,7 +159,11 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nB
         // FIXME: Raise exception
         return 0;
     }
-    auto databus = SoC::Instance().GetDataBusForAddress(srcAddress);
+
+    // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
+
+
+    auto databus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(srcAddress);
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     databus->ReadLine(tmpCacheLine, srcAddress);
     memcpy(dstPtr, tmpCacheLine, nBytes);
@@ -179,7 +184,10 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
         // FIXME: Raise exception
         return 0;
     }
-    auto databus = SoC::Instance().GetDataBusForAddress(dstAddr);
+
+    // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
+
+    auto databus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(dstAddr);
 
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     memcpy(tmpCacheLine, srcAddress, nBytes);

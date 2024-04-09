@@ -25,6 +25,7 @@ DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t);
 DLL_EXPORT int test_mmu2_copyext(ITesting *t);
 DLL_EXPORT int test_mmu2_writeext_read(ITesting *t);
 DLL_EXPORT int test_mmu2_write_read(ITesting *t);
+DLL_EXPORT int test_mmu2_write_read_regions(ITesting *t);
 DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t);
 }
 
@@ -209,6 +210,29 @@ DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
 
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_mmu2_write_read_regions(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize(0);
+    mmu.SetMMUControl({});
+
+    auto flashMem = SoC::Instance().GetFirstRegionMatching(kRegionFlag_NonVolatile);
+    TR_ASSERT(t, flashMem != nullptr);
+    TR_ASSERT(t, flashMem->ptrPhysical != nullptr);
+    TR_ASSERT(t, flashMem->szPhysical > 0);
+    uint8_t *ptrFlash = (uint8_t *)flashMem->ptrPhysical;
+    for(int i=0;i<flashMem->szPhysical;i++) {
+        ptrFlash[i] = i & 255;
+    }
+
+    uint64_t addr = 0x0200'0000'0000'0000;
+    auto &region = SoC::Instance().RegionFromAddress(addr);
+    auto fromFlash = mmu.Read<uint32_t>(addr);
+
+    return kTR_Pass;
+
+}
+
 
 DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
     MMU mmu;

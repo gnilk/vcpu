@@ -3,6 +3,7 @@
 //
 
 #include "RamBus.h"
+#include "System.h"
 #include <string.h>
 
 using namespace gnilk::vcpu;
@@ -35,6 +36,14 @@ void RamMemory::Read(void *dst, uint64_t addrDescriptor) {
     memcpy(dst, &data[addrDescriptor], GNK_L1_CACHE_LINE_SIZE);
 }
 
+void RamMemory::WriteVolatile(uint64_t addrDescriptor, const void *src, size_t nBytes) {
+    memcpy(&data[addrDescriptor], src, nBytes);
+}
+void RamMemory::ReadVolatile(void *dst, uint64_t addrDescriptor, size_t nBytes) {
+    memcpy(dst, &data[addrDescriptor], nBytes);
+}
+
+
 ///////////
 MesiBusBase::Ref RamBus::Create(size_t szRam) {
     auto instance = std::make_shared<RamBus>();
@@ -49,10 +58,12 @@ MesiBusBase::Ref RamBus::Create(RamMemory *ptrRam) {
 
 
 void RamBus::ReadLine(void *dst, uint64_t addrDescriptor) {
-    ram->Read(dst, addrDescriptor);
+    // FIXME: Not sure this should be done here...
+    ram->Read(dst, addrDescriptor & VCPU_SOC_ADDR_MASK);
 }
 
 void RamBus::WriteLine(uint64_t addrDescriptor, const void *src) {
-    ram->Write(addrDescriptor, src);
+    // FIXME: Not sure this should be done here...
+    ram->Write(addrDescriptor & VCPU_SOC_ADDR_MASK, src);
 }
 

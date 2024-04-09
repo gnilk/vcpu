@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include "System.h"
+#include "MemorySubSys/FlashBus.h"
 #include "MemorySubSys/RamBus.h"
 
 using namespace gnilk;
@@ -44,6 +45,7 @@ void SoC::CreateDefaultRAMRegion(size_t idxRegion) {
     region.flags = kRegionFlag_Valid | kRegionFlag_Cache | kRegionFlag_Execute | kRegionFlag_Read | kRegionFlag_Write;
     region.rangeStart = 0x0000'0000'0000'0000;
     region.rangeEnd   = 0x0000'000f'ffff'ffff;
+    region.firstVirtualAddr = (uint64_t(0) << VCPU_SOC_REGION_SHIFT) | region.rangeStart;
     region.cbAccessHandler = nullptr;
 
 
@@ -62,6 +64,7 @@ void SoC::CreateDefaultHWRegion(size_t idxRegion) {
     region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Write;
     region.rangeStart = 0x0000'0000'0000'0000;
     region.rangeEnd   = 0x0000'0000'0000'ffff;
+    region.firstVirtualAddr = (uint64_t(1) << VCPU_SOC_REGION_SHIFT) | region.rangeStart;
     region.cbAccessHandler = nullptr;
 }
 
@@ -70,10 +73,15 @@ void SoC::CreateDefaultFlashRegion(size_t idxRegion) {
     region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Execute |  kRegionFlag_NonVolatile;
     region.rangeStart = 0x0000'0000'0000'0000;
     region.rangeEnd   = 0x0000'0000'0000'ffff;
+    region.firstVirtualAddr = (uint64_t(2) << VCPU_SOC_REGION_SHIFT) | region.rangeStart;
     region.szPhysical = 65536;
     region.ptrPhysical = new uint8_t[region.szPhysical];
     // make sure we do this...
     memset(region.ptrPhysical, 0, region.szPhysical);
+
+    // Create RamMemory and bus-handler and assign to this region
+    auto bus = FlashBus::Create(new RamMemory(region.ptrPhysical, region.szPhysical));
+    region.bus = bus;
 
     // FIXME: Should have some kind of bus...
     region.cbAccessHandler = nullptr;
