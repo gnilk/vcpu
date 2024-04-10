@@ -136,6 +136,8 @@ Support for the following directives:
 - VCPU
     - Separate the instruction handler from the CPUBase, instead make that happen through composition
       Not sure how though - as it requires a much more well defined interface to avoid refactoring-hell..
+    - Try to remove arithmetic flags
+      RISC-V don't define them - they are deduced through other means => makes parallel execution much more efficient
     + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
       Currently we fire interrupts even if no handlers are enabled (not good)
       All Interrupts should be disabled on reset...

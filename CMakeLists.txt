@@ -26,7 +26,7 @@ endif ()
 # Virtual CPU sources
 #
 list(APPEND vcpusrc src/vcpu/CPUBase.cpp src/vcpu/CPUBase.h)
-list(APPEND vcpusrc src/vcpu/CPUInstructionBase.cpp src/vcpu/CPUInstructionBase.cpp)
+list(APPEND vcpusrc src/vcpu/InstructionSetImpl.cpp src/vcpu/InstructionSetImpl.cpp)
 list(APPEND vcpusrc src/vcpu/InstructionDecoder.cpp src/vcpu/InstructionDecoder.h)
 list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
 list(APPEND vcpusrc src/vcpu/Interrupt.h)

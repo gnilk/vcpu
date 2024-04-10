@@ -209,10 +209,13 @@ namespace gnilk {
         // The 'CORE' would then be placed on the SOC level...
         // SOC holds the DataBus and so forth...
 
+
+        class InstructionSetImpl;
         class InstructionDecoder;
         // FIXME: the ISR controller should be part of the SOC
         class CPUBase : public InterruptController {
             friend InstructionDecoder;
+            friend InstructionSetImpl;
         public:
             using Ref = std::shared_ptr<CPUBase>;
         public:

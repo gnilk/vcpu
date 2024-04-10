@@ -2,19 +2,41 @@
 // Created by gnilk on 27.03.24.
 //
 
-#ifndef VCPU_CPUINSTRUCTIONBASE_H
-#define VCPU_CPUINSTRUCTIONBASE_H
+#ifndef VCPU_INSTRUCTIONSETIMPL_H
+#define VCPU_INSTRUCTIONSETIMPL_H
 
 #include "CPUBase.h"
 #include "InstructionDecoder.h"
 
 namespace gnilk {
     namespace vcpu {
+
+        // This is currently not used, but the idea is to have multiple instruction set's in the future..
+        // not sure I will ever bother though...
+        class InstructionSetImplBase {
+        public:
+            virtual bool ExecuteInstruction(InstructionDecoder &decoder) = 0;
+        };
+
         // FIXME: This should handled through composition, supply the CPUBase as an argument instead
         //        Would allow swapping instructions sets...
-        class CPUInstructionBase : public CPUBase {
+        class InstructionSetImpl : public InstructionSetImplBase {
         public:
-            virtual bool ExecuteInstruction(InstructionDecoder &decoder);
+            InstructionSetImpl(CPUBase &newCpu) : cpu(newCpu) {
+
+            }
+            InstructionSetImpl(InstructionSetImpl &other) : InstructionSetImpl(other.cpu) {
+
+            }
+            InstructionSetImpl(InstructionSetImpl &&other) noexcept : InstructionSetImpl(other.cpu) {
+
+            }
+            InstructionSetImpl &operator = (InstructionSetImpl &&other) noexcept {
+                cpu = other.cpu;
+                return *this;
+            }
+
+            bool ExecuteInstruction(InstructionDecoder &decoder) override;
 
         protected:
             // one operand instr.
@@ -42,10 +64,12 @@ namespace gnilk {
 
 
             void WriteToDst(InstructionDecoder& instrDecoder, const RegisterValue &v);
+        private:
+            CPUBase &cpu;
 
         };
     }
 }
 
 
-#endif //VCPU_CPUINSTRUCTIONBASE_H
+#endif //VCPU_INSTRUCTIONSETIMPL_H

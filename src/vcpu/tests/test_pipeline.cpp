@@ -34,7 +34,9 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
 
     InstructionPipeline pipeline;
     pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoder &decoder){
-        cpu.ExecuteInstruction(decoder);
+        InstructionSetImpl instructionBase(cpu);
+        instructionBase.ExecuteInstruction(decoder);
+        //cpu.ExecuteInstruction(decoder);
     });
 
     // This currently creates an out-of-order execution...
@@ -86,7 +88,9 @@ DLL_EXPORT int test_pipeline_instr_move_immediate(ITesting *t) {
     cpu.QuickStart(program, 1024);
     InstructionPipeline pipeline;
     pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoder &decoder){
-        cpu.ExecuteInstruction(decoder);
+        InstructionSetImpl instructionBase(cpu);
+        instructionBase.ExecuteInstruction(decoder);
+        //cpu.ExecuteInstruction(decoder);
     });
 
     // This currently creates an out-of-order execution...
