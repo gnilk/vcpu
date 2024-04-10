@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include "MemoryUnit.h"
+#include "FlashBus.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -136,12 +137,39 @@ int32_t MMU::Write(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
 }
  */
 
+
+void MMU::Touch(const uint64_t address) {
+    // Can't cache this - don't try...
+    if (!SoC::Instance().IsAddressCacheable(address)) {
+        return;
+    }
+    cacheController.Touch(address);
+}
+
 int32_t MMU::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
     // FIXME: Address translation
+    if (!SoC::Instance().IsAddressCacheable(address)) {
+        auto baseBus = SoC::Instance().GetDataBusForAddressAs<FlashBus>(address);
+        if (baseBus == nullptr) {
+            return -1;
+        }
+        // FIXME: The non-cache-able bus should work on smaller values - 32bit?
+        baseBus->WriteData(address, src, nBytes);
+        return (int32_t)nBytes;
+    }
+
     return cacheController.WriteInternalFromExternal(address, src, nBytes);
 }
 void MMU::ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes) {
     // FIXME: Address translation
+    if (!SoC::Instance().IsAddressCacheable(address)) {
+        auto baseBus = SoC::Instance().GetDataBusForAddressAs<FlashBus>(address);
+        if (baseBus == nullptr) {
+            return;
+        }
+        baseBus->ReadData(dst, address, nBytes);
+        return;
+    }
     cacheController.ReadInternalToExternal(dst, address, nBytes);
 }
 

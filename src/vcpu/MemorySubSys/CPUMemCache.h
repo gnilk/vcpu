@@ -15,18 +15,6 @@
 namespace gnilk {
     namespace vcpu {
 
-        class MemoryBase {
-        public:
-            MemoryBase() = default;
-            virtual ~MemoryBase() = default;
-            virtual int32_t Read(void *dst, const void *src, size_t nBytesToRead) {
-                return -1;
-            }
-            virtual int32_t Write(void *dst, const void *src, size_t nBytesToWrite) {
-                return -1;
-            }
-        };
-
         class CacheController;
 
         // The cache is exclusively for emulated RAM transfers - NO external memory mappings ends up here!
@@ -53,8 +41,6 @@ namespace gnilk {
             void ResetLine(int idxLine);
 
             uint64_t GetLineAddrDescriptor(int idxLine);
-            size_t CopyFromLine(uint64_t dstAddress, int idxLine, uint16_t offset, size_t nBytes);
-            size_t CopyToLine(int idxLine, uint16_t offset, const uint64_t srcAddress, size_t nBytes);
 
             void ReadLineData(void *dst, int idxLine);
             void WriteLineData(int idxLine, const void *src, uint64_t addrDescriptor, kMESIState state);
@@ -71,7 +57,7 @@ namespace gnilk {
         // TO-DO:
         //   - Check the regional-flag if a memory address is cacheable
         class MMU;
-        class CacheController : public MemoryBase {
+        class CacheController {
             friend MMU;
         public:
             CacheController() = default;
@@ -108,20 +94,6 @@ namespace gnilk {
             int32_t ReadLine(MesiBusBase::Ref bus, uint64_t addrDescriptor, kMESIState state);
             kMESIState OnMsgBusRd(uint64_t addrDescriptor);
             void OnMsgBusWr(uint64_t addrDescriptor);
-
-        protected:
-            // Read/Write here are 'generic' - these should not be used! => this is more of a cache aware DMA transfer
-
-            // So read/write are essentially the same - the only difference is that we track the
-            // 'writes' as destructive - and hence, if any other core operates on the same address
-            // their caches will be updated..  Read's however are not destructive - as long as they are
-            // not written to..  Ergo - there is a semantic difference between read/write operations
-            // (even though their interface is the same and on a basic level there is just a memcpy)
-
-            // Note: We don't supply the bus here since dst/src can be using different busses
-            // Note2: This function should go away...
-            //int32_t ReadInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToRead);
-            //int32_t WriteInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite);
 
         private:
             int32_t WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes);

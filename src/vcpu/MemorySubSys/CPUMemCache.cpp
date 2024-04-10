@@ -6,7 +6,6 @@
 
 #include "System.h"
 #include "CPUMemCache.h"
-#include "FlashBus.h"
 
 //
 // Very small and simple MESI SMP cache coherency implementation
@@ -87,36 +86,6 @@ void Cache::WriteLineData(int idxLine, const void *src, uint64_t addrDescriptor,
     line.addrDescriptor = addrDescriptor;
 }
 
-// This copies only data - without any updates or anything...
-size_t Cache::CopyFromLine(uint64_t dstAddress, int idxLine, uint16_t offset, size_t nBytes) {
-
-    if ((offset + nBytes) > GNK_L1_CACHE_LINE_SIZE) {
-        nBytes = GNK_L1_CACHE_LINE_SIZE - offset;
-    }
-    if (!nBytes) {
-        return 0;
-    }
-
-    auto bus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(dstAddress);
-    bus->WriteLine(dstAddress, &lines[idxLine].data);
-    return nBytes;
-}
-
-size_t Cache::CopyToLine(int idxLine, uint16_t offset, const uint64_t srcAddress, size_t nBytes) {
-    if ((offset + nBytes) > GNK_L1_CACHE_LINE_SIZE) {
-        nBytes = GNK_L1_CACHE_LINE_SIZE - offset;
-    }
-    if (!nBytes) {
-        return 0;
-    }
-
-    auto bus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(srcAddress);
-    // FIXME: Assert bus != nullptr
-    bus->ReadLine(lines[idxLine].data, srcAddress);
-    // Update the cache line state...
-    lines[idxLine].state = kMesi_Modified;
-    return nBytes;
-}
 
 // Copies data from an 'external' (i.e. non-emulated pointer) to a cache line..
 // This is used by the 'CacheController::Write' function...
@@ -147,7 +116,6 @@ int32_t Cache::CopyFromLineToExternal(void *dst, int idxLine, uint16_t offset, s
     return nBytes;
 
 }
-
 
 void Cache::DumpCacheLines() const {
     for(int i=0;i<lines.size();i++) {
@@ -223,11 +191,6 @@ void CacheController::OnMsgBusWr(uint64_t addrDescriptor) {
 
 // Touch will ensure is in the cache
 void CacheController::Touch(const uint64_t address) {
-    // Can't cache this - don't try...
-    if (!SoC::Instance().IsAddressCacheable(address)) {
-        return;
-    }
-
     uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(address);
     kMESIState state = kMesi_Exclusive;
 
@@ -244,24 +207,7 @@ void CacheController::Touch(const uint64_t address) {
 // Private - this is called from 'Write<T>' - which is a wrapper so we can copy absolute values to the
 // emulate cache RAM...
 int32_t CacheController::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
-    // Can't cache this - do it differently.. Need another bus..
-
-    if (!SoC::Instance().IsAddressCacheable(address)) {
-        auto baseBus = SoC::Instance().GetDataBusForAddressAs<FlashBus>(address);
-        if (baseBus == nullptr) {
-            return -1;
-        }
-        // FIXME: The non-cache-able bus should work on smaller values - 32bit?
-        static uint8_t tmp[GNK_L1_CACHE_LINE_SIZE];
-        memcpy(tmp, src, nBytes);
-        baseBus->WriteData(address, src, nBytes);
-        return (int32_t)nBytes;
-    }
-
-    // This can be cached - so proceed with the MESI bus...
-
     uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(address);
-
 
     auto bus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(address);
     bus->BroadCastWrite(idCore, dstAddrDesc);
@@ -273,23 +219,8 @@ int32_t CacheController::WriteInternalFromExternal(uint64_t address, const void 
 }
 
 void CacheController::ReadInternalToExternal(void *dst, const uint64_t address, size_t nBytes) {
-    // FIXME: Check if the region for the address can be cached!!
-    if (!SoC::Instance().IsAddressCacheable(address)) {
-        // Read non-cache-able regional value..
-        // But must be different..
-
-        auto baseBus = SoC::Instance().GetDataBusForAddressAs<FlashBus>(address);
-        if (baseBus == nullptr) {
-            return;
-        }
-        baseBus->ReadData(dst, address, nBytes);
-        return;
-    }
-
-
     kMESIState state = kMesi_Exclusive;
     uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(address);
-
 
     // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
     auto bus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(address);
@@ -303,46 +234,8 @@ void CacheController::ReadInternalToExternal(void *dst, const uint64_t address, 
 
     uint16_t offset = GNK_LINE_OFS_FROM_ADDR(address);
     cache.CopyFromLineToExternal(dst, idxLine, offset, nBytes);
-
 }
 
-//
-// Read from cache - 'src' is a cache-line address, dst is somewhere the user wants it
-//
-/*
-int32_t CacheController::ReadInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToRead) {
-    uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(srcAddress);
-    kMESIState state = kMesi_Exclusive;
-
-    // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
-    auto srcBus = SoC::Instance().GetDataBusForAddress(addrDescriptor);
-
-    auto res = srcBus->BroadCastRead(idCore, addrDescriptor);
-    if (res != kMesi_Invalid) {
-        // Shared
-        state = kMesi_Shared;
-    }
-    auto idxLine = ReadLine(srcBus, addrDescriptor, state);
-
-    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(srcAddress);
-    return cache.CopyFromLine(dstAddress, idxLine, offset, nBytesToRead);
-}
-
-//
-// Write to cache - dst is a cached address, src is whatever the user supplied
-//
-int32_t CacheController::WriteInternal(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytesToWrite) {
-    uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(dstAddress);
-    auto dstBus = SoC::Instance().GetDataBusForAddress(dstAddress);
-
-    dstBus->BroadCastWrite(idCore, dstAddrDesc);
-    auto idxLine = ReadLine(dstBus, dstAddrDesc, kMESIState::kMesi_Exclusive);
-    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(dstAddress);
-
-    return cache.CopyToLine(idxLine, offset, srcAddress, nBytesToWrite);
-
-}
-*/
 
 int32_t CacheController::ReadLine(MesiBusBase::Ref bus, uint64_t addrDescriptor, kMESIState state) {
     auto idxLine = cache.GetLineIndex(addrDescriptor);
@@ -359,7 +252,6 @@ int32_t CacheController::ReadLine(MesiBusBase::Ref bus, uint64_t addrDescriptor,
 }
 
 void CacheController::Flush() {
-
     for (auto i = 0; i<cache.GetNumLines();i++) {
         if (cache.GetLineState(i) == kMesi_Modified) {
             // All lines in the cache MUST come from a MESI compatible bus...

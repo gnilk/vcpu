@@ -197,6 +197,8 @@ namespace gnilk {
                 return value;
             }
 
+            void Touch(const uint64_t address);
+
 
             // These two functions will bypass the cache!!!
             // External RAM <-> Emulated RAM functions - this will stall the bus!
