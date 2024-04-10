@@ -80,64 +80,6 @@ uint64_t MMU::TranslateAddress(uint64_t address) {
     return address & VCPU_SOC_ADDR_MASK;
 }
 
-// Read from RAM => and this interface should go away...
-/*
-int32_t MMU::Read(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
-    // This is fully bogus...
-    if (!IsFlagSet(kMMU_TranslationEnabled)) {
-        return cacheController.ReadInternal(dstPtr, srcPtr, nBytes);
-    }
-
-
-    if (!IsAddressValid(dstPtr)) {
-        // FIXME: Raise MMU Invalid Address Exception
-        return -1;
-    }
-    if (!IsAddressValid(srcPtr)) {
-        // FIXME: Raise MMU Invalid Address Exception
-        return -1;
-    }
-
-    auto regionDst = RegionFromAddress(dstPtr);
-    auto regionSrc = RegionFromAddress(srcPtr);
-    if (regionSrc != regionDst) {
-        // Inter Region Transfer => DMA
-        return -1;
-    }
-
-
-    uint64_t srcAddress = TranslateAddress((uint64_t)srcPtr);
-    uint64_t dstAddress = TranslateAddress((uint64_t)dstPtr);
-    //
-    // We can only cache when
-    // 1) cache is enabled (for both src/dst)
-    // 2) region is same
-    //
-    // In case we do inter-regional transfers this is a type of DMA
-
-
-    // Need to figure out if can/should cache this..
-//    if (regions[regionSrc].cbAccessHandler != nullptr) {
-//        regions[regionSrc].cbAccessHandler(MesiBusBase::kMemOp::kBusRd, srcAddress);
-//    }
-//    if (regions[regionDst].cbAccessHandler != nullptr) {
-//        regions[regionDst].cbAccessHandler(MesiBusBase::kMemOp::kBusWr, dstAddress);
-//    }
-    return -1;
-
-}
-
-// Write to RAM
-int32_t MMU::Write(uint64_t dstPtr, const uint64_t srcPtr, size_t nBytes) {
-    // No translation - addresses are physical...
-    uint64_t srcAddress = TranslateAddress((uint64_t)srcPtr);
-    uint64_t dstAddress = TranslateAddress((uint64_t)dstPtr);
-    return cacheController.WriteInternal(dstAddress, srcAddress, nBytes);
-    return -1;
-}
- */
-
-
 void MMU::Touch(const uint64_t address) {
     // Can't cache this - don't try...
     if (!SoC::Instance().IsAddressCacheable(address)) {
@@ -230,7 +172,9 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
 
 /*
 
-
+the old MMU is down below - I started down the wrong lane and did a whole bunch of not-yet-needed stuff.
+I will rip code out of here before I take it away. This had proper page-walking and page-allocation handling
+ which is not yet in the new MMU (focus was memory access).
 
 
 

@@ -222,10 +222,6 @@ namespace gnilk {
                 return cacheController;
             }
         protected:
-            // Emulated RAM <-> RAM transfers, with cache line handling
-            //int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
-            //int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
-
             int32_t WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes);
             void ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes);
 
