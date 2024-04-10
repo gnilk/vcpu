@@ -35,6 +35,14 @@ void SoC::Reset() {
 }
 
 void SoC::SetDefaults() {
+    //
+    // The default SoC memory configuration has 3 regions;
+    // 0 - is the 'RAM' region, this defines an address space for regular cache-able RAM, when SOC is reset this is also reset
+    // 1 - is a region for HW Mapping
+    // 2 - is a non-volatile region simulating 'Flash'
+    //
+    // You are free to map more regions - like a secondary emulated external RAM region or additional HW...
+    //
     CreateDefaultRAMRegion(0);
     CreateDefaultHWRegion(1);
     CreateDefaultFlashRegion(2);
