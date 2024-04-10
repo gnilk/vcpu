@@ -5,8 +5,10 @@
 #include <stdint.h>
 #include <vector>
 #include <filesystem>
+#include <string.h>
 #include <testinterface.h>
-
+#include "MemorySubSys/MemoryUnit.h"
+#include "MemorySubSys/HWMappedBus.h"
 #include "System.h"
 
 using namespace gnilk;
@@ -18,6 +20,7 @@ DLL_EXPORT int test_soc_defaults(ITesting *t);
 DLL_EXPORT int test_soc_getflashregion(ITesting *t);
 DLL_EXPORT int test_soc_resetram(ITesting *t);
 DLL_EXPORT int test_soc_regionfromaddr(ITesting *t);
+DLL_EXPORT int test_soc_hwmapping(ITesting *t);
 }
 
 DLL_EXPORT int test_soc(ITesting *t) {
@@ -96,4 +99,37 @@ DLL_EXPORT int test_soc_regionfromaddr(ITesting *t) {
     auto &region = SoC::Instance().GetMemoryRegionFromAddress(addr);
 
     return kTR_Pass;
+}
+DLL_EXPORT int test_soc_hwmapping(ITesting *t) {
+
+    static uint8_t hwregs[1024] = {};
+    // Note: SOC will reset before this test is executed
+    auto region = SoC::Instance().GetFirstRegionMatching(kRegionFlag_HWMapping);
+    auto hwbus = std::reinterpret_pointer_cast<HWMappedBus>(region->bus);
+
+
+    auto onRead = [](void *dst, uint64_t address, size_t nBytes) {
+        printf("onRead, %d bytes from addr 0x%x\n", (int)nBytes, (uint32_t)address);
+        memcpy(dst, &hwregs[address], nBytes);
+    };
+    auto onWrite = [](uint64_t address, const void *src, size_t nBytes) {
+        printf("onWrite, %d bytes to addr 0x%x\n", (int)nBytes, (uint32_t)address);
+        memcpy(&hwregs[address], src, nBytes);
+    };
+
+    hwbus->SetReadWriteHandlers(onRead, onWrite);
+
+    MMU mmu;
+    mmu.Initialize(0);
+    uint64_t addr = 0x0100'0000'0000'0123;
+    TR_ASSERT(t, hwregs[0] == 0x00);
+    TR_ASSERT(t, hwregs[0x123] == 0x00);
+
+    mmu.Write<uint8_t>(addr, 0x42);
+    auto value = mmu.Read<uint8_t>(addr);
+
+    TR_ASSERT(t, value == 0x42);
+
+    return kTR_Pass;
+
 }

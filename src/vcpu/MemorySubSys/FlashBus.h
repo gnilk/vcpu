@@ -5,8 +5,7 @@
 #ifndef VCPU_FLASHBUS_H
 #define VCPU_FLASHBUS_H
 
-#include "MesiBusBase.h"
-#include "RamBus.h"
+#include "BusBase.h"
 
 namespace gnilk {
     namespace vcpu {

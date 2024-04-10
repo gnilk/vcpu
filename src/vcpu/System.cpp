@@ -6,6 +6,7 @@
 #include "System.h"
 #include "MemorySubSys/FlashBus.h"
 #include "MemorySubSys/RamBus.h"
+#include "MemorySubSys/HWMappedBus.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -61,10 +62,11 @@ void SoC::CreateDefaultRAMRegion(size_t idxRegion) {
 
 void SoC::CreateDefaultHWRegion(size_t idxRegion) {
     auto &region = GetRegion(idxRegion);
-    region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Write;
+    region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Write | kRegionFlag_HWMapping;
     region.rangeStart = 0x0000'0000'0000'0000;
     region.rangeEnd   = 0x0000'0000'0000'ffff;
     region.firstVirtualAddr = (uint64_t(1) << VCPU_SOC_REGION_SHIFT) | region.rangeStart;
+    region.bus = HWMappedBus::Create();
     region.cbAccessHandler = nullptr;
 }
 
@@ -83,7 +85,6 @@ void SoC::CreateDefaultFlashRegion(size_t idxRegion) {
     auto bus = FlashBus::Create(new RamMemory(region.ptrPhysical, region.szPhysical));
     region.bus = bus;
 
-    // FIXME: Should have some kind of bus...
     region.cbAccessHandler = nullptr;
 }
 

@@ -52,8 +52,8 @@ namespace gnilk {
             void Dump() const;
         protected:
 
-            kMESIState OnDataBusMessage(MesiBusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor);
-            int32_t ReadLine(MesiBusBase::Ref bus, uint64_t addrDescriptor, kMESIState state);
+            kMESIState OnDataBusMessage(BusBase::kMemOp op, uint8_t sender, uint64_t addrDescriptor);
+            int32_t ReadLine(BusBase::Ref bus, uint64_t addrDescriptor, kMESIState state);
             kMESIState OnMsgBusRd(uint64_t addrDescriptor);
             void OnMsgBusWr(uint64_t addrDescriptor);
 
@@ -61,8 +61,8 @@ namespace gnilk {
             int32_t WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes);
             void ReadInternalToExternal(void *dst, const uint64_t address, size_t nBytes);
 
-            void WriteMemory(MesiBusBase::Ref bus, int idxLine);
-            void ReadMemory(MesiBusBase::Ref bus, int idxLine, uint64_t addrDescriptor, kMESIState state);
+            void WriteMemory(const BusBase::Ref &bus, int idxLine);
+            void ReadMemory(const BusBase::Ref &bus, int idxLine, uint64_t addrDescriptor, kMESIState state);
 
         private:
             uint8_t idCore = 0;

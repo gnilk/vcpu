@@ -52,7 +52,7 @@ void MMU::SetMMUPageTableAddress(const gnilk::vcpu::RegisterValue &newPageTblAdd
 
     // FIXME: need to check if we can do this...
 
-    auto databus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(mmuPageTableAddress.data.longword);
+    auto databus = SoC::Instance().GetDataBusForAddress(mmuPageTableAddress.data.longword);
 
     uint64_t physicalAddr = TranslateAddress(mmuPageTableAddress.data.longword);
     int32_t nBytesToWrite = sizeof(PageTableEntry);
@@ -149,12 +149,12 @@ void MMU::Touch(const uint64_t address) {
 int32_t MMU::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
     // FIXME: Address translation
     if (!SoC::Instance().IsAddressCacheable(address)) {
-        auto baseBus = SoC::Instance().GetDataBusForAddressAs<FlashBus>(address);
-        if (baseBus == nullptr) {
+        auto bus = SoC::Instance().GetDataBusForAddress(address);
+        if (bus == nullptr) {
             return -1;
         }
         // FIXME: The non-cache-able bus should work on smaller values - 32bit?
-        baseBus->WriteData(address, src, nBytes);
+        bus->WriteData(address, src, nBytes);
         return (int32_t)nBytes;
     }
 
@@ -163,11 +163,11 @@ int32_t MMU::WriteInternalFromExternal(uint64_t address, const void *src, size_t
 void MMU::ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes) {
     // FIXME: Address translation
     if (!SoC::Instance().IsAddressCacheable(address)) {
-        auto baseBus = SoC::Instance().GetDataBusForAddressAs<FlashBus>(address);
-        if (baseBus == nullptr) {
+        auto bus = SoC::Instance().GetDataBusForAddress(address);
+        if (bus == nullptr) {
             return;
         }
-        baseBus->ReadData(dst, address, nBytes);
+        bus->ReadData(dst, address, nBytes);
         return;
     }
     cacheController.ReadInternalToExternal(dst, address, nBytes);
@@ -191,7 +191,7 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nB
     // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
 
 
-    auto databus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(srcAddress);
+    auto databus = SoC::Instance().GetDataBusForAddress(srcAddress);
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     databus->ReadLine(tmpCacheLine, srcAddress);
     memcpy(dstPtr, tmpCacheLine, nBytes);
@@ -215,7 +215,7 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
 
     // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
 
-    auto databus = SoC::Instance().GetDataBusForAddressAs<MesiBusBase>(dstAddr);
+    auto databus = SoC::Instance().GetDataBusForAddress(dstAddr);
 
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     memcpy(tmpCacheLine, srcAddress, nBytes);

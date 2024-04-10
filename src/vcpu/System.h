@@ -25,9 +25,10 @@ namespace gnilk {
             kRegionFlag_Execute = 0x08,
             kRegionFlag_Cache = 0x10,   // Should this region be cached or not
             kRegionFlag_NonVolatile = 0x20, // Non-volatile memory - will be preserved when 'Reset' is called
+            kRegionFlag_HWMapping = 0x40,   // This a region which is mapped to hardware
         };
 
-        using MemoryAccessHandler = std::function<void(RamBus::kMemOp op, uint64_t address)>;
+        using MemoryAccessHandler = std::function<void(BusBase::kMemOp op, uint64_t address)>;
         // Should each region be tied to a memory bus - or is this optional?
         // Also - a region is global across all MMU instances...
         struct MemoryRegion {
@@ -97,16 +98,6 @@ namespace gnilk {
                 }
                 auto &region = RegionFromAddress(address);
                 return region.bus;
-            }
-
-            template<typename T>
-            std::shared_ptr<T> GetDataBusForAddressAs(uint64_t address) {
-                if (!HaveRegionForAddress(address)) {
-                    return nullptr;
-                }
-                auto &region = RegionFromAddress(address);
-                auto bus = std::reinterpret_pointer_cast<T>(region.bus);
-                return bus;
             }
 
             size_t GetCacheableRegions(std::vector<MemoryRegion *> &outRegions) {
