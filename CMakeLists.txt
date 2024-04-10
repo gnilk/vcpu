@@ -38,7 +38,8 @@ list(APPEND vcpusrc src/vcpu/Timer.cpp src/vcpu/Timer.h)
 list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 
 # HW emulated memory handling
-list(APPEND vcpusrc src/vcpu/MemorySubSys/CPUMemCache.cpp src/vcpu/MemorySubSys/CPUMemCache.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/Cache.cpp src/vcpu/MemorySubSys/Cache.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/CacheController.cpp src/vcpu/MemorySubSys/CacheController.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/MemoryUnit.cpp src/vcpu/MemorySubSys/MemoryUnit.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/MesiBusBase.cpp src/vcpu/MemorySubSys/MesiBusBase.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/FlashBus.cpp src/vcpu/MemorySubSys/FlashBus.h)

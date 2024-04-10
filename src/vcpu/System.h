@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <vector>
 
-#include "MemorySubSys/CPUMemCache.h"
+#include "MemorySubSys/CacheController.h"
 #include "MemorySubSys/RamBus.h"
 
 namespace gnilk {

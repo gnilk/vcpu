@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 #include "System.h"
-#include "CPUMemCache.h"
+#include "CacheController.h"
 #include "RegisterValue.h"
 
 //

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <testinterface.h>
 #include "System.h"
-#include "MemorySubSys/CPUMemCache.h"
+#include "MemorySubSys/CacheController.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
