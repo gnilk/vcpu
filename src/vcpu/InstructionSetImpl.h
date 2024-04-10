@@ -18,8 +18,8 @@ namespace gnilk {
             virtual bool ExecuteInstruction(InstructionDecoder &decoder) = 0;
         };
 
-        // FIXME: This should handled through composition, supply the CPUBase as an argument instead
-        //        Would allow swapping instructions sets...
+        // Implements the one and only instruction set
+        // Note: the instruction decoder is heavily coupled to the instruction set at this point
         class InstructionSetImpl : public InstructionSetImplBase {
         public:
             InstructionSetImpl(CPUBase &newCpu) : cpu(newCpu) {
