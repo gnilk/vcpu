@@ -87,33 +87,56 @@ void CacheController::Touch(const uint64_t address) {
 // Private - this is called from 'Write<T>' - which is a wrapper so we can copy absolute values to the
 // emulate cache RAM...
 int32_t CacheController::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
-    uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(address);
+    // we can span multiple cache-lines since we allow unaligned access!
+    auto *ptrSrcData = const_cast<uint8_t *>(static_cast<const uint8_t *>(src));    // I really dislike C++ sometimes...
+    size_t nLeft = nBytes;
+    while(nLeft) {
+        uint64_t dstAddrDesc = GNK_ADDR_DESC_FROM_ADDR(address);
 
-    auto bus = SoC::Instance().GetDataBusForAddress(address);
-    bus->BroadCastWrite(idCore, dstAddrDesc);
+        auto bus = SoC::Instance().GetDataBusForAddress(address);
+        bus->BroadCastWrite(idCore, dstAddrDesc);
 
-    auto idxLine = ReadLine(bus, dstAddrDesc, kMESIState::kMesi_Exclusive);
-    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(address);
+        auto idxLine = ReadLine(bus, dstAddrDesc, kMESIState::kMesi_Exclusive);
+        uint16_t offset = GNK_LINE_OFS_FROM_ADDR(address);
 
-    return cache.CopyToLineFromExternal(idxLine, offset, src, nBytes);
+        auto nWritten = cache.CopyToLineFromExternal(idxLine, offset, ptrSrcData, nLeft);
+        nLeft -= nWritten;
+        if (!nLeft) break;
+        ptrSrcData += nWritten;
+        address += nWritten;
+    }
+    // cast doesn't matter..
+    return (int32_t)nBytes;
 }
 
 void CacheController::ReadInternalToExternal(void *dst, const uint64_t address, size_t nBytes) {
-    kMESIState state = kMesi_Exclusive;
-    uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(address);
+    auto *ptrDstData = static_cast<uint8_t *>(dst);    // I really dislike C++ sometimes...
+    auto readAddress = address;
+    size_t nLeft = nBytes;
+    // Must be done in a loop since we allow unaligned read's
+    // Ergo, if a full read would cross the cache-line boundary - we need to split the read in two...
+    while(nLeft) {
 
-    // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
-    auto bus = SoC::Instance().GetDataBusForAddress(address);
-    auto res = bus->BroadCastRead(idCore, addrDescriptor);
-    if (res != kMesi_Invalid) {
-        // Shared
-        state = kMesi_Shared;
+        kMESIState state = kMesi_Exclusive;
+        uint64_t addrDescriptor = GNK_ADDR_DESC_FROM_ADDR(readAddress);
+
+        // can probably optimize a bit here - if the current line is exclusive - there is no need to broadcast!
+        auto bus = SoC::Instance().GetDataBusForAddress(readAddress);
+        auto res = bus->BroadCastRead(idCore, addrDescriptor);
+        if (res != kMesi_Invalid) {
+            // Shared
+            state = kMesi_Shared;
+        }
+        // pass the bus here - avoid lookup twice...
+        auto idxLine = ReadLine(bus, addrDescriptor, state);
+
+        uint16_t offset = GNK_LINE_OFS_FROM_ADDR(readAddress);
+        auto nRead = cache.CopyFromLineToExternal(ptrDstData, idxLine, offset, nLeft);
+        nLeft -= nRead;
+        if(!nLeft) break;
+        ptrDstData += nRead;
+        readAddress += nRead;
     }
-    // pass the bus here - avoid lookup twice...
-    auto idxLine = ReadLine(bus, addrDescriptor, state);
-
-    uint16_t offset = GNK_LINE_OFS_FROM_ADDR(address);
-    cache.CopyFromLineToExternal(dst, idxLine, offset, nBytes);
 }
 
 
@@ -131,15 +154,18 @@ int32_t CacheController::ReadLine(BusBase::Ref bus, uint64_t addrDescriptor, kME
     return idxLine;
 }
 
-void CacheController::Flush() {
+size_t CacheController::Flush() {
+    size_t nLinesFlushed = 0;
     for (auto i = 0; i<cache.GetNumLines();i++) {
         if (cache.GetLineState(i) == kMesi_Modified) {
             // All lines in the cache MUST come from a MESI compatible bus...
             auto bus = SoC::Instance().GetDataBusForAddress(cache.lines[i].addrDescriptor);
             WriteMemory(bus, i);
             cache.ResetLine(i);
+            nLinesFlushed++;
         }
     }
+    return nLinesFlushed;
 }
 
 void CacheController::WriteMemory(const BusBase::Ref &bus, int idxLine) {

@@ -43,7 +43,7 @@ namespace gnilk {
                 return value;
             }
 
-            void Flush();
+            size_t Flush();
 
             const Cache& GetCache() {
                 return cache;

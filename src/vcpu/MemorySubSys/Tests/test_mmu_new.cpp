@@ -27,6 +27,7 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t);
 DLL_EXPORT int test_mmu2_write_read(ITesting *t);
 DLL_EXPORT int test_mmu2_write_read_regions(ITesting *t);
 DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t);
+DLL_EXPORT int test_mmu2_write_unaligned(ITesting *t);
 }
 
 
@@ -244,4 +245,33 @@ DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
     return kTR_Pass;
 }
 
+// Tests read/write across cache-line boundaries
+DLL_EXPORT int test_mmu2_write_unaligned(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize(0);
+    mmu.Write<uint32_t>(0,64);
+    mmu.GetCacheController().Flush();
 
+    uint32_t value = 0;
+    mmu.CopyToExtFromRam(&value, 0, sizeof(value));
+
+    TR_ASSERT(t, value == 64);
+
+    // Set the address 2 bytes from the cache-line upper boundary and write 4 bytes
+    // This will cause the CacheController to issue two writes..
+    uint64_t addr = GNK_L1_CACHE_LINE_SIZE-2;
+    mmu.Write<uint32_t>(addr, 0x1234'5678);
+    // Flush the cache
+    auto nLines = mmu.GetCacheController().Flush();
+    TR_ASSERT(t, nLines == 2);
+
+    mmu.CopyToExtFromRam(&value, addr, sizeof(value));
+    TR_ASSERT(t, value = 0x1234'5678);
+
+    // Do the same on read, this will cause the cache controller to read two cache lines..
+    auto rValue = mmu.Read<uint32_t>(addr);
+    TR_ASSERT(t, rValue == value);
+
+
+    return kTR_Pass;
+}
