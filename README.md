@@ -134,6 +134,10 @@ Support for the following directives:
     ! Support for multiple compile units
     ! Support for static (within a compile-unit) and exported functions and variables
 - VCPU
+    ! Separate the instruction handler from the CPUBase, instead make that happen through composition
+      Not sure how though - as it requires a much more well defined interface to avoid refactoring-hell..
+    - Try to remove arithmetic flags
+      RISC-V don't define them - they are deduced through other means => makes parallel execution much more efficient
     + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
       Currently we fire interrupts even if no handlers are enabled (not good)
       All Interrupts should be disabled on reset...
@@ -173,17 +177,17 @@ Support for the following directives:
 + MMU (emulate an MMU)
   - Refactor the MMU, just define the table layout
   - Address Translation
-  - Integrate the Cache mechanism
-    - The MMU should replace the 'RamMemory' class in the Cache impl.
+  ! Integrate the Cache mechanism
+    ! The MMU should replace the 'RamMemory' class in the Cache impl.
   - Functions to bypass (i.e. priviledge/supervisor mode -> CPU Cntrl Reg)
 
 - Bios, based on syscall's (for the time beeing)
   - Alloc/Free, routines - that integrate with the MMU
     - Need this to start testing MMU and Address Translation
 
-- Cache handling
-  - Integrate memory cache from Linux Dev Machine
-  - Work on L1/L2 caches (not sure I need L2 at this stage) 
+! Cache handling
+  ! Integrate memory cache
+  ! Work on L1/L2 caches (not sure I need L2 at this stage) 
  
         
 - emulator

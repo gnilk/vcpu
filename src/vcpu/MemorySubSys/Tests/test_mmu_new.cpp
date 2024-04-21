@@ -9,7 +9,7 @@
 #include "VirtualCPU.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "MemorySubSys/PageAllocator.h"
-#include "MemorySubSys/DataBus.h"
+#include "MemorySubSys/RamBus.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -25,23 +25,24 @@ DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t);
 DLL_EXPORT int test_mmu2_copyext(ITesting *t);
 DLL_EXPORT int test_mmu2_writeext_read(ITesting *t);
 DLL_EXPORT int test_mmu2_write_read(ITesting *t);
+DLL_EXPORT int test_mmu2_write_read_regions(ITesting *t);
 DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t);
+DLL_EXPORT int test_mmu2_write_unaligned(ITesting *t);
 }
 
 
 DLL_EXPORT int test_mmu2(ITesting *t) {
+    t->SetPreCaseCallback([](ITesting *) {
+       SoC::Instance().Reset();
+    });
     return kTR_Pass;
 }
 
 DLL_EXPORT int test_mmu2_mapregion_handler(ITesting *t) {
     MMU mmu;
 
-    auto handler = [](DataBus::kMemOp op, uint64_t address) {
-        printf("Accessing: 0x%x\n", (uint32_t)address);
-    };
+    mmu.Initialize(0);
 
-    mmu.Initialize();
-    mmu.MapRegion(0x01, kRegionFlag_Read, 0x0000'0000'0000'0000, 0x0000'0000'0000'ffff, handler);
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'0000));
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'1234));
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'ffff));
@@ -54,8 +55,7 @@ DLL_EXPORT int test_mmu2_mapregion_handler(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_mapregion(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
-    mmu.MapRegion(0x01, kRegionFlag_Read, 0x0000'0000'0000'0000, 0x0000'0000'0000'ffff);
+    mmu.Initialize(0);
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'0000));
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'1234));
     TR_ASSERT(t, mmu.IsAddressValid(0x0100'0000'0000'ffff));
@@ -68,7 +68,7 @@ DLL_EXPORT int test_mmu2_mapregion(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_regionfromaddr(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    mmu.Initialize(0);
 
     auto region = mmu.RegionFromAddress(0x0100'0000'0000'0000);
     TR_ASSERT(t, region == 0x01);
@@ -77,7 +77,7 @@ DLL_EXPORT int test_mmu2_regionfromaddr(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_offsetfromaddr(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    mmu.Initialize(0);
 
     auto ofs = mmu.PageOffsetFromAddress(0x0000'0000'0000'0123);
     TR_ASSERT(t, ofs == 0x123);
@@ -91,7 +91,7 @@ DLL_EXPORT int test_mmu2_offsetfromaddr(ITesting *t) {
 
 DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    mmu.Initialize(0);
 
     uint64_t address = 0x0000'0001'2345'6789;
     auto pte = mmu.PageTableEntryIndexFromAddress(address);
@@ -111,11 +111,9 @@ DLL_EXPORT int test_mmu2_ptefromaddr(ITesting *t) {
 // This copies data to/from external (outside of emulation control) RAM..
 //
 DLL_EXPORT int test_mmu2_copyext(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
 
     MMU mmu;
-    mmu.Initialize();
+    mmu.Initialize(0);
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 0;
@@ -137,11 +135,8 @@ DLL_EXPORT int test_mmu2_copyext(ITesting *t) {
 
 // We write a native value into the emulated RAM then we read it...
 DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
-
     MMU mmu;
-    mmu.Initialize();
+    mmu.Initialize(0);
     mmu.SetMMUControl({});
 
     uint64_t ramMemoryAddr = 0;
@@ -155,12 +150,7 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
 
 
     // Read to address 64 - this is above the cacheline handling
-    mmu.Read(64,0,sizeof(writeValue));
-    TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() != GNK_L1_CACHE_NUM_LINES);
-
-    // Now read back from this address
-    uint32_t readValue = 0;
-    mmu.CopyToExtFromRam(&readValue, 64, sizeof(readValue));
+    uint32_t readValue = mmu.Read<uint32_t>(0);
     TR_ASSERT(t, readValue == writeValue);
 
     return kTR_Pass;
@@ -171,65 +161,83 @@ DLL_EXPORT int test_mmu2_writeext_read(ITesting *t) {
 // this of write/read through l1 cache
 //
 DLL_EXPORT int test_mmu2_write_read(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
-
     MMU mmu;
-    mmu.Initialize();
+    mmu.Initialize(0);
     mmu.SetMMUControl({});
 
-    uint64_t ramMemoryAddr = 0;
+    uint64_t ramMemoryAddr = 96;
     uint32_t writeValue = 0x4711;
-    uint32_t writeValueEmu = 0x1234;
+
+    // Read a raw value directly from RAM - bypassing cache, should be 0
+    uint32_t raw;
+    mmu.CopyToExtFromRam(&raw, 0, sizeof(raw));
+    printf("RAM Before Write: 0x%x\n", raw);
+
+    TR_ASSERT(t, raw == 0);
 
     // Start state - all should be invalid..
     TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() == GNK_L1_CACHE_NUM_LINES);
 
-    // put 0x4711 => emulated_ram[0]
-    mmu.CopyToRamFromExt(ramMemoryAddr, &writeValue, sizeof(writeValue));
-    TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() == GNK_L1_CACHE_NUM_LINES);
+    // Write a 32-bit value, this will pull the memory into the cache and the cache line will be updated
+    mmu.Write<uint32_t>(ramMemoryAddr, writeValue);
 
-    // emulated_ram[64] <= emulated_ram[0]
+    // Copy from RAW ram (bypassing cache) - this should still be zero...
+    mmu.CopyToExtFromRam(&raw, ramMemoryAddr, sizeof(raw));
+    printf("RAM After Write: 0x%x\n", raw);
+    TR_ASSERT(t, raw == 0);
 
-    // Read to address 64 - this is above the cacheline handling
-    mmu.Read(64,0,sizeof(writeValue));
-    TR_ASSERT(t, mmu.GetCacheController().GetInvalidLineCount() != GNK_L1_CACHE_NUM_LINES);
-    printf("After 'Read' to address 64 from address 0\n");
-    mmu.GetCacheController().Dump();
-
-    // Now read back from this address
-    uint32_t readValue = 0;
-    mmu.CopyToExtFromRam(&readValue, 64, sizeof(readValue));
+    // Read from RAM through cache - this should return the value in the cache
+    auto readValue = mmu.Read<uint32_t>(ramMemoryAddr);
     TR_ASSERT(t, readValue == writeValue);
-
-    readValue = 0x1234;
-    mmu.CopyToRamFromExt(64, &readValue, sizeof(readValue));
-
-    mmu.Write(0, 64, sizeof(readValue));
-    printf("After write to 0 from 64\n");
     mmu.GetCacheController().Dump();
-    // Issue a read - so we change the state...
-    mmu.Read(128,0, sizeof(readValue));
-    printf("After Read to 128 from 0\n");
 
+    // Copy from RAW ram (bypassing cache) - this should still be zero, as RAM is not yet updated
+    mmu.CopyToExtFromRam(&raw, ramMemoryAddr, sizeof(raw));
+    TR_ASSERT(t, raw == 0);
+    printf("RAW After Read: 0x%x\n", raw);
+
+    mmu.GetCacheController().Dump();
+
+    // Flush the cache to RAM
     mmu.GetCacheController().Flush();
 
-    uint32_t readValue2 = 0;
-    mmu.CopyToExtFromRam(&readValue2, 0, sizeof(readValue));
-    TR_ASSERT(t, readValue2 == 0x1234);
+    // Copy from RAW ram (bypassing cache) - we should now have the same value as during the write/read cycle as
+    // the cacheline should have been written back to RAM...
+    mmu.CopyToExtFromRam(&raw, ramMemoryAddr, sizeof(raw));
+    TR_ASSERT(t, raw == writeValue);
+    printf("RAW After Flush: 0x%x\n", raw);
 
     mmu.GetCacheController().Dump();
-
 
     return kTR_Pass;
 }
 
-DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
-    RamMemory ramMemory(MMU_MAX_MEM);
-    DataBus::Instance().SetRamMemory(&ramMemory);
-
+DLL_EXPORT int test_mmu2_write_read_regions(ITesting *t) {
     MMU mmu;
-    mmu.Initialize();
+    mmu.Initialize(0);
+    mmu.SetMMUControl({});
+
+    auto flashMem = SoC::Instance().GetFirstRegionMatching(kRegionFlag_NonVolatile);
+    TR_ASSERT(t, flashMem != nullptr);
+    TR_ASSERT(t, flashMem->ptrPhysical != nullptr);
+    TR_ASSERT(t, flashMem->szPhysical > 0);
+    uint8_t *ptrFlash = (uint8_t *)flashMem->ptrPhysical;
+    for(int i=0;i<flashMem->szPhysical;i++) {
+        ptrFlash[i] = i & 255;
+    }
+
+    uint64_t addr = 0x0200'0000'0000'0000;
+    auto &region = SoC::Instance().RegionFromAddress(addr);
+    auto fromFlash = mmu.Read<uint32_t>(addr);
+
+    return kTR_Pass;
+
+}
+
+
+DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize(0);
     mmu.SetMMUControl({kMMU_ResetPageTableOnSet});
 
     mmu.SetMMUPageTableAddress({0});
@@ -237,4 +245,33 @@ DLL_EXPORT int test_mmu2_pagetable_init(ITesting *t) {
     return kTR_Pass;
 }
 
+// Tests read/write across cache-line boundaries
+DLL_EXPORT int test_mmu2_write_unaligned(ITesting *t) {
+    MMU mmu;
+    mmu.Initialize(0);
+    mmu.Write<uint32_t>(0,64);
+    mmu.GetCacheController().Flush();
 
+    uint32_t value = 0;
+    mmu.CopyToExtFromRam(&value, 0, sizeof(value));
+
+    TR_ASSERT(t, value == 64);
+
+    // Set the address 2 bytes from the cache-line upper boundary and write 4 bytes
+    // This will cause the CacheController to issue two writes..
+    uint64_t addr = GNK_L1_CACHE_LINE_SIZE-2;
+    mmu.Write<uint32_t>(addr, 0x1234'5678);
+    // Flush the cache
+    auto nLines = mmu.GetCacheController().Flush();
+    TR_ASSERT(t, nLines == 2);
+
+    mmu.CopyToExtFromRam(&value, addr, sizeof(value));
+    TR_ASSERT(t, value = 0x1234'5678);
+
+    // Do the same on read, this will cause the cache controller to read two cache lines..
+    auto rValue = mmu.Read<uint32_t>(addr);
+    TR_ASSERT(t, rValue == value);
+
+
+    return kTR_Pass;
+}

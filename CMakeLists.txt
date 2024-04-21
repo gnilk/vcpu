@@ -26,7 +26,7 @@ endif ()
 # Virtual CPU sources
 #
 list(APPEND vcpusrc src/vcpu/CPUBase.cpp src/vcpu/CPUBase.h)
-list(APPEND vcpusrc src/vcpu/CPUInstructionBase.cpp src/vcpu/CPUInstructionBase.cpp)
+list(APPEND vcpusrc src/vcpu/InstructionSetImpl.cpp src/vcpu/InstructionSetImpl.cpp)
 list(APPEND vcpusrc src/vcpu/InstructionDecoder.cpp src/vcpu/InstructionDecoder.h)
 list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
 list(APPEND vcpusrc src/vcpu/Interrupt.h)
@@ -38,20 +38,28 @@ list(APPEND vcpusrc src/vcpu/Timer.cpp src/vcpu/Timer.h)
 list(APPEND vcpusrc src/vcpu/VirtualCPU.cpp src/vcpu/VirtualCPU.h)
 
 # HW emulated memory handling
-list(APPEND vcpusrc src/vcpu/MemorySubSys/CPUMemCache.cpp src/vcpu/MemorySubSys/CPUMemCache.h)
-list(APPEND vcpusrc src/vcpu/MemorySubSys/DataBus.cpp src/vcpu/MemorySubSys/DataBus.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/Cache.cpp src/vcpu/MemorySubSys/Cache.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/CacheController.cpp src/vcpu/MemorySubSys/CacheController.h)
 list(APPEND vcpusrc src/vcpu/MemorySubSys/MemoryUnit.cpp src/vcpu/MemorySubSys/MemoryUnit.h)
+# memory bus(-es)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/BusBase.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/MesiBusBase.cpp src/vcpu/MemorySubSys/MesiBusBase.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/FlashBus.cpp src/vcpu/MemorySubSys/FlashBus.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/HWMappedBus.cpp src/vcpu/MemorySubSys/HWMappedBus.h)
+list(APPEND vcpusrc src/vcpu/MemorySubSys/RamBus.cpp src/vcpu/MemorySubSys/RamBus.h)
+# temp...
 list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSys/PageAllocator.h)
 #
 # Virtual CPU unit test sources
 #
-list(APPEND vcputestsrc tests/test_integration.cpp)
-list(APPEND vcputestsrc tests/test_interrupt.cpp)
-list(APPEND vcputestsrc tests/test_pipeline.cpp)
-list(APPEND vcputestsrc tests/test_timer.cpp)
-list(APPEND vcputestsrc tests/test_vcpu.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_integration.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_interrupt.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_pipeline.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_soc.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_timer.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_vcpu.cpp)
 # mem subsys tests
-list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu.cpp)
+# list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu.cpp)
 list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_cache.cpp)
 list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu_new.cpp)
 

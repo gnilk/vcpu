@@ -10,7 +10,7 @@
 #include <stack>
 #include "fmt/format.h"
 #include "CPUBase.h"
-#include "CPUInstructionBase.h"
+#include "InstructionSetImpl.h"
 #include "InstructionDecoder.h"
 #include "InstructionSet.h"
 #include "MemorySubSys/MemoryUnit.h"
@@ -22,7 +22,7 @@ namespace gnilk {
     namespace vcpu {
 
 
-        class VirtualCPU : public CPUInstructionBase {
+        class VirtualCPU : public CPUBase {
         public:
             VirtualCPU() = default;
             virtual ~VirtualCPU() = default;

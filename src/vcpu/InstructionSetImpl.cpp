@@ -4,17 +4,17 @@
 // FIX-THIS: Remove inheritence to CPUBase and supply CPUBase as an argument
 //
 
-#include "CPUInstructionBase.h"
+#include "InstructionSetImpl.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
 //
-bool CPUInstructionBase::ExecuteInstruction(InstructionDecoder &decoder) {
+bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
     switch(decoder.code.opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
-            registers.statusReg.flags.halt = 1;
+            cpu.registers.statusReg.flags.halt = 1;
             // Enable this
             // pipeline.Flush();
             break;
@@ -124,13 +124,13 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
     statusReg.flags.overflow = (ovflow >> (std::numeric_limits<T>::digits-1)) & 1;
 }
 
-void CPUInstructionBase::ExecuteBneInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteBneInstr(InstructionDecoder& instrDecoder) {
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
         // raise exception
         return;
     }
     // zero must not be set in order to jump
-    if (registers.statusReg.flags.zero == 1) {
+    if (cpu.registers.statusReg.flags.zero == 1) {
         return;
     }
 
@@ -150,20 +150,20 @@ void CPUInstructionBase::ExecuteBneInstr(InstructionDecoder& instrDecoder) {
             relativeOffset = (int32_t)(v.data.dword);
             break;
         case OperandSize::Long :    // in case of long - this is an absolute address...
-            registers.instrPointer.data.longword = v.data.longword;
+            cpu.registers.instrPointer.data.longword = v.data.longword;
             return;
     }
-    registers.instrPointer.data.longword += relativeOffset;
+    cpu.registers.instrPointer.data.longword += relativeOffset;
 
 }
-void CPUInstructionBase::ExecuteBeqInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteBeqInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
         // raise exception
         return;
     }
     // zero must be in order to jump
-    if (registers.statusReg.flags.zero == 0) {
+    if (cpu.registers.statusReg.flags.zero == 0) {
         return;
     }
 
@@ -180,19 +180,19 @@ void CPUInstructionBase::ExecuteBeqInstr(InstructionDecoder& instrDecoder) {
             relativeOffset = (int32_t)(v.data.dword);
             break;
         case OperandSize::Long :    // in case of long - this is an absolute address...
-            registers.instrPointer.data.longword = v.data.longword;
+            cpu.registers.instrPointer.data.longword = v.data.longword;
             return;
     }
-    registers.instrPointer.data.longword += relativeOffset;
+    cpu.registers.instrPointer.data.longword += relativeOffset;
 }
 
-void CPUInstructionBase::ExecuteCmpInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteCmpInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode == AddressMode::Immediate) {
         // raise exception
         return;
     }
-    RegisterValue dstReg = instrDecoder.ReadDstValue(*this);
+    RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
 /*
     if (instrDecoder.dstAddrMode == AddressMode::Register) {
         dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -207,28 +207,28 @@ void CPUInstructionBase::ExecuteCmpInstr(InstructionDecoder& instrDecoder) {
 
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
-            UpdateCPUFlagsCMP<uint8_t>(registers.statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
+            UpdateCPUFlagsCMP<uint8_t>(cpu.registers.statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
             break;
         case OperandSize::Word:
-            UpdateCPUFlagsCMP<uint16_t>(registers.statusReg, dstReg.data.word - v.data.word, dstReg.data.word, v.data.word);
+            UpdateCPUFlagsCMP<uint16_t>(cpu.registers.statusReg, dstReg.data.word - v.data.word, dstReg.data.word, v.data.word);
             break;
         case OperandSize::DWord :
-            UpdateCPUFlagsCMP<uint32_t>(registers.statusReg, dstReg.data.dword - v.data.dword, dstReg.data.dword, v.data.dword);
+            UpdateCPUFlagsCMP<uint32_t>(cpu.registers.statusReg, dstReg.data.dword - v.data.dword, dstReg.data.dword, v.data.dword);
             break;
         case OperandSize::Long :
-            UpdateCPUFlagsCMP<uint64_t>(registers.statusReg, dstReg.data.longword - v.data.longword, dstReg.data.longword, v.data.longword);
+            UpdateCPUFlagsCMP<uint64_t>(cpu.registers.statusReg, dstReg.data.longword - v.data.longword, dstReg.data.longword, v.data.longword);
             break;
     }
 }
 
-void CPUInstructionBase::ExecuteAslInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteAslInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
 
-    auto &dstReg = GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+    auto &dstReg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
 
     auto signBefore = MSBForOpSize(instrDecoder.code.opSize, dstReg);
 
@@ -260,31 +260,31 @@ void CPUInstructionBase::ExecuteAslInstr(InstructionDecoder& instrDecoder) {
     }
     // Only update these in case of non-zero shifts
     if (msb) {
-        registers.statusReg.flags.carry = true;
-        registers.statusReg.flags.extend = true;
+        cpu.registers.statusReg.flags.carry = true;
+        cpu.registers.statusReg.flags.extend = true;
     } else {
-        registers.statusReg.flags.carry = false;
-        registers.statusReg.flags.carry = false;
+        cpu.registers.statusReg.flags.carry = false;
+        cpu.registers.statusReg.flags.carry = false;
     }
-    registers.statusReg.flags.zero = isZero;
-    registers.statusReg.flags.negative = (msb)?true:false;
+    cpu.registers.statusReg.flags.zero = isZero;
+    cpu.registers.statusReg.flags.negative = (msb)?true:false;
     // Overflow - IF the MSB is toggled during anypoint...
     if (signBefore != MSBForOpSize(instrDecoder.code.opSize, dstReg)) {
-        registers.statusReg.flags.overflow = true;
+        cpu.registers.statusReg.flags.overflow = true;
     } else {
-        registers.statusReg.flags.overflow = false;
+        cpu.registers.statusReg.flags.overflow = false;
     }
 }
 
 // This can be simplified...
 // See: MoiraALU_cpp.h - could take a few impl. ideas from there..
-void CPUInstructionBase::ExecuteAsrInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteAsrInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
-    auto &dstReg = GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+    auto &dstReg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
 
     // Fetch the sign-bit..
     uint64_t msb = MSBForOpSize(instrDecoder.code.opSize, dstReg);
@@ -320,13 +320,13 @@ void CPUInstructionBase::ExecuteAsrInstr(InstructionDecoder& instrDecoder) {
     }
     // Only update these in case of non-zero shifts
     if (v.data.byte > 0) {
-        registers.statusReg.flags.carry = carryExtFlag;
-        registers.statusReg.flags.extend = carryExtFlag;
+        cpu.registers.statusReg.flags.carry = carryExtFlag;
+        cpu.registers.statusReg.flags.extend = carryExtFlag;
     } else {
-        registers.statusReg.flags.carry = false;
+        cpu.registers.statusReg.flags.carry = false;
     }
-    registers.statusReg.flags.zero = isZero;
-    registers.statusReg.flags.negative = (msb)?true:false;
+    cpu.registers.statusReg.flags.zero = isZero;
+    cpu.registers.statusReg.flags.negative = (msb)?true:false;
     // Overflow flag - is a bit odd - might not apply to ASR but rather to ASL...
     // see m68000prm.pdf - page. 4-22
     // V — Set if the most significant bit is changed at any time during the shift operation;
@@ -380,42 +380,42 @@ void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
 
 
 // FIXME: Verify and update CPU Status Flags
-void CPUInstructionBase::ExecuteLslInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteLslInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
-    auto dstReg = instrDecoder.ReadDstValue(*this);
+    auto dstReg = instrDecoder.ReadDstValue(cpu);
 
     // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
-            Shift<OperandSize::Byte, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Byte, OperandCode::LSL>(cpu.registers.statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Word :
-            Shift<OperandSize::Word, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Word, OperandCode::LSL>(cpu.registers.statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::DWord :
-            Shift<OperandSize::DWord, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::DWord, OperandCode::LSL>(cpu.registers.statusReg, v.data.byte, dstReg);
             break;
         case OperandSize::Long :
-            Shift<OperandSize::Long, OperandCode::LSL>(registers.statusReg, v.data.byte, dstReg);
+            Shift<OperandSize::Long, OperandCode::LSL>(cpu.registers.statusReg, v.data.byte, dstReg);
             break;
     }
     WriteToDst(instrDecoder, dstReg);
 }
 
 // FIXME: Verify and CPU Status flags
-void CPUInstructionBase::ExecuteLsrInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteLsrInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // raise exception
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
-    RegisterValue dstReg = instrDecoder.ReadDstValue(*this);
+    RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
 
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
@@ -438,32 +438,32 @@ void CPUInstructionBase::ExecuteLsrInstr(InstructionDecoder& instrDecoder) {
 //
 // Move of these will be small - consider supporting lambda in description code instead...
 //
-void CPUInstructionBase::ExecuteSysCallInstr(InstructionDecoder& instrDecoder) {
-    auto id = registers.dataRegisters[0].data.word;
-    if (syscalls.contains(id)) {
-        syscalls.at(id)->Invoke(registers, this);
+void InstructionSetImpl::ExecuteSysCallInstr(InstructionDecoder& instrDecoder) {
+    auto id = cpu.registers.dataRegisters[0].data.word;
+    if (cpu.syscalls.contains(id)) {
+        cpu.syscalls.at(id)->Invoke(cpu.registers, &cpu);
     }
 }
 
-void CPUInstructionBase::ExecutePushInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecutePushInstr(InstructionDecoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
     // FIXME: this should write to register sp using MMU handling
-    stack.push(v);
+    cpu.stack.push(v);
 }
 
-void CPUInstructionBase::ExecutePopInstr(InstructionDecoder& instrDecoder) {
-    auto v = stack.top();
-    stack.pop();
+void InstructionSetImpl::ExecutePopInstr(InstructionDecoder& instrDecoder) {
+    auto v = cpu.stack.top();
+    cpu.stack.pop();
     WriteToDst(instrDecoder, v);
 }
 
-void CPUInstructionBase::ExecuteLeaInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteLeaInstr(InstructionDecoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
     WriteToDst(instrDecoder, v);
 }
 
 
-void CPUInstructionBase::ExecuteMoveInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteMoveInstr(InstructionDecoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
     WriteToDst(instrDecoder, v);
 }
@@ -532,115 +532,115 @@ static void SubtractValues(CPUStatusReg &statusReg, RegisterValue &dst, const Re
 }
 
 
-void CPUInstructionBase::ExecuteAddInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteAddInstr(InstructionDecoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
 
-    RegisterValue tmpReg = instrDecoder.ReadDstValue(*this);
+    RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
-            AddValues<uint8_t>(registers.statusReg, tmpReg, v);
+            AddValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);
             break;
         case OperandSize::Word :
-            AddValues<uint16_t>(registers.statusReg, tmpReg, v);
+            AddValues<uint16_t>(cpu.registers.statusReg, tmpReg, v);
             break;
         case OperandSize::DWord :
-            AddValues<uint32_t>(registers.statusReg, tmpReg, v);
+            AddValues<uint32_t>(cpu.registers.statusReg, tmpReg, v);
             break;
         case OperandSize::Long :
-            AddValues<uint64_t>(registers.statusReg, tmpReg, v);
+            AddValues<uint64_t>(cpu.registers.statusReg, tmpReg, v);
             break;
     }
     WriteToDst(instrDecoder, tmpReg);
 }
 
-void CPUInstructionBase::ExecuteSubInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteSubInstr(InstructionDecoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
 
-    RegisterValue tmpReg = instrDecoder.ReadDstValue(*this);
+    RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
-            SubtractValues<uint8_t>(registers.statusReg, tmpReg, v);
+            SubtractValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);
             break;
         case OperandSize::Word :
-            SubtractValues<uint16_t>(registers.statusReg, tmpReg, v);
+            SubtractValues<uint16_t>(cpu.registers.statusReg, tmpReg, v);
             break;
         case OperandSize::DWord :
-            SubtractValues<uint32_t>(registers.statusReg, tmpReg, v);
+            SubtractValues<uint32_t>(cpu.registers.statusReg, tmpReg, v);
             break;
         case OperandSize::Long :
-            SubtractValues<uint64_t>(registers.statusReg, tmpReg, v);
+            SubtractValues<uint64_t>(cpu.registers.statusReg, tmpReg, v);
             break;
     }
     WriteToDst(instrDecoder, tmpReg);
 }
 
-void CPUInstructionBase::ExecuteMulInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteMulInstr(InstructionDecoder& instrDecoder) {
 
 }
-void CPUInstructionBase::ExecuteDivInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteDivInstr(InstructionDecoder& instrDecoder) {
 
 }
 
-void CPUInstructionBase::ExecuteCallInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetImpl::ExecuteCallInstr(InstructionDecoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
-    auto retAddr = registers.instrPointer;
+    auto retAddr = cpu.registers.instrPointer;
     // push on stack...
-    stack.push(retAddr);
+    cpu.stack.push(retAddr);
 
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
-            registers.instrPointer.data.longword += v.data.byte;
+            cpu.registers.instrPointer.data.longword += v.data.byte;
             break;
         case OperandSize::Word :
-            registers.instrPointer.data.longword += v.data.word;
+            cpu.registers.instrPointer.data.longword += v.data.word;
             break;
         case OperandSize::DWord :
-            registers.instrPointer.data.longword += v.data.dword;
+            cpu.registers.instrPointer.data.longword += v.data.dword;
             break;
         case OperandSize::Long :
-            registers.instrPointer.data.longword = v.data.longword;     // jumping long-word is absolute!
+            cpu.registers.instrPointer.data.longword = v.data.longword;     // jumping long-word is absolute!
             break;
     }
 }
 
-void CPUInstructionBase::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
-    if (stack.empty()) {
+void InstructionSetImpl::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
+    if (cpu.stack.empty()) {
         // FIXME: Raise CPU exception!
         fmt::println(stderr, "RET - no return address - stack empty!!");
         return;
     }
-    auto newInstrAddr = stack.top();
-    stack.pop();
-    registers.instrPointer.data = newInstrAddr.data;
+    auto newInstrAddr = cpu.stack.top();
+    cpu.stack.pop();
+    cpu.registers.instrPointer.data = newInstrAddr.data;
 }
 
-void CPUInstructionBase::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
-    if (isrControlBlock.isrState != CPUISRState::Executing) {
+void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
+    if (cpu.isrControlBlock.isrState != CPUISRState::Executing) {
         // FIXME: Raise invalid CPU state exception
         return;
     }
     // Restore registers, this will restore ALL incl. status and interrupt masks
     // is this what we want?
-    registers = isrControlBlock.registersBefore;
+    cpu.registers = cpu.isrControlBlock.registersBefore;
 
     // Reset the ISR State
-    isrControlBlock.isrState = CPUISRState::Waiting;
+    cpu.isrControlBlock.isrState = CPUISRState::Waiting;
 }
 
 //
 // Could be moved to base class
 //
-void CPUInstructionBase::WriteToDst(InstructionDecoder& instrDecoder, const RegisterValue &v) {
+void InstructionSetImpl::WriteToDst(InstructionDecoder& instrDecoder, const RegisterValue &v) {
     // FIXME: Support more address mode
     if (instrDecoder.opArgDst.addrMode == AddressMode::Register) {
-        auto &reg = GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+        auto &reg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
         reg.data = v.data;
     } else if (instrDecoder.opArgDst.addrMode == AddressMode::Absolute) {
-        WriteToMemoryUnit(instrDecoder.code.opSize, instrDecoder.opArgDst.absoluteAddr, v);
+        cpu.WriteToMemoryUnit(instrDecoder.code.opSize, instrDecoder.opArgDst.absoluteAddr, v);
     } else if (instrDecoder.opArgDst.addrMode == AddressMode::Indirect) {
-        auto &reg = GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
-        auto relativeAddrOfs = instrDecoder.ComputeRelativeAddress(*this, instrDecoder.opArgDst.relAddrMode);
-        WriteToMemoryUnit(instrDecoder.code.opSize, reg.data.longword + relativeAddrOfs, v);
+        auto &reg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+        auto relativeAddrOfs = instrDecoder.ComputeRelativeAddress(cpu, instrDecoder.opArgDst.relAddrMode);
+        cpu.WriteToMemoryUnit(instrDecoder.code.opSize, reg.data.longword + relativeAddrOfs, v);
 
 //        auto v = ReadFromMemoryUnit(instrDecoder.opSize, reg.data.longword + relativeAddrOfs);
 //        reg.data = v.data;

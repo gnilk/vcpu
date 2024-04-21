@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 #include "System.h"
-#include "CPUMemCache.h"
+#include "CacheController.h"
 #include "RegisterValue.h"
 
 //
@@ -51,7 +51,7 @@ namespace gnilk {
         static const uint32_t MMU_FLAGS_RWX =  0x07;    // allow Read|Write|Exec - this is the default..
 
         enum kMMUFlagsCR0 {
-            kMMU_TranslationEnabled = 1,
+            kMMU_TranslationEnabled = 1,        // if we should look up address in the page-translation table..
             kMMU_ResetPageTableOnSet = 2,
         };
 
@@ -145,12 +145,8 @@ namespace gnilk {
             MMU() = default;
             virtual ~MMU() = default;
 
-            void Initialize();
+            void Initialize(uint8_t newCoreId);
 
-            void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end);
-            void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler);
-
-            const MemoryRegion &GetMemoryRegionFromAddress(uint64_t address);
             bool IsAddressValid(uint64_t address);
 
 
@@ -186,16 +182,31 @@ namespace gnilk {
             void SetMMUControl(RegisterValue &&newControl);
             void SetMMUPageTableAddress(const RegisterValue &newPageTblAddr);
 
-            // Emulated RAM <-> RAM transfers, with cache line handling
-            int32_t Read(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
-            int32_t Write(uint64_t dstAddress, const uint64_t srcAddress, size_t nBytes);
+
+            template<typename T>
+            int32_t Write(uint64_t address, const T &value) {
+                static_assert(std::is_integral_v<T> == true);
+                return WriteInternalFromExternal(address, &value, sizeof(T));
+            }
+
+            template<typename T>
+            T Read(uint64_t address) {
+                static_assert(std::is_integral_v<T> == true);
+                T value;
+                ReadInternalToExternal(&value, address, sizeof(T));
+                return value;
+            }
+
+            void Touch(const uint64_t address);
 
 
+            // These two functions will bypass the cache!!!
             // External RAM <-> Emulated RAM functions - this will stall the bus!
             // Read to external address from emulated RAM
             int32_t CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nBytes);
             // Write to emulated RAM from external address (native)
             int32_t CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t nBytes);
+
 
 
             uint64_t TranslateAddress(uint64_t address);
@@ -211,12 +222,15 @@ namespace gnilk {
                 return cacheController;
             }
         protected:
+            int32_t WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes);
+            void ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes);
 
         protected:
+            uint8_t coreId = 0;
             RegisterValue mmuControl;
             RegisterValue mmuPageTableAddress;
+            // This cache controller has ability to cache any kind of memory access...
             CacheController cacheController;
-            MemoryRegion regions[VCPU_SOC_MAX_REGIONS];
         };
 
 
@@ -224,7 +238,7 @@ namespace gnilk {
         //
         // This is the old MMU
         //
-
+/*
         class MemoryUnit {
         public:
             // This is where the virtual address space starts - everything below this is reserved!
@@ -304,6 +318,7 @@ namespace gnilk {
             // Root tables are in the virtual address space...
             PageTableEntry *rootTables;
         };
+*/
     }
 }
 

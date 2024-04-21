@@ -91,8 +91,8 @@ bool VirtualCPU::Step() {
     instrDecoder.Decode(*this);
 
     // Note: The instruction decoder will advance the IP
-
-    if (!ExecuteInstruction(instrDecoder)) {
+    InstructionSetImpl instructionBase(*this);
+    if (!instructionBase.ExecuteInstruction(instrDecoder)) {
         return false;
     }
 

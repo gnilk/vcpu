@@ -6,7 +6,7 @@
 #define VCPU_SUPERSCALARCPU_H
 
 #include "CPUBase.h"
-#include "CPUInstructionBase.h"
+#include "InstructionSetImpl.h"
 #include "InstructionDecoder.h"
 #include "InstructionSet.h"
 #include "MemorySubSys/MemoryUnit.h"
@@ -74,7 +74,7 @@ namespace gnilk {
         };
 
         // This one uses the pipelining
-        class SuperScalarCPU : public CPUInstructionBase {
+        class SuperScalarCPU : public CPUBase {
         public:
             SuperScalarCPU() = default;
             virtual ~SuperScalarCPU() = default;

@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <stack>
 #include <functional>
+#include <memory>
 
 #include "fmt/format.h"
 #include "InstructionSet.h"
@@ -208,9 +209,15 @@ namespace gnilk {
         // The 'CORE' would then be placed on the SOC level...
         // SOC holds the DataBus and so forth...
 
+
+        class InstructionSetImpl;
         class InstructionDecoder;
+        // FIXME: the ISR controller should be part of the SOC
         class CPUBase : public InterruptController {
             friend InstructionDecoder;
+            friend InstructionSetImpl;
+        public:
+            using Ref = std::shared_ptr<CPUBase>;
         public:
             CPUBase() = default;
             virtual ~CPUBase() = default;
@@ -458,7 +465,8 @@ namespace gnilk {
             // Note: We should have one of these per interrupt - 8 of them...
             ISRControlBlock isrControlBlock;
 
-            MemoryUnit memoryUnit;
+            //MemoryUnit memoryUnit;
+            MMU memoryUnit;
 
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
 
