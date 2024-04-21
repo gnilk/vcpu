@@ -142,6 +142,20 @@ Support for the following directives:
     - Raise exceptions
         - Within the CPU using the Int-Vector table
         - To the emulator
+    - Try to remove FLAGS - they create problems when pipelining and doing out-of-order exec.
+      Instead add X flag registers (8?) which can be used with special instructions (add_with_flag, sub_with_flags <- obviously other names)
+    - Change branching to three operand instructions
+      beq d0,d1,<label> ; read like; if d0 == d1 goto label
+      bne d0,d1,<label>
+      bflg d0, #<8 bit mask>, <label>   ; read like: if (d0 & mask) goto label
+      bcc/bcs/bez/bnz/etc..  are all macros for bflg d0, <mask>
+      
+      This removes the need for "cmp" flags.
+    - Branch prediction and flushing in case prediction errors
+    - add 'fence' (or similar) instructions
+    - add 'flush_instr_cache' / 'flush_instr_pipeline'
+    - move registers to it's own 'register_file' which is more throughly defined..
+      
 - Interrupt drivers
   - Consider how this should be done, directly or via an 'external' chip
   - If external - how to communicate?
