@@ -118,7 +118,7 @@ namespace gnilk {
                 if (idxRegion >= VCPU_SOC_MAX_REGIONS) {
                     return false;
                 }
-                if (!regions[idxRegion].flags & kRegionFlag_Valid) {
+                if (!(regions[idxRegion].flags & kRegionFlag_Valid)) {
                     return false;
                 }
 
