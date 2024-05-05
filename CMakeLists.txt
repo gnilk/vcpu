@@ -109,6 +109,7 @@ list(APPEND asmtestsrc src/assembler/tests/test_stmtemitter.cpp)
 
 # test library for vcpu
 add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${commonsrc})
+target_compile_options(test PUBLIC -DTRUN_USE_V1)
 target_include_directories(test PUBLIC src/vcpu)
 target_include_directories(test PUBLIC src/assembler)
 target_include_directories(test PUBLIC src/common)
