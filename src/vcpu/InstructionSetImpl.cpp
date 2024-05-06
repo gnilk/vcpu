@@ -70,7 +70,8 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
             break;
         default:
             // raise invaild-instr. exception here!
-            fmt::println(stderr, "Invalid operand: {}", decoder.code.opCodeByte);
+            fmt::println(stderr, "Invalid operand: {} - halting CPU", decoder.code.opCodeByte);
+            cpu.registers.statusReg.flags.halt = 1;
             return false;
     }
     return true;
