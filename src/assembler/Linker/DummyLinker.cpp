@@ -2,7 +2,7 @@
 // Created by gnilk on 11.01.2024.
 //
 
-// FIXME: We are merging to the same context - we should merge into a local - new - context...   incoming context should be const!
+// FIXME: When merging we are not relocating the chunks according to the next available address..  See MergeSegmentsInUnit - in case of append
 
 #include "fmt/core.h"
 #include "Segment.h"
@@ -85,6 +85,9 @@ bool DummyLinker::MergeUnits(const Context &sourceContext) {
     // Append the data
     for(auto &[name, seg] : destContext.GetSegments()) {
         for(auto &chunk : seg->DataChunks()) {
+            auto loadAddress = chunk->LoadAddress();
+        // FIXME: THIS WILL CURRENTLY OVERWRITE - NEED TO FIX LoadAddress properly during merge
+        //        Because the relocation of the chunk should place it properly after the first...
             memcpy(linkedData.data()+chunk->LoadAddress(), chunk->DataPtr(), chunk->Size());
         }
     }
@@ -110,8 +113,13 @@ bool DummyLinker::MergeSegmentsInUnit(const Context &sourceContext, const Compil
 // Merge all chunks in a particular segment
 //
 bool DummyLinker::MergeChunksInSegment(const Context &sourceContext, const CompileUnit &unit, const Segment::Ref &segment) {
-    // Make sure we have this segment
+    // Make sure we have this segment, not sure - I think we should merge to one single segment in the dummy linker
+
+    // FIXME: I don't think this is correct!
     destContext.GetOrAddSegment(segment->Name());
+
+    fmt::println("  Merge segment: {}", segment->Name());
+
     for(auto chunk : segment->DataChunks()) {
         // Create out own chunk at the correct address - chunk merging happen later...
         if (chunk->IsLoadAddressAppend()) {

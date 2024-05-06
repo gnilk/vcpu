@@ -39,7 +39,7 @@ funcA:
 ; this will be merged at the end anyway, if you want data items within your code-statements you should not switch
 ; segments... just declare them up front..
 ;
-    .data
+    ;.data
 data:
     ;; Generates exactly 7 bytes in binary
     dc.struct table {

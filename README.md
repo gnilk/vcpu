@@ -130,9 +130,11 @@ Support for the following directives:
       This can later be fed into the linker step. Which allows for 'streaming' data between these steps.
     ! add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)
     - Consider using name-mangling for private symbols..      
-- linker
+    - Relative jumps (BNE/BEQ don't work - something is wrong with computation of addresses)
+x- linker
     ! Support for multiple compile units
     ! Support for static (within a compile-unit) and exported functions and variables
+    - Dummy linker don't compute segment start-addresses properly when multiple segments and chunks
 - VCPU
     ! Separate the instruction handler from the CPUBase, instead make that happen through composition
       Not sure how though - as it requires a much more well defined interface to avoid refactoring-hell..
