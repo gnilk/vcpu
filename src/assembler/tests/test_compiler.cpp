@@ -507,6 +507,28 @@ DLL_EXPORT int test_compiler_call_label(ITesting *t) {
     auto res = compiler.CompileAndLink(ast);
     TR_ASSERT(t, res == true);
     auto binary = compiler.Data();
+
+    printf("Binary:\n");
+    HexDump::ToConsole(binary.data(),binary.size());
+
+
+    memcpy(ram, binary.data(), binary.size());
+
+    printf("Disasm:\n");
+    gnilk::vcpu::VirtualCPU cpu;
+    cpu.QuickStart(ram, 1024*512);
+    // Disassemble a couple of instructions to get the feel...`
+    for(int i=0;i<8;i++) {
+        auto instrPtr = cpu.GetRegisters().instrPointer.data.dword;
+        cpu.Step();
+        fmt::println("{}\t{}", instrPtr, cpu.GetLastDecodedInstr()->ToString());
+        if (cpu.IsHalted()) {
+            break;
+        }
+    }
+
+
+
     TR_ASSERT(t, binary == expectedBinary);
 
     return kTR_Pass;
