@@ -238,6 +238,9 @@ namespace gnilk {
         private:
             void AddPostEmitter(PostEmitOpData emitter);
             bool RunPostEmitters();
+
+            bool temp_isDeferredEmitter = false;
+
             std::vector<PostEmitOpData> postEmitters;
 
 

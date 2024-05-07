@@ -541,6 +541,13 @@ bool EmitCodeStatement::Process(gnilk::assembler::CompileUnit &context) {
 
 bool EmitCodeStatement::Finalize(gnilk::assembler::CompileUnit &context) {
 
+    if (temp_isDeferredEmitter) {
+        data.clear();
+        if (!Process(context)) {
+            return false;
+        }
+    }
+
     if (haveIdentifier) {
         auto currentSegment = context.GetActiveSegment();
         if (currentSegment == nullptr) {
@@ -920,7 +927,7 @@ bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, ast::Identifier::
     uint8_t regMode = 0; // no register
 
     // This is an absolute jump
-    regMode |= vcpu::AddressMode::Immediate;
+    regMode |= vcpu::AddressMode::Absolute;         // This was 'Immediate' - not sure - but I have a very faint memory of writing it...
 
     // problem?
     //   We need to understand if this is a single-op instruction or two-op instruction
@@ -961,20 +968,21 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, ast::Iden
 
         if (!context.HasIdentifier(identifier->Symbol())) {
             fmt::println(stderr, "Compiler, Identifier '{}' not found - can't compute jump length...", identifier->Symbol());
-            return false;
+            temp_isDeferredEmitter = true;
+            return true;
         } else {
-            fmt::println("Compiler, warning - realtive address instr. detected without operand size specification - trying to deduce");
+            fmt::println("Compiler, warning - relative address instr. detected without operand size specification - trying to deduce");
             auto idAddress = context.GetIdentifier(identifier->Symbol()); // identifierAddresses[identifier->Symbol()];
             // We are ahead...
             auto dist = (context.GetCurrentWriteAddress() - idAddress->absoluteAddress);
             if (dist < 255) {
-                fmt::println("Compiler, warning - changing from unspecfied to byte (dist={})", dist);
+                fmt::println("Compiler, warning - changing from unspecified to byte (dist={})", dist);
                 opSize = vcpu::OperandSize::Byte;
             } else if (dist < 65545) {
-                fmt::println("Compiler, warning - changing from unspecfied to word (dist={})", dist);
+                fmt::println("Compiler, warning - changing from unspecified to word (dist={})", dist);
                 opSize = vcpu::OperandSize::Word;
             } else {
-                fmt::println("Compiler, warning - changing from unspecfied to dword (dist={})", dist);
+                fmt::println("Compiler, warning - changing from unspecified to dword (dist={})", dist);
                 opSize = vcpu::OperandSize::DWord;
             }
         }
