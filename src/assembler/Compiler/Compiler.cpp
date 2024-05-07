@@ -38,6 +38,9 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
     // Create the unit
     auto &unit = context.CreateUnit();
 
+    // FIXME: Consider pre-procssing so we access to all identifiers/constants and so forth before starting to generate code
+    //        this will simplify relative addressing quite drastically as I am able to put proper placeholders in place
+
     // Process all statements within our unit...
     for(auto &statement : program->Body()) {
         if (!unit.ProcessASTStatement(&context, statement)) {
