@@ -25,7 +25,9 @@ bool CompileUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, as
         statement->Dump();
         return false;
     }
-    stmtEmitter->Process(*this);
+    if (!stmtEmitter->Process(*this)) {
+        return false;
+    }
     emitStatements.push_back(stmtEmitter);
     return true;
 }
