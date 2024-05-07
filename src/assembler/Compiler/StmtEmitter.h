@@ -49,9 +49,18 @@ namespace gnilk {
 //        };
 
 
+
+
         class EmitStatementBase {
         public:
             using Ref = std::shared_ptr<EmitStatementBase>;
+            // FIXME: Make all 'Process' functions return this
+            enum kProcessResult : uint8_t {
+                kFailed = 0,    // failed, for some reason
+                kOk,        // Ok, no further action
+                kDefer,     // Defer the process-step to just before the emit step -> must be done at the 'Unit' level..
+            };
+
         public:
             EmitStatementBase() = default;
             virtual ~EmitStatementBase() = default;

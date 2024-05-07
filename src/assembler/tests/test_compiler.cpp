@@ -42,6 +42,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_orgdecl(ITesting *t);
     DLL_EXPORT int test_compiler_addtovar(ITesting *t);
     DLL_EXPORT int test_compiler_cmpbne(ITesting *t);
+    DLL_EXPORT int test_compiler_cmpbne_forward(ITesting *t);
     DLL_EXPORT int test_compiler_lea_labelseg(ITesting *t);
     DLL_EXPORT int test_compiler_export(ITesting *t);
 }
@@ -834,6 +835,39 @@ DLL_EXPORT int test_compiler_cmpbne(ITesting *t) {
 
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_compiler_cmpbne_forward(ITesting *t) {
+    const char srcCode[]= {
+            "  .code \n"\
+        "   .org 0x0000 \n"\
+        "   cmp.l counter,1\n"\
+        "   bne out\n"\
+        "   ret\n"\
+        "out: \n"\
+        "   nop\n"\
+        "   brk\n"\
+        "   .data\n"\
+        "   counter: dc.l 0\n"\
+        ""
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res);
+
+    auto data = compiler.Data();
+    printf("Binary:\n");
+    HexDump::ToConsole(data.data(),data.size());
+
+    return kTR_Pass;
+
+}
+
+
 
 DLL_EXPORT int test_compiler_lea_labelseg(ITesting *t) {
     // For some reason there is a problem here

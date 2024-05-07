@@ -131,6 +131,10 @@ Support for the following directives:
     ! add 'export' token to explicitly put publically visible labels in a separate section (should be handled by context)
     - Consider using name-mangling for private symbols..      
     - Relative jumps (BNE/BEQ don't work - something is wrong with computation of addresses)
+      - It doesn't work when we jump forward since the identifier statement hasn't be processed yet and thus we can't compute the distance and we bial
+      - What we need for such statements is to 'Defer' them to either the finalize of a pre-finalize state (i.e. between process and finalize)
+        this would allow us to properly compute (and chose the right instr. op) for the jump.
+        Either we do this via callback's or we have to change the return value from bool to an enum (which probably is better anyway)
 x- linker
     ! Support for multiple compile units
     ! Support for static (within a compile-unit) and exported functions and variables

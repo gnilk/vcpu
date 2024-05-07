@@ -948,6 +948,8 @@ bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, ast::Identifier::
     return true;
 }
 
+// FIXME: This must be done in the post-emit stage, which is a problem - since it will be hard to compute the actual jump size...
+//        What I would need to is to 'estimate' or 'guess' the size of the jump - and the recompute everything if it doesn't work out...
 bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
@@ -958,7 +960,7 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, ast::Iden
         // no op.size were given, let's compute distance
 
         if (!context.HasIdentifier(identifier->Symbol())) {
-            fmt::println(stderr, "Compiler, Identifier not found - can't compute jump length...");
+            fmt::println(stderr, "Compiler, Identifier '{}' not found - can't compute jump length...", identifier->Symbol());
             return false;
         } else {
             fmt::println("Compiler, warning - realtive address instr. detected without operand size specification - trying to deduce");
