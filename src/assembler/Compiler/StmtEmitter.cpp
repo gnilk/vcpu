@@ -825,7 +825,20 @@ bool EmitCodeStatement::EmitRegisterLiteralWithAddrMode(ast::RegisterLiteral::Re
 // This is a bit hairy - to say the least
 bool EmitCodeStatement::EmitDereference(CompileUnit &context, ast::DeReferenceExpression::Ref expression) {
 
+    // Note: Dereference can be to anything - a non-constant identifier..
+    auto deRefExp = expression->GetDeRefExp();
+    if (deRefExp->Kind() == ast::NodeType::kIdentifier) {
+        fmt::println(stderr, "Compiler, dereferencing identifiers are not supported");
+        return false;
+    }
+
+
     auto deref = EvaluateConstantExpression(context, expression->GetDeRefExp());
+    if (deref == nullptr) {
+        fmt::println(stderr, "Warning, dereference is null - deferring this emitter to later to check if it works");
+        temp_isDeferredEmitter = true;
+        return true;
+    }
 
     // Regular dereference, (<reg>)
     if (deref->Kind() == ast::NodeType::kRegisterLiteral) {
@@ -1051,13 +1064,13 @@ ast::Literal::Ref EmitStatementBase::EvaluateConstantExpression(CompileUnit &con
         case ast::NodeType::kRegisterLiteral :
             return std::dynamic_pointer_cast<ast::Literal>(expression);
         case ast::NodeType::kIdentifier : {
-            auto identifier = std::dynamic_pointer_cast<ast::Identifier>(expression);
-            if (context.HasConstant(identifier->Symbol())) {
+                auto identifier = std::dynamic_pointer_cast<ast::Identifier>(expression);
+                if (!context.HasConstant(identifier->Symbol())) {
+                    return nullptr;
+                }
                 auto constLiteral = context.GetConstant(identifier->Symbol());
                 return EvaluateConstantExpression(context, constLiteral->Expression());
             }
-            return nullptr;
-        }
         case ast::NodeType::kMemberExpression :
             fmt::println("Compiler, member expression");
             return EvaluateMemberExpression(context, std::dynamic_pointer_cast<ast::MemberExpression>(expression));
