@@ -698,7 +698,7 @@ void EmitCodeStatement::EmitRegMode(uint8_t regMode) {
 }
 
 
-bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
+bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, const vcpu::OperandDescription &desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
 
     // If this is an identifier - check if it is actually a constant and work out the actual value - recursively
     if (operandExp->Kind() == ast::NodeType::kIdentifier) {
@@ -726,9 +726,9 @@ bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, vcpu::OperandDesc
         case ast::NodeType::kIdentifier :
             // After statement parsing is complete we will change all place-holders
             if ((desc.features & vcpu::OperandDescriptionFlags::Addressing) && (opSize == vcpu::OperandSize::Long)) {
-                return EmitLabelAddress(context, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
+                return EmitLabelAddress(context, desc, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             } else {
-                return EmitRelativeLabelAddress(context, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
+                return EmitRelativeLabelAddress(context, desc, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             }
             break;
         case ast::NodeType::kDeRefExpression :
@@ -923,11 +923,20 @@ bool EmitCodeStatement::EmitDereference(CompileUnit &context, ast::DeReferenceEx
     return false;
 }
 
-bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
+bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, const vcpu::OperandDescription &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
     // This is an absolute jump
-    regMode |= vcpu::AddressMode::Absolute;         // This was 'Immediate' - not sure - but I have a very faint memory of writing it...
+    // For relative branches this should be 'Immediate' for absolute addresses this should be absolute...
+
+    // FIXME: How to distinguish when/where we should have immediate or absolute
+    // like: 'call label' <- should be immediate (i.e. the value is placed here and should be used as a fixed jump point)
+    //       'cmp.l label, 0'  <- should be absolute (i.e. the absolute value from address of label should be read)
+    if (desc.features & vcpu::OperandDescriptionFlags::Branching) {
+        regMode |= vcpu::AddressMode::Immediate;
+    } else {
+        regMode |= vcpu::AddressMode::Absolute;
+    }
 
     // problem?
     //   We need to understand if this is a single-op instruction or two-op instruction
@@ -957,7 +966,7 @@ bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, ast::Identifier::
 
 // FIXME: This must be done in the post-emit stage, which is a problem - since it will be hard to compute the actual jump size...
 //        What I would need to is to 'estimate' or 'guess' the size of the jump - and the recompute everything if it doesn't work out...
-bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
+bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, const vcpu::OperandDescription &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
     // This a relative jump

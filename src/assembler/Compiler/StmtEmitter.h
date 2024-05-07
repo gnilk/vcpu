@@ -225,14 +225,14 @@ namespace gnilk {
             bool EmitOpCodeForSymbol(const std::string &symbol);
             void EmitOpSize(uint8_t opSize);
             void EmitRegMode(uint8_t regMode);
-            bool EmitInstrOperand(CompileUnit &context, vcpu::OperandDescription desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
+            bool EmitInstrOperand(CompileUnit &context, const vcpu::OperandDescription &desc, vcpu::OperandSize opSize, ast::Expression::Ref dst);
             bool EmitNumericLiteralForInstr(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitNumericLiteral(vcpu::OperandSize opSize, ast::NumericLiteral::Ref numLiteral);
             bool EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral);
             bool EmitRegisterLiteralWithAddrMode(ast::RegisterLiteral::Ref regLiteral, uint8_t addrMode);
             bool EmitDereference(CompileUnit &context, ast::DeReferenceExpression::Ref expression);
-            bool EmitLabelAddress(CompileUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
-            bool EmitRelativeLabelAddress(CompileUnit &context, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
+            bool EmitLabelAddress(CompileUnit &context, const vcpu::OperandDescription &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
+            bool EmitRelativeLabelAddress(CompileUnit &context, const vcpu::OperandDescription &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize);
 
 
         private:
