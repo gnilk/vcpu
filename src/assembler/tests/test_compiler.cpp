@@ -31,6 +31,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_call_label(ITesting *t);
     DLL_EXPORT int test_compiler_call_relative_label(ITesting *t);
     DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t);
+    DLL_EXPORT int test_compiler_call_indirect(ITesting *t);
     DLL_EXPORT int test_compiler_lea_label(ITesting *t);
     DLL_EXPORT int test_compiler_move_indirect(ITesting *t);
     DLL_EXPORT int test_compiler_array_bytedecl(ITesting *t);
@@ -533,6 +534,70 @@ DLL_EXPORT int test_compiler_call_label(ITesting *t) {
 
     return kTR_Pass;
 }
+
+DLL_EXPORT int test_compiler_call_indirect(ITesting *t) {
+    std::vector<uint8_t> expectedBinary= {
+            0xc0,0x03,0x01, 0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x0d,        // 0, Call label, opSize = lword, [reg|mode] = 0|immediate, <address of label> = 0x0d
+            0xf1,                       // 12
+            0x00,                       // 16 WHALT!
+            0xf1,                       // 20 <- call should go here (offset of label)
+            0xf1,                       // 24
+            0xf0,                       // 28 <- return, should be ip+1 => 5
+    };
+
+    std::vector<std::string> codes={
+            {
+            "call    (jumptable)\n "\
+            "nop      \n"\
+            "brk        \n"\
+            "label: \n"\
+            "nop \n"\
+            "nop \n"\
+            "ret \n"\
+            "jumptable: \n"\
+            "  dc.l 0x0d\n"\
+            }
+    };
+
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(codes[0]);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    // FIXME: Change this when fixing...
+    TR_ASSERT(t, res == false);
+    printf("TEST CASE NOT YET SUPPORTED! (compile and link should return false - and it does so the test passes)\n");
+    return kTR_Pass;
+/*
+    auto binary = compiler.Data();
+
+    printf("Binary:\n");
+    HexDump::ToConsole(binary.data(),binary.size());
+
+
+    memcpy(ram, binary.data(), binary.size());
+
+    printf("Disasm:\n");
+    gnilk::vcpu::VirtualCPU cpu;
+    cpu.QuickStart(ram, 1024*512);
+    // Disassemble a couple of instructions to get the feel...`
+    for(int i=0;i<8;i++) {
+        auto instrPtr = cpu.GetRegisters().instrPointer.data.dword;
+        cpu.Step();
+        fmt::println("{}\t{}", instrPtr, cpu.GetLastDecodedInstr()->ToString());
+        if (cpu.IsHalted()) {
+            break;
+        }
+    }
+
+    TR_ASSERT(t, binary == expectedBinary);
+
+    return kTR_Pass;
+*/
+}
+
 
 DLL_EXPORT int test_compiler_lea_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
