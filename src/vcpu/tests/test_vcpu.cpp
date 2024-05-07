@@ -37,6 +37,7 @@ extern "C" {
     DLL_EXPORT int test_vcpu_instr_asr(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_asl(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t);
+    DLL_EXPORT int test_vcpu_instr_cmp_absolute(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_beq(ITesting *t);
     DLL_EXPORT int test_vcpu_instr_bne(ITesting *t);
     DLL_EXPORT int test_vcpu_halt(ITesting *t);
@@ -730,6 +731,38 @@ DLL_EXPORT int test_vcpu_instr_cmp(ITesting *t) {
 
     return kTR_Pass;
 }
+DLL_EXPORT int test_vcpu_instr_cmp_absolute(ITesting *t) {
+
+
+    uint8_t program[]={
+            // op code = 0x90 => cmp
+            // op size = 0x03 => long
+            // dst reg mode = 0x02 => absolute
+            // [value]
+            // src reg mode = 0x01 => immediate
+            // [value]
+            //
+            0x90, 0x03, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x15,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,   // cmp.l (0x00000015),0x01
+            0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,     // this should be addres 0x15
+            // 0     1     2     3     4     5     6     7     8     9     10   11   12    13    14    15    16    17    18   19
+    };
+    VirtualCPU vcpu;
+    auto &regs = vcpu.GetRegisters();
+    auto &status = vcpu.GetStatusReg();
+
+    vcpu.QuickStart(program, 1024);
+
+    // Set d0 = 0x20 and execute
+    auto res = vcpu.Step();
+    fmt::println("disasm: {}", vcpu.GetLastDecodedInstr()->ToString());
+    TR_ASSERT(t, res);
+    TR_ASSERT(t, status.flags.zero == 0);
+    TR_ASSERT(t, status.flags.negative == 1);
+
+    return kTR_Pass;
+}
+
 
 DLL_EXPORT int test_vcpu_instr_beq(ITesting *t) {
     uint8_t program[]={
