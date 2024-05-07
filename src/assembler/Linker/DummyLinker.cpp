@@ -192,10 +192,7 @@ bool DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::D
             if (!resolvePoint.isRelative) {
                 destContext.GetActiveSegment()->CurrentChunk()->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier->absoluteAddress, resolvePoint.opSize);
             } else {
-                int64_t offset = static_cast<int64_t>(identifier->absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
-                if (offset < 0) {
-                    offset -= 1;
-                }
+                int64_t offset = static_cast<int64_t>(identifier->absoluteAddress) - (static_cast<int64_t>(resolvePoint.placeholderAddress) + vcpu::ByteSizeOfOperandSize(resolvePoint.opSize));
                 destContext.GetActiveSegment()->CurrentChunk()->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize);
             }
         }
