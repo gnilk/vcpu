@@ -47,6 +47,9 @@ extern "C" {
     DLL_EXPORT int test_compiler_export(ITesting *t);
 }
 
+static uint8_t ram[512*1024] = {};
+
+
 DLL_EXPORT int test_compiler(ITesting *t) {
     t->CaseDepends("add_immediate", "move_immediate");
     t->CaseDepends("add_reg2reg", "move_reg2reg");
@@ -813,10 +816,12 @@ DLL_EXPORT int test_compiler_cmpbne(ITesting *t) {
         "  .code \n"\
         "   .org 0x0000 \n"\
         "lp: \n"\
+        // 0x0000 : 0x90, 0x03, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
         "   cmp.l counter,1\n"\
+        // 0x0014 : 0xd1, 0x00, 0x01, 0x02
         "   bne lp\n"\
+        // 0x0018 : 0x90
         "   ret\n"\
-        "   .data\n"\
         "   counter: dc.l 0\n"\
         ""
     };
@@ -832,22 +837,48 @@ DLL_EXPORT int test_compiler_cmpbne(ITesting *t) {
     auto data = compiler.Data();
     printf("Binary:\n");
     HexDump::ToConsole(data.data(),data.size());
+    memcpy(ram, data.data(), data.size());
+
+    printf("Disasm:\n");
+    gnilk::vcpu::VirtualCPU cpu;
+    cpu.QuickStart(ram, 1024*512);
+    // Disassemble a couple of instructions to get the feel...`
+    for(int i=0;i<8;i++) {
+        auto instrPtr = cpu.GetRegisters().instrPointer.data.dword;
+        cpu.Step();
+        fmt::println("{}\t{}", instrPtr, cpu.GetLastDecodedInstr()->ToString());
+        if (cpu.IsHalted()) {
+            break;
+        }
+        // Make sure we jump correctly, this just jump back and forth between first and second instr.
+        // First instr. is on addr 0x0000, which is the cmp, second at offset 0x0014 which is bne back to start
+        if (!(i&0x01)) {
+            TR_ASSERT(t, instrPtr == 0x00);
+        } else {
+            TR_ASSERT(t, instrPtr == 0x14);
+        }
+    }
+
 
     return kTR_Pass;
 }
 
 DLL_EXPORT int test_compiler_cmpbne_forward(ITesting *t) {
     const char srcCode[]= {
-            "  .code \n"\
+        "  .code \n"\
         "   .org 0x0000 \n"\
+        // 0x0000 : 0x90, 0x03, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
         "   cmp.l counter,1\n"\
+        // 0x0014 : 0xd1, 0x00, 0x01, 0x02          <- yes, for forward jump, the position is relative ofs 17 (need to verify)
         "   bne out\n"\
+        // 0x0018
         "   ret\n"\
+        // 0x0019
         "out: \n"\
         "   nop\n"\
+        // 0x0020
         "   brk\n"\
-        "   .data\n"\
-        "   counter: dc.l 0\n"\
+        "   counter: dc.l 4711\n"\
         ""
     };
 
@@ -859,9 +890,28 @@ DLL_EXPORT int test_compiler_cmpbne_forward(ITesting *t) {
     auto res = compiler.CompileAndLink(ast);
     TR_ASSERT(t, res);
 
-    auto data = compiler.Data();
+    auto firmware = compiler.Data();
     printf("Binary:\n");
-    HexDump::ToConsole(data.data(),data.size());
+    HexDump::ToConsole(firmware.data(),firmware.size());
+
+    memcpy(ram, firmware.data(), firmware.size());
+
+    gnilk::vcpu::VirtualCPU cpu;
+    cpu.QuickStart(ram, 1024*512);
+    // Disassemble a couple of instructions to get the feel...`
+    for(int i=0;i<8;i++) {
+        auto instrPtr = cpu.GetRegisters().instrPointer.data.dword;
+        cpu.Step();
+        fmt::println("{}\t{}", instrPtr, cpu.GetLastDecodedInstr()->ToString());
+        if (cpu.IsHalted()) {
+            break;
+        }
+        // Instruction after branch should be at offset 0x0019
+        if (i == 2) {
+            TR_ASSERT(t, instrPtr == 0x0019);
+        }
+    }
+
 
     return kTR_Pass;
 
