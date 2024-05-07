@@ -114,7 +114,10 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
 //
 bool InstructionDecoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
     DecodeOperandArgAddrMode(cpu, opArgDst);
-    DecodeOperandArgAddrMode(cpu, opArgSrc);
+    if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+        DecodeOperandArgAddrMode(cpu, opArgSrc);
+    }
+    // FIXME: Is this required?
     state = State::kStateReadMem;
     return true;
 }
