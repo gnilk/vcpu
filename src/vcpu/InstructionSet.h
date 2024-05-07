@@ -225,6 +225,7 @@ namespace gnilk {
             Branching = 64,
             // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
             Control = 128,
+            // FIXME: Perhaps need absolute as well..
         };
 
         inline constexpr OperandDescriptionFlags operator |(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {

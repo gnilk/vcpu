@@ -19,8 +19,8 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
     {OperandCode::BRK,{.name="brk", .features = {} }},
     {OperandCode::RET,{.name="ret", .features = {} }},
     {OperandCode::RTI,{.name="rti", .features = {} }},
-{OperandCode::BEQ,{.name="beq", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate }},
-{OperandCode::BNE,{.name="bne", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate }},
+{OperandCode::BEQ,{.name="beq", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Branching}},
+{OperandCode::BNE,{.name="bne", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Branching}},
 
 {OperandCode::LSL, {.name="lsl", .features = OperandDescriptionFlags::OperandSize |
                                         OperandDescriptionFlags::TwoOperands |
@@ -80,7 +80,7 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
     // Pop can only be to register...
   {OperandCode::POP,{.name="pop", .features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register}},
 
-    {OperandCode::CALL, {.name="call", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Register  | OperandDescriptionFlags::Addressing}},
+    {OperandCode::CALL, {.name="call", .features = OperandDescriptionFlags::Branching | OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Register  | OperandDescriptionFlags::Addressing}},
 };
 
 const std::unordered_map<OperandCode, OperandDescription> &gnilk::vcpu::GetInstructionSet() {
