@@ -18,11 +18,11 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 
 
 bool ElfLinker::Link(gnilk::assembler::Context &context) {
-    if (!Merge(context)) {
+    if (!context.Merge()) {
         return false;
     }
 
-    if (!WriteElf()) {
+    if (!WriteElf(context)) {
         return false;
     }
     auto f = fopen("dummy.bin", "w+");
@@ -36,14 +36,14 @@ bool ElfLinker::Link(gnilk::assembler::Context &context) {
 
 // I could use the elf to relocate my binary - but it has already been done so I don't quite need it..
 // And - there is a problem - my relocation table points to the source-chunks and not the merged chunks..
-bool ElfLinker::WriteElf() {
+bool ElfLinker::WriteElf(Context &context) {
     elfWriter.create(ELFCLASS64, ELFDATA2LSB );
 
     elfWriter.set_os_abi(ELFOSABI_NONE );
     elfWriter.set_type(ET_EXEC );
     elfWriter.set_machine(EM_68K );
 
-    for(auto &seg : destContext.GetSegments()) {
+    for(auto &seg : context.GetSegments()) {
         auto elfSeg = elfWriter.segments.add();
         elfSeg->set_virtual_address(seg->StartAddress());
         elfSeg->set_physical_address(seg->StartAddress());
@@ -65,8 +65,8 @@ bool ElfLinker::WriteElf() {
 
 
     // Not sure if this is the right method...
-    if (destContext.HasStartAddress()) {
-        elfWriter.set_entry(destContext.GetStartAddress()->absoluteAddress);
+    if (context.HasStartAddress()) {
+        elfWriter.set_entry(context.GetStartAddress()->absoluteAddress);
     } else {
         fmt::println(stderr, "ElfLinker, no entry point defined, setting to 0 (zero)");
         elfWriter.set_entry(0);
@@ -88,7 +88,7 @@ bool ElfLinker::WriteElf() {
 
 }
 
-bool ElfLinker::WriteElfOld(CompileUnit &unit) {
+bool ElfLinker::WriteElfOld(CompileUnit &unit, Context &context) {
     // You can't proceed without this function call!
     elfWriter.create(ELFCLASS64, ELFDATA2LSB );
 
@@ -104,7 +104,7 @@ bool ElfLinker::WriteElfOld(CompileUnit &unit) {
 
     auto elfSeg = elfWriter.segments.add();
 
-    for(auto &seg : destContext.GetSegments()) {
+    for(auto &seg : context.GetSegments()) {
         auto elfSeg = elfWriter.segments.add();
         elfSeg->set_virtual_address(textSeg->StartAddress());
         elfSeg->set_physical_address(textSeg->StartAddress());
