@@ -22,7 +22,7 @@ const   A_CONSTANT 0x01
     move.b  d0, 0x01
     cmp.b   d0, 0x02
     bne.b   funcA       ;; Should perhaps rename the short jump relative op.size
-
+pointb:
     lea     a0, funcA
     call    a0          ;; call the value 'a0' points at, assume you have jump-table you could do call (a0)
 
@@ -33,7 +33,7 @@ funcA:
     lea     a0, string
     move.l  d0, 0x01
     syscall
-    ret
+    ret             ;; <- this won't work when coming from 'bne'..
 
 ;
 ; this will be merged at the end anyway, if you want data items within your code-statements you should not switch
