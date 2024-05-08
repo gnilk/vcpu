@@ -12,7 +12,9 @@ static void VectorReplaceAt(std::vector<uint8_t> &data, uint64_t offset, int64_t
 // Should this be const????
 bool RawLinker::Link(Context &srcContext) {
     // Just merge the source context..
-    srcContext.Merge();
+    if (!srcContext.Merge()) {
+        return false;
+    }
 
     // This should be enough..
     linkedData.clear();
