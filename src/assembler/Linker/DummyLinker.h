@@ -18,7 +18,7 @@ namespace gnilk {
             DummyLinker() = default;
             virtual ~DummyLinker() = default;
 
-            bool Link(const Context &context) override;
+            bool Link(Context &context) override;
             const std::vector<uint8_t> &Data() override;
         protected:
             // Move this to base class?
@@ -27,11 +27,15 @@ namespace gnilk {
             bool MergeSegmentsInUnit(const Context &sourceContext, const CompileUnit &unit);
             bool MergeChunksInSegment(const Context &sourceContext, const CompileUnit &unit, const Segment::Ref &segment);
             bool RelocateExports(const Context &sourceContext);
-            bool RelocateChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref chunk);
-            bool RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::DataChunk::Ref chunk);
-            bool RelocateExportsInChunk(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref chunk);
-            bool EnsureChunk();
+            bool RelocateChunkFromUnit(const Context &sourceContext, const CompileUnit &srcUnit, const Segment::DataChunk::Ref &srcChunk);
+            bool RelocateIdentifiersInChunk(const CompileUnit &srcUnit, const Segment::DataChunk::Ref &srcChunk);
+            bool RelocateExportsInChunk(const Context &sourceContext, const CompileUnit &srcUnit, const Segment::DataChunk::Ref &srcChunk);
+
             size_t Write(const std::vector<uint8_t> &data);
+            bool EnsureChunk();
+
+            // New stuff - will replace a few things
+            size_t ComputeFinalSize(const Context &sourceContext);
 
             Context destContext;
             std::vector<uint8_t> linkedData;

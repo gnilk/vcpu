@@ -21,7 +21,7 @@ const std::vector<uint8_t> &DummyLinker::Data() {
 }
 
 // Link data in a context
-bool DummyLinker::Link(const Context &context) {
+bool DummyLinker::Link(Context &context) {
 
     // Now merge to one big blob...
     if (!Merge(context)) {
@@ -60,80 +60,163 @@ bool DummyLinker::MergeUnits(const Context &sourceContext) {
     size_t endAddress = 0;
 
     size_t unitCounter = 0;
+    //
+    // A Context contains several units (compile units)
+    // Each unit have one or more segments
+    // Each segment have one or more chunks
+    // Chunks contain data
+    //
 
     // Merge segments across units and copy data...
-    for(auto &unit : sourceContext.GetUnits()) {
+    for(auto &srcUnit : sourceContext.GetUnits()) {
         fmt::println("Merge segments in unit {}", unitCounter);
         unitCounter += 1;
 
-        if (!MergeSegmentsInUnit(sourceContext, unit)) {
+        if (!MergeSegmentsInUnit(sourceContext, srcUnit)) {
             return false;
         }
     }
-
+/*
     // Compute full binary end address...
     for(auto &[name, seg] : destContext.GetSegments()) {
-        if (seg->EndAddress() > endAddress) {
-            endAddress = seg->EndAddress();
+        auto segLoadAddress = seg->StartAddress();
+        if (segLoadAddress < endAddress) {
+            segLoadAddress = endAddress;
+        }
+        if ((segLoadAddress + seg->EndAddress()) > endAddress ) {
+            endAddress = segLoadAddress + seg->EndAddress();
         }
     }
 
-    // Calculate the size of final binary imasge
+    // Calculate the size of final binary image
     auto szFinalData = endAddress - startAddress;
+*/
+
+    auto szFinalData = ComputeFinalSize(sourceContext);
     linkedData.resize(szFinalData);
 
     // Append the data
-    for(auto &[name, seg] : destContext.GetSegments()) {
+    size_t offsetWriteData = 0;
+    for(auto &seg : destContext.GetSegments()) {
         for(auto &chunk : seg->DataChunks()) {
-            auto loadAddress = chunk->LoadAddress();
-        // FIXME: THIS WILL CURRENTLY OVERWRITE - NEED TO FIX LoadAddress properly during merge
-        //        Because the relocation of the chunk should place it properly after the first...
-            memcpy(linkedData.data()+chunk->LoadAddress(), chunk->DataPtr(), chunk->Size());
+            // These should be updated during merge!!!
+            auto mergeAddress = chunk->LoadAddress();
+
+            if (chunk->IsLoadAddressAppend()) {
+                if (offsetWriteData != 0) {
+                    fmt::println(stderr, "Linker, invalid load address for chunk in seg {}, this will never work!", Segment::TypeName(seg->Type()));
+                }
+                mergeAddress = offsetWriteData;
+                // Need to update - otherwise the relocation won't work...
+                chunk->SetLoadAddress(mergeAddress);
+            }
+
+            if (mergeAddress < offsetWriteData) {
+                fmt::println(stderr, "Linker, Chunk load address overwrites existing data!");
+                return false;
+            }
+
+            memcpy(linkedData.data()+mergeAddress, chunk->DataPtr(), chunk->Size());
+            offsetWriteData += mergeAddress + chunk->Size();
         }
     }
 
     return true;
+}
+
+size_t DummyLinker::ComputeFinalSize(const Context &sourceContext) {
+    size_t endAddress = 0;
+    // Compute full binary end address...
+    for(auto &seg : destContext.GetSegments()) {
+        auto segLoadAddress = seg->StartAddress();
+        if (segLoadAddress < endAddress) {
+            segLoadAddress = endAddress;
+        }
+        if ((segLoadAddress + seg->EndAddress()) > endAddress ) {
+            endAddress = segLoadAddress + seg->EndAddress();
+        }
+    }
+
+    // Size is the actual end address in our case (verify?)
+    return endAddress;
 }
 
 //
 // Merge all segments in the unit
 //
-bool DummyLinker::MergeSegmentsInUnit(const Context &sourceContext, const CompileUnit &unit) {
+bool DummyLinker::MergeSegmentsInUnit(const Context &sourceContext, const CompileUnit &srcUnit) {
+
+    auto szComputed = ComputeFinalSize(sourceContext);
+
+    // Append the data
+    size_t offsetWriteData = 0;
+    for(auto &srcSeg : srcUnit.GetSegments()) {
+        destContext.GetOrAddSegment(srcSeg->Type());
+
+        for(auto &srcChunk : srcSeg->DataChunks()) {
+            // These should be updated during merge!!!
+            auto mergeAddress = srcChunk->LoadAddress();
+
+            if (srcChunk->IsLoadAddressAppend()) {
+                mergeAddress = offsetWriteData;
+                // Need to update - otherwise the relocation won't work...
+                srcChunk->SetLoadAddress(mergeAddress);
+            }
+
+            if (mergeAddress < offsetWriteData) {
+                fmt::println(stderr, "Linker, Chunk load address overwrites existing data!");
+                return false;
+            }
+
+            destContext.GetActiveSegment()->CreateChunk(mergeAddress);
+
+            if (!RelocateChunkFromUnit(sourceContext, srcUnit, srcChunk)) {
+                return false;
+            }
+
+            offsetWriteData += mergeAddress + srcChunk->Size();
+        }
+    }
+    return true;
+/*
+
+
+
+
     std::vector<Segment::Ref> unitSegments;
-    unit.GetSegments(unitSegments);
+    srcUnit.GetSegments(unitSegments);
     for(auto srcSeg : unitSegments) {
-        if (!MergeChunksInSegment(sourceContext, unit, srcSeg)) {
+        if (!MergeChunksInSegment(sourceContext, srcUnit, srcSeg)) {
             return false;
         }
     }
     return true;
+    */
 }
 
 //
 // Merge all chunks in a particular segment
 //
-bool DummyLinker::MergeChunksInSegment(const Context &sourceContext, const CompileUnit &unit, const Segment::Ref &segment) {
+bool DummyLinker::MergeChunksInSegment(const Context &sourceContext, const CompileUnit &srcUnit, const Segment::Ref &srcSegment) {
     // Make sure we have this segment, not sure - I think we should merge to one single segment in the dummy linker
 
     // FIXME: I don't think this is correct!
-    destContext.GetOrAddSegment(segment->Name());
+    destContext.GetOrAddSegment(srcSegment->Type());
 
-    fmt::println("  Merge segment: {}", segment->Name());
+    fmt::println("  Merge segment: {}", srcSegment->Name());
 
-    for(auto chunk : segment->DataChunks()) {
+    for(auto srcChunk : srcSegment->DataChunks()) {
         // Create out own chunk at the correct address - chunk merging happen later...
-        if (chunk->IsLoadAddressAppend()) {
+        if (srcChunk->IsLoadAddressAppend()) {
             // No load-address given  - just append
             // FIXME: We should check overlap here!
             destContext.GetActiveSegment()->CreateChunk(destContext.GetActiveSegment()->EndAddress());
-
         } else {
             // Load address given, create chunk at this specific load address
             // FIXME: We should check overlap here!
-            destContext.GetActiveSegment()->CreateChunk(chunk->LoadAddress());
+            destContext.GetActiveSegment()->CreateChunk(srcChunk->LoadAddress());
         }
-
-        if (!RelocateChunkFromUnit(sourceContext, unit, chunk)) {
+        if (!RelocateChunkFromUnit(sourceContext, srcUnit, srcChunk)) {
             return false;
         }
     }
@@ -143,29 +226,29 @@ bool DummyLinker::MergeChunksInSegment(const Context &sourceContext, const Compi
 //
 // Relocates the active chunk from unit::<seg>::chunk
 //
-bool DummyLinker::RelocateChunkFromUnit(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref chunk) {
+bool DummyLinker::RelocateChunkFromUnit(const Context &sourceContext, const CompileUnit &srcUnit, const Segment::DataChunk::Ref &srcChunk) {
 
     // Write over the data to the correct address
-    Write(chunk->Data());
+    Write(srcChunk->Data());
 
     // Relocate all identifiers
-    if (!RelocateIdentifiersInChunk(unit, chunk)) {
+    if (!RelocateIdentifiersInChunk(srcUnit, srcChunk)) {
         return false;
     }
 
     // Create new relocation points for the exports (explicit and implicit)
-    return RelocateExportsInChunk(sourceContext, unit, chunk);
+    return RelocateExportsInChunk(sourceContext, srcUnit, srcChunk);
 }
 
 //
 // Relocate the identifiers within this chunk
 //
-bool DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::DataChunk::Ref chunk) {
+bool DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &srcUnit, const Segment::DataChunk::Ref &srcChunk) {
     // relocate local variables within this chunk...
     auto loadAddress = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
-    for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
+    for (auto &[symbol, identifier] : srcUnit.GetIdentifiers()) {
         // Relocate all within this chunk...
-        if (identifier->chunk != chunk) {
+        if (identifier->chunk != srcChunk) {
             continue;
         }
 
@@ -204,13 +287,13 @@ bool DummyLinker::RelocateIdentifiersInChunk(const CompileUnit &unit, Segment::D
 // Relocates all exports in a chunk for a specific unit...
 // This will create new resolve points within the linker context (destContext)
 //
-bool DummyLinker::RelocateExportsInChunk(const Context &sourceContext, const CompileUnit &unit, Segment::DataChunk::Ref chunk) {
+bool DummyLinker::RelocateExportsInChunk(const Context &sourceContext, const CompileUnit &srcUnit, const Segment::DataChunk::Ref &srcChunk) {
     // Update resolve points for any public identifier (export) belonging to this chunk
     // Since the chunk might have moved - the resolvePoint (i.e. the point to be modified when resolving identifiers) might have moved
     // So we need to adjust all of them...
 
     // Note: We can add a unit verification step - here we are quite deep down just for one return...
-    for(auto &[symbol, identifier] : unit.GetImports()) {
+    for(auto &[symbol, identifier] : srcUnit.GetImports()) {
         auto exportedIdentifier = sourceContext.GetExport(symbol);
         if (exportedIdentifier == nullptr) {
             fmt::println(stderr, "Compiler, No such symbol {}", symbol);
@@ -224,10 +307,10 @@ bool DummyLinker::RelocateExportsInChunk(const Context &sourceContext, const Com
                 fmt::println(stderr, "Compiler, exports are not allowed relative lookup addresses");
                 continue;
             }
-            if (chunk != resolvePoint.chunk) {
+            if (srcChunk != resolvePoint.chunk) {
                 continue;
             }
-            auto srcLoad = chunk->LoadAddress();
+            auto srcLoad = srcChunk->LoadAddress();
 
             auto dstLoad = destContext.GetActiveSegment()->CurrentChunk()->LoadAddress();
             auto delta = static_cast<int64_t>(dstLoad) - static_cast<int64_t>(srcLoad);
