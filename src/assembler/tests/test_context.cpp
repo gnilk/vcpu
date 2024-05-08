@@ -11,9 +11,13 @@
 #include "Compiler/Compiler.h"
 #include "Compiler/Context.h"
 #include "Compiler/CompileUnit.h"
+#include "VirtualCPU.h"
+
 #include "HexDump.h"
 
 using namespace gnilk::assembler;
+
+static uint8_t ram[512*1024] = {};
 
 extern "C" {
 DLL_EXPORT int test_context(ITesting *t);
@@ -102,8 +106,11 @@ DLL_EXPORT int test_context_multiunit_export_use(ITesting *t) {
             {
                     ".code\n" \
                     "export myvar\n"\
-                    "move.l d1, 0x4711\n"\
-                    "myvar:  dc.l 0x4712\n"
+                    // 8 bytes
+                    "dc.l   0\n"\
+                    // this should be at offset 8
+                    "myvar:  \n"\
+                    "dc.l 0x4712\n"\
                     },
             {
                     ".code\n" \
@@ -150,7 +157,8 @@ DLL_EXPORT int test_context_multiunit_export_simple(ITesting *t) {
                     ".org 0x200\n"\
                     "_start:\n"\
                     "call myfunc\n"\
-                    "ret\n"
+                    "nop\n"\
+                    "brk\n"
             },
 
     };
@@ -167,14 +175,39 @@ DLL_EXPORT int test_context_multiunit_export_simple(ITesting *t) {
     TR_ASSERT(t, compiler.Compile(ast2));
     TR_ASSERT(t, compiler.Link());
 
-    auto &data = compiler.Data();
-    TR_ASSERT(t, !data.empty());
-    TR_ASSERT(t, data.size() > 200);
+    auto &binary = compiler.Data();
+    TR_ASSERT(t, !binary.empty());
+    TR_ASSERT(t, binary.size() > 200);
 
-    printf("Binary Size: %d\n", (int)data.size());
-    HexDump::ToConsole(data.data()+0, 16);
-    HexDump::ToConsole(data.data()+0x100, 16);
-    HexDump::ToConsole(data.data()+0x200, 16);
+    printf("Binary Size: %d\n", (int)binary.size());
+    HexDump::ToConsole(binary.data()+0, 16);
+    HexDump::ToConsole(binary.data()+0x100, 16);
+    HexDump::ToConsole(binary.data()+0x200, 16);
+
+    memcpy(ram, binary.data(), binary.size());
+
+    printf("Disasm:\n");
+    gnilk::vcpu::VirtualCPU cpu;
+    cpu.QuickStart(ram, 1024*512);
+
+    // This is the start address...
+    cpu.GetRegisters().instrPointer.data.longword = 0x200;
+
+    // Disassemble a couple of instructions to get the feel...`
+    for(int i=0;i<8;i++) {
+        auto instrPtr = cpu.GetRegisters().instrPointer.data.dword;
+        cpu.Step();
+        fmt::println("{}\t{}", instrPtr, cpu.GetLastDecodedInstr()->ToString());
+        // Second time we step we should have read the value 0x4712 into register d0
+        if (i == 1) {
+            auto value = cpu.GetRegisters().dataRegisters[0].data.longword;
+            TR_ASSERT(t, value == 0x4712);
+        }
+        if (cpu.IsHalted()) {
+            break;
+        }
+    }
+
 
     return kTR_Pass;
 
