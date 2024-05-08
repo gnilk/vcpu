@@ -24,37 +24,22 @@ namespace gnilk {
 
             void Clear();
 
-
-            // IPublicIdentifiers
-            bool HasExport(const std::string &ident) override;
-            void AddExport(const std::string &ident) override;
-            ExportIdentifier::Ref GetExport(const std::string &ident) override;
-            ExportIdentifier::Ref GetExport(const std::string &ident) const;
-
-            const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() override {
-                return exportIdentifiers;
+            bool Merge();
+            std::vector<uint8_t> &Data() {
+                return outputData;
             }
-            const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() const {
-                return exportIdentifiers;
-            }
-
-            bool HasStructDefinintion(const std::string &typeName) override;
-            void AddStructDefinition(const StructDefinition &structDefinition) override;
-            const StructDefinition::Ref GetStructDefinitionFromTypeName(const std::string &typeName) override;
-            const std::vector<StructDefinition::Ref> &StructDefinitions() override;
 
             bool HasStartAddress() const {
-                return (startAddress != nullptr);
+                return (startAddressIdentifier != nullptr);
             }
 
             void SetStartAddress(Identifier::Ref startIdentifier) {
-                startAddress = startIdentifier;
+                startAddressIdentifier = startIdentifier;
             }
 
             Identifier::Ref GetStartAddress() const {
-                return startAddress;
+                return startAddressIdentifier;
             }
-
 
             CompileUnit &CreateUnit();
             const std::vector<CompileUnit> &GetUnits() {
@@ -63,44 +48,71 @@ namespace gnilk {
             const std::vector<CompileUnit> &GetUnits() const {
                 return units;
             }
-
             CompileUnit &CurrentUnit() {
                 if (units.empty()) {
                     return CreateUnit();
                 }
                 return units.back();
             }
-            void Merge();
-            void MergeSegmentForUnit(CompileUnit &unit, Segment::kSegmentType segType);
-            // linker requires write access here - we should probably refactor so that output is supplied to merge...
-            std::vector<uint8_t> &Data() {
-                return outputData;
+
+            // IPublicIdentifiers
+        public:
+            bool HasStructDefinintion(const std::string &typeName) override;
+            void AddStructDefinition(const StructDefinition &structDefinition) override;
+            const StructDefinition::Ref GetStructDefinitionFromTypeName(const std::string &typeName) override;
+            const std::vector<StructDefinition::Ref> &StructDefinitions() override;
+
+            bool HasExport(const std::string &ident) override;
+            void AddExport(const std::string &ident) override;
+            ExportIdentifier::Ref GetExport(const std::string &ident) override;
+            ExportIdentifier::Ref GetExport(const std::string &ident) const;
+            const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() override {
+                return exportIdentifiers;
+            }
+            const std::unordered_map<std::string, ExportIdentifier::Ref> &GetExports() const {
+                return exportIdentifiers;
             }
 
             // Merge helpers
         protected:
-            size_t ComputeEndAddress();
-            void MergeAllSegments(std::vector<uint8_t> &out);
-            void ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            bool MergeUnits(std::vector<uint8_t> &out);
+            void MergeSegmentForUnit(CompileUnit &unit, Segment::kSegmentType segType);
+            void FinalMergeOfSegments(std::vector<uint8_t> &out);
+            uint64_t ComputeEndAddress();
+            bool RelocateChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
+            bool RelocateExports();
             size_t Write(const std::vector<uint8_t> &data);
 
+            // Needed by the elf-writer after the merge has been complete...
         public:
             // Segment handling, exposed because the linker handles the merge process
             bool EnsureChunk();
+
+            // Returns
+            //   An existing or new segment of the specified type, the returned segment also becomes the active segment
             Segment::Ref GetOrAddSegment(Segment::kSegmentType type);
-//            bool SetActiveSegment(Segment::kSegmentType type);
-            bool HaveSegment(Segment::kSegmentType type);
+
+            // Returns
+            //  The active segment
             Segment::Ref GetActiveSegment();
+
+            // Returns
+            //  An existing segment of the specific type or null if non exists
             const Segment::Ref GetSegment(Segment::kSegmentType type);
-            size_t GetSegmentEndAddress(Segment::kSegmentType type);
+
+            // Returns
+            //  Reference to the list of segments
             std::vector<Segment::Ref> &GetSegments();
-            const std::vector<Segment::Ref> &GetSegments() const;
-            // Used by unit tests...
+
+            // Returns
+            //  Copy of all segment references in 'outSegments' and the size
             size_t GetSegments(std::vector<Segment::Ref> &outSegments);
+
+            // Returns
+            //  Copy of all segment references of a specific type in 'outSegments' and the size
             size_t GetSegmentsOfType(Segment::kSegmentType ofType, std::vector<Segment::Ref> &outSegments) const;
 
             uint64_t GetCurrentWriteAddress();
-
         protected:
             std::vector<uint8_t> outputData;
             std::vector<CompileUnit> units;
@@ -116,7 +128,7 @@ namespace gnilk {
             // identifiers explicitly marked for export goes here...
             std::unordered_map<std::string, ExportIdentifier::Ref> exportIdentifiers;
 
-            Identifier::Ref startAddress = nullptr;
+            Identifier::Ref startAddressIdentifier = nullptr;
 
         };
 
