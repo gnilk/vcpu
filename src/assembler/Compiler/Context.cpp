@@ -280,9 +280,7 @@ bool Context::RelocateChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref s
                 }
             } else {
                 int64_t offset = static_cast<int64_t>(identifier->absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
-                if (offset < 0) {
-                    offset -= 1;
-                }
+                offset -= 1;
                 if (!activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, offset, resolvePoint.opSize)) {
                     return false;
                 }
