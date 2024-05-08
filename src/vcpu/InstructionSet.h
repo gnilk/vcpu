@@ -221,7 +221,18 @@ namespace gnilk {
             Register = 16,
             // Support addressing move d0, (a0)
             Addressing = 32,        // Is this not just 'register'??
-            // Branching instruction
+
+            // FIXME: This is not branching, this defines how the instruction is to treat reading a label value
+            //        IF present, the instruction will USE the memory address and perform the operation (branch, load-of-address, etc)
+            //        if NOT present, the CPU will fetch the memory of the address and the value stored at the address...
+            //        consider:
+            //              move.l d0, variable         ; D0 will have the value of the variable (stored at some address - i.e. the CPU will READ from the address)
+            //        whereby:
+            //              call variable               ; the CPU will USE the address directly
+            //              lea.l d0, variable          ; D0 will contain the ADDRESS (and not the value of the variable)
+            //
+            // Maybe we should rename this as 'Absolute'?
+            //
             Branching = 64,
             // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
             Control = 128,

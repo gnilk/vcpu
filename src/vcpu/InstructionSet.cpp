@@ -42,7 +42,8 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
                                             OperandDescriptionFlags::TwoOperands |
                                             OperandDescriptionFlags::Immediate |
                                             OperandDescriptionFlags::Register |
-                                            OperandDescriptionFlags::Addressing}},
+                                            OperandDescriptionFlags::Addressing |
+                                            OperandDescriptionFlags::Branching}},       // <- FIXME: Rename this
 {OperandCode::MOV,{.name="move", .features = OperandDescriptionFlags::OperandSize |
                                                 OperandDescriptionFlags::TwoOperands |
                                                 OperandDescriptionFlags::Immediate |
