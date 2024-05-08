@@ -88,6 +88,7 @@ list(APPEND asmsrc src/assembler/Linker/BaseLinker.cpp src/assembler/Linker/Base
 list(APPEND asmsrc src/assembler/Compiler/CompileUnit.cpp src/assembler/Compiler/CompileUnit.h)
 list(APPEND asmsrc src/assembler/Linker/DummyLinker.cpp src/assembler/Linker/DummyLinker.h)
 list(APPEND asmsrc src/assembler/Linker/ElfLinker.cpp src/assembler/Linker/ElfLinker.h)
+list(APPEND asmsrc src/assembler/Linker/RawLinker.cpp src/assembler/Linker/RawLinker.h)
 list(APPEND asmsrc src/assembler/Linker/Segment.cpp src/assembler/Linker/Segment.h)
 
 list(APPEND commonsrc src/common/ConvertUTF.cpp src/common/ConvertUTF.h)
@@ -102,6 +103,7 @@ list(APPEND commonsrc src/common/UnicodeHelper.cpp src/common/UnicodeHelper.h)
 list(APPEND asmtestsrc src/assembler/tests/test_compiler.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_context.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_lexer.cpp)
+list(APPEND asmtestsrc src/assembler/tests/test_linker.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_parser.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_segment.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_stmtemitter.cpp)
@@ -121,18 +123,14 @@ endif()
 
 
 #
-# Emulator
+# Emulator and Assembler apps
 #
-list(APPEND emusrc apps/emulator/emulator.cpp)
-list(APPEND asmsrc apps/assembler/assembler.cpp)
-
-
-add_executable(emu ${emusrc} ${vcpusrc} ${commonsrc})
+add_executable(emu apps/emulator/emulator.cpp ${emusrc} ${vcpusrc} ${commonsrc})
 target_include_directories(emu PUBLIC src/vcpu)
 target_include_directories(emu PUBLIC src/common)
 target_include_directories(emu PUBLIC src/ext/ELFIO)
 
-add_executable(asm ${asmsrc} ${vcpusrc} ${commonsrc})
+add_executable(asm apps/assembler/assembler.cpp ${asmsrc} ${vcpusrc} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
 target_include_directories(asm PUBLIC src/common)
 target_include_directories(asm PUBLIC src/vcpu)
@@ -145,6 +143,15 @@ target_link_libraries(test log_fmt)
 target_link_libraries(emu log_fmt)
 target_link_libraries(asm log_fmt)
 
+#
+# standalone tests
+#
+#add_executable(test_linker_relocate apps/tests/linker_relocate_otherseg_withorg.cpp ${asmsrc} ${vcpusrc} ${commonsrc})
+#target_include_directories(test_linker_relocate PUBLIC src/vcpu)
+#target_include_directories(test_linker_relocate PUBLIC src/assembler)
+#target_include_directories(test_linker_relocate PUBLIC src/common)
+#target_include_directories(test_linker_relocate PUBLIC src/ext/ELFIO)
+#target_link_libraries(test_linker_relocate log_fmt)
 
 #
 # assets for testing
