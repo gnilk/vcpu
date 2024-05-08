@@ -63,7 +63,7 @@ Segment::DataChunk::Ref Segment::CurrentChunk() {
 }
 
 std::pair<bool, Segment::kSegmentType> Segment::TypeFromString(const std::string &typeName) {
-    if ((typeName == "code") || (typeName == ".code")) {
+    if ((typeName == "code") || (typeName == ".code") || (typeName == "text") || (typeName == ".text")) {
         return {true, kSegmentType::Code};
     } else if ((typeName == "data") || (typeName == ".data")) {
         return {true, kSegmentType::Data};
