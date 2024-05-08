@@ -166,7 +166,7 @@ bool EmitMetaStatement::Finalize(gnilk::assembler::CompileUnit &context) {
 bool EmitMetaStatement::FinalizeSegment(CompileUnit &context) {
     auto [ok, type] = Segment::TypeFromString(segmentName);
     if (!ok) {
-        fmt::println("Compiler, unsupported segment type {}, use: .code/.text or .data", segmentName);
+        fmt::println(stderr, "Compiler, unsupported segment type '{}', use: .code/.text or .data", segmentName);
         return false;
     }
     context.CreateEmptySegment(type);
