@@ -987,27 +987,33 @@ bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, const vcp
     regMode |= vcpu::AddressMode::Immediate;
 
     if (opSize == vcpu::OperandSize::Long) {
-        // no op.size were given, let's compute distance
 
+        // Let's see if this is a known identifier - in case it isn't we defer this call 'til later (post)
         if (!context.HasIdentifier(identifier->Symbol())) {
-            fmt::println(stderr, "Compiler, Identifier '{}' not found - can't compute jump length...", identifier->Symbol());
+            // If we are in the deferred emitter, this is bad!
+            if (temp_isDeferredEmitter) {
+                fmt::println(stderr, "Compiler, warning identifier '{}' not found - can't compute jump length...", identifier->Symbol());
+                return false;
+            }
             temp_isDeferredEmitter = true;
             return true;
+        }
+
+        // no op.size were given, let's compute distance
+
+        fmt::println("Compiler, warning - relative address instr. detected without operand size specification - trying to deduce");
+        auto idAddress = context.GetIdentifier(identifier->Symbol()); // identifierAddresses[identifier->Symbol()];
+        // We are ahead...
+        auto dist = (context.GetCurrentWriteAddress() - idAddress->absoluteAddress);
+        if (dist < 255) {
+            fmt::println("Compiler, warning - changing from unspecified to byte (dist={})", dist);
+            opSize = vcpu::OperandSize::Byte;
+        } else if (dist < 65545) {
+            fmt::println("Compiler, warning - changing from unspecified to word (dist={})", dist);
+            opSize = vcpu::OperandSize::Word;
         } else {
-            fmt::println("Compiler, warning - relative address instr. detected without operand size specification - trying to deduce");
-            auto idAddress = context.GetIdentifier(identifier->Symbol()); // identifierAddresses[identifier->Symbol()];
-            // We are ahead...
-            auto dist = (context.GetCurrentWriteAddress() - idAddress->absoluteAddress);
-            if (dist < 255) {
-                fmt::println("Compiler, warning - changing from unspecified to byte (dist={})", dist);
-                opSize = vcpu::OperandSize::Byte;
-            } else if (dist < 65545) {
-                fmt::println("Compiler, warning - changing from unspecified to word (dist={})", dist);
-                opSize = vcpu::OperandSize::Word;
-            } else {
-                fmt::println("Compiler, warning - changing from unspecified to dword (dist={})", dist);
-                opSize = vcpu::OperandSize::DWord;
-            }
+            fmt::println("Compiler, warning - changing from unspecified to dword (dist={})", dist);
+            opSize = vcpu::OperandSize::DWord;
         }
     }
 
