@@ -48,8 +48,8 @@ namespace gnilk {
 
                 size_t Write(const std::vector<uint8_t> &data);
                 size_t WriteByte(uint8_t byte);
-                void ReplaceAt(uint64_t offset, uint64_t newValue);
-                void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
+                bool ReplaceAt(uint64_t offset, uint64_t newValue);
+                bool ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
                 uint64_t GetRelativeWriteAddress();
                 uint64_t GetCurrentWriteAddress();
             protected:
