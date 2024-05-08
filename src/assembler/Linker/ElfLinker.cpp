@@ -17,7 +17,7 @@ const std::vector<uint8_t> &ElfLinker::Data() {
 }
 
 
-bool ElfLinker::Link(const gnilk::assembler::Context &context) {
+bool ElfLinker::Link(gnilk::assembler::Context &context) {
     if (!Merge(context)) {
         return false;
     }
@@ -43,7 +43,7 @@ bool ElfLinker::WriteElf() {
     elfWriter.set_type(ET_EXEC );
     elfWriter.set_machine(EM_68K );
 
-    for(auto &[name, seg] : destContext.GetSegments()) {
+    for(auto &seg : destContext.GetSegments()) {
         auto elfSeg = elfWriter.segments.add();
         elfSeg->set_virtual_address(seg->StartAddress());
         elfSeg->set_physical_address(seg->StartAddress());
@@ -96,7 +96,7 @@ bool ElfLinker::WriteElfOld(CompileUnit &unit) {
     elfWriter.set_type(ET_EXEC );
     elfWriter.set_machine(EM_68K );
 
-    auto textSeg = unit.GetSegment(".text");
+    auto textSeg = unit.GetSegment(Segment::kSegmentType::Code);
     if (textSeg == nullptr) {
         return false;
     }
@@ -104,7 +104,7 @@ bool ElfLinker::WriteElfOld(CompileUnit &unit) {
 
     auto elfSeg = elfWriter.segments.add();
 
-    for(auto &[name, seg] : destContext.GetSegments()) {
+    for(auto &seg : destContext.GetSegments()) {
         auto elfSeg = elfWriter.segments.add();
         elfSeg->set_virtual_address(textSeg->StartAddress());
         elfSeg->set_physical_address(textSeg->StartAddress());
@@ -140,7 +140,7 @@ bool ElfLinker::WriteElfOld(CompileUnit &unit) {
     elfTextSeg->set_align(vcpu::VCPU_MMU_PAGE_SIZE);
     elfTextSeg->add_section(elfTextSec, elfTextSec->get_addr_align());
 
-    auto dataSeg = unit.GetSegment(".data");
+    auto dataSeg = unit.GetSegment(Segment::kSegmentType::Data);
     // FIXME: this is not an error...
     if (dataSeg == nullptr) {
         fmt::println(stderr,"ElfLinker, no data segment!");

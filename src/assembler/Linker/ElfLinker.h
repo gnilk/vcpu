@@ -25,7 +25,7 @@ namespace gnilk {
             ElfLinker() = default;
             virtual ~ElfLinker() = default;
 
-            bool Link(const Context &context) override;
+            bool Link(Context &context) override;
             const std::vector<uint8_t> &Data() override;
         protected:
             bool WriteElf();
