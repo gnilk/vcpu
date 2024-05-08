@@ -419,7 +419,7 @@ DLL_EXPORT int test_compiler_call_relative(ITesting *t) {
 // Test of forward relative
 DLL_EXPORT int test_compiler_call_relative_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
-        0xc0,0x00,0x01,0x03,        // 0, Call IP+x   ;  => 0x09 - from 0x04 to 0x0d => 0x0d-0x04 => 0x09
+        0xc0,0x00,0x01,0x02,        // 0, Call IP+x   ;  => 0x09 - from 0x04 to 0x0d => 0x0d-0x04 => 0x09
         0xf1,                       // 4
         0x00,                       // 5 WHALT!
         0xf1,                       // 6 <- call should go here
@@ -444,6 +444,8 @@ DLL_EXPORT int test_compiler_call_relative_label(ITesting *t) {
     TR_ASSERT(t, ast != nullptr);
     auto res = compiler.CompileAndLink(ast);
     auto binary = compiler.Data();
+    printf("Binary:\n");
+    HexDump::ToConsole(binary.data(), binary.size());
     TR_ASSERT(t, binary == expectedBinary);
 
     return kTR_Pass;
@@ -956,7 +958,7 @@ DLL_EXPORT int test_compiler_cmpbne_forward(ITesting *t) {
         "   .org 0x0000 \n"\
         // 0x0000 : 0x90, 0x03, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
         "   cmp.l counter,1\n"\
-        // 0x0014 : 0xd1, 0x00, 0x01, 0x02          <- yes, for forward jump, the position is relative ofs 17 (need to verify)
+        // 0x0014 : 0xd1, 0x00, 0x01, 0x02          <- yes, for forward jump, the position is relative ofs 0x17 (need to verify)
         "   bne out\n"\
         // 0x0018
         "   ret\n"\
@@ -990,12 +992,12 @@ DLL_EXPORT int test_compiler_cmpbne_forward(ITesting *t) {
         auto instrPtr = cpu.GetRegisters().instrPointer.data.dword;
         cpu.Step();
         fmt::println("{}\t{}", instrPtr, cpu.GetLastDecodedInstr()->ToString());
-        if (cpu.IsHalted()) {
-            break;
-        }
         // Instruction after branch should be at offset 0x0019
         if (i == 2) {
             TR_ASSERT(t, instrPtr == 0x0019);
+        }
+        if (cpu.IsHalted()) {
+            break;
         }
     }
 
