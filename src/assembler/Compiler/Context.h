@@ -46,9 +46,11 @@ namespace gnilk {
             bool HasStartAddress() const {
                 return (startAddress != nullptr);
             }
+
             void SetStartAddress(Identifier::Ref startIdentifier) {
                 startAddress = startIdentifier;
             }
+
             Identifier::Ref GetStartAddress() const {
                 return startAddress;
             }
@@ -69,15 +71,15 @@ namespace gnilk {
                 return units.back();
             }
             void Merge();
+            void MergeSegmentForUnit(CompileUnit &unit, Segment::kSegmentType segType);
             // linker requires write access here - we should probably refactor so that output is supplied to merge...
             std::vector<uint8_t> &Data() {
                 return outputData;
             }
-            // Used by unit tests...
-            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
 
             // Merge helpers
         protected:
+            size_t ComputeEndAddress();
             void MergeAllSegments(std::vector<uint8_t> &out);
             void ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref srcChunk);
             size_t Write(const std::vector<uint8_t> &data);
@@ -85,26 +87,32 @@ namespace gnilk {
         public:
             // Segment handling, exposed because the linker handles the merge process
             bool EnsureChunk();
-            bool CreateEmptySegment(const std::string &name);
-            bool GetOrAddSegment(const std::string &name);
-            bool SetActiveSegment(const std::string &name);
-            bool HaveSegment(const std::string &name);
+            Segment::Ref GetOrAddSegment(Segment::kSegmentType type);
+//            bool SetActiveSegment(Segment::kSegmentType type);
+            bool HaveSegment(Segment::kSegmentType type);
             Segment::Ref GetActiveSegment();
-            const Segment::Ref GetSegment(const std::string segName);
-            size_t GetSegmentEndAddress(const std::string &name);
-            std::unordered_map<std::string, Segment::Ref> &GetSegments();
+            const Segment::Ref GetSegment(Segment::kSegmentType type);
+            size_t GetSegmentEndAddress(Segment::kSegmentType type);
+            std::vector<Segment::Ref> &GetSegments();
+            const std::vector<Segment::Ref> &GetSegments() const;
+            // Used by unit tests...
+            size_t GetSegments(std::vector<Segment::Ref> &outSegments);
+            size_t GetSegmentsOfType(Segment::kSegmentType ofType, std::vector<Segment::Ref> &outSegments) const;
+
             uint64_t GetCurrentWriteAddress();
 
         protected:
             std::vector<uint8_t> outputData;
             std::vector<CompileUnit> units;
 
-            // Segments and chunks are here as they span multiple units..
-            std::unordered_map<std::string, Segment::Ref> segments;
+            // FIXME: Segments can't be unordered map - they come at a specific order and must be processed in same order
+            //        Segments come in a specific order and address
+            std::vector<Segment::Ref> segments;
             Segment::Ref activeSegment = nullptr;
 
             // This is a type-definition - should they always be exported?
             std::vector<StructDefinition::Ref> structDefinitions;
+            std::vector<Identifier> identifiers;
             // identifiers explicitly marked for export goes here...
             std::unordered_map<std::string, ExportIdentifier::Ref> exportIdentifiers;
 

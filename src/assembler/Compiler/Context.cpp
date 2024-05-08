@@ -12,6 +12,7 @@
 //     [note: the elf write will only care about symbols in the context]
 //
 
+#include <algorithm>
 #include "Context.h"
 #include "CompileUnit.h"
 
@@ -116,6 +117,7 @@ void Context::Merge() {
     MergeAllSegments(outputData);
 }
 
+// Hmm - perhaps repurpose this one...
 void Context::MergeAllSegments(std::vector<uint8_t> &out) {
     size_t startAddress = 0;
     size_t endAddress = 0;
@@ -126,55 +128,93 @@ void Context::MergeAllSegments(std::vector<uint8_t> &out) {
     for(auto &unit : units) {
         fmt::println("Merge segments in unit {}", unitCounter);
         unitCounter += 1;
-
-        std::vector<Segment::Ref> unitSegments;
-        unit.GetSegments(unitSegments);
-        for(auto srcSeg : unitSegments) {
-            // Make sure we have this segment
-            GetOrAddSegment(srcSeg->Name());
-            for(auto srcChunk : srcSeg->chunks) {
-                // Create out own chunk at the correct address - chunk merging happen later...
-                if (srcChunk->IsLoadAddressAppend()) {
-                    // No load-address given  - just append
-                    // FIXME: We should check overlap here!
-                    activeSegment->CreateChunk(activeSegment->EndAddress());
-
-                } else {
-                    // Load address given, create chunk at this specific load address
-                    // FIXME: We should check overlap here!
-                    activeSegment->CreateChunk(srcChunk->LoadAddress());
-                }
-                ReloacteChunkFromUnit(unit, srcChunk);
-            }
+        MergeSegmentForUnit(unit, Segment::kSegmentType::Code);
+        MergeSegmentForUnit(unit, Segment::kSegmentType::Data);
+    }
+    // Dump all chunks
+    for(auto seg : segments) {
+        fmt::println("segment: {}", Segment::TypeName(seg->Type()));
+        for(auto chunk : seg->chunks) {
+            fmt::println("  chunks, start={}, end={}", chunk->LoadAddress(), chunk->EndAddress());
         }
     }
 
-    // Compute full binary end address...
-    for(auto [name, seg] : segments) {
-        if (seg->EndAddress() > endAddress) {
-            endAddress = seg->EndAddress();
-        }
-    }
+    // This can only be done after merging...
+    endAddress = ComputeEndAddress();
 
-    // Calculate the size of final binary imasge
+    // Calculate the size of final binary image
     auto szFinalData = endAddress - startAddress;
     out.resize(szFinalData);
 
     // Append the data
-    for(auto [name, seg] : segments) {
+    for(auto &seg : segments) {
         for(auto chunk : seg->chunks) {
+            // Let's check if we can fit here - other this is a fatal bug...
+            if ((chunk->LoadAddress() + chunk->Size()) > out.size()) {
+                fmt::println(stderr, "Linker, in Context; final serialize would overflow data buffer - abort!");
+                fmt::println(stderr, "  outdata.size() = {} bytes",out.size());
+                fmt::println(stderr, "  chunk; loadAddress = {}, size={} bytes",chunk->LoadAddress(), chunk->Size());
+                exit(1);
+            }
             memcpy(out.data()+chunk->LoadAddress(), chunk->DataPtr(), chunk->Size());
         }
+    }
+}
+size_t Context::ComputeEndAddress() {
+    size_t endAddress = 0;
+    auto codeSeg = GetSegment(Segment::kSegmentType::Code);
+    if (codeSeg != nullptr) {
+        endAddress = codeSeg->EndAddress();
+    }
+    auto dataSeg = GetSegment(Segment::kSegmentType::Data);
+    if (dataSeg != nullptr) {
+        // This is what we need for data..
+        endAddress += (dataSeg->EndAddress() - dataSeg->StartAddress()) + dataSeg->StartAddress();
+    }
+    return endAddress;
+}
+
+// Merge
+void Context::MergeSegmentForUnit(CompileUnit &unit, Segment::kSegmentType segType) {
+    auto srcSeg = unit.GetSegment(segType);
+    if (srcSeg == nullptr) {
+        return;
+    }
+
+    // Assuming we 'append' here...
+    // Current default start equals current end...
+    auto startAddress = ComputeEndAddress();
+
+    // Add to our own context...
+    GetOrAddSegment(srcSeg->Type());
+    for(auto srcChunk : srcSeg->chunks) {
+        // Create out own chunk at the correct address - chunk merging happen later...
+        if (srcChunk->IsLoadAddressAppend()) {
+            // No load-address given  - just append
+            // FIXME: We should check overlap here!
+            auto appendAddress = ComputeEndAddress();
+            activeSegment->CreateChunk(appendAddress);
+            srcChunk->SetLoadAddress(appendAddress);
+        } else {
+            // Load address given, create chunk at this specific load address
+            if (srcChunk->LoadAddress() < ComputeEndAddress()) {
+                fmt::println(stderr, "Linker (in Context), chunk load address would overwrite existing data!");
+                return;
+            }
+            activeSegment->CreateChunk(srcChunk->LoadAddress());
+        }
+        ReloacteChunkFromUnit(unit, srcChunk);
     }
 }
 
 // Relocates the active chunk from unit::<seg>::chunk
 void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref srcChunk) {
+
     // Write data to it...
     Write(srcChunk->Data());
-
-    // relocate local variables within this chunk...
+    // this is the current segment start address..
     auto loadAddress = activeSegment->currentChunk->LoadAddress();
+
     for (auto &[symbol, identifier] : unit.GetIdentifiers()) {
         // Relocate all within this chunk...
         if (identifier->chunk != srcChunk) {
@@ -188,7 +228,17 @@ void Context::ReloacteChunkFromUnit(CompileUnit &unit, Segment::DataChunk::Ref s
         for(auto &resolvePoint : identifier->resolvePoints) {
             fmt::println("    - {:#x}",resolvePoint.placeholderAddress);
             if (!resolvePoint.isRelative) {
-                activeSegment->currentChunk->ReplaceAt(resolvePoint.placeholderAddress + loadAddress, identifier->absoluteAddress, resolvePoint.opSize);
+                // src chunk has been updated with the proper load address
+
+                auto resolveAddress =  resolvePoint.placeholderAddress + resolvePoint.chunk->LoadAddress();
+                auto targetSegment = GetSegment(resolvePoint.segment->Type());
+                auto targetChunk = targetSegment->ChunkFromAddress(resolveAddress);
+                if (targetChunk == nullptr) {
+                    fmt::println("Linker (in Context), unable to resolve {} for resolve address {}", identifier->name,resolvePoint.placeholderAddress);
+                    exit(1);
+                }
+                auto identAddress = identifier->relativeAddress + identifier->chunk->LoadAddress();
+                targetChunk->ReplaceAt(resolveAddress, identAddress, resolvePoint.opSize);
             } else {
                 int64_t offset = static_cast<int64_t>(identifier->absoluteAddress) - static_cast<int64_t>(resolvePoint.placeholderAddress);
                 if (offset < 0) {
@@ -249,41 +299,42 @@ bool Context::EnsureChunk() {
     activeSegment->CreateChunk(GetCurrentWriteAddress());
     return true;
 }
-bool Context::GetOrAddSegment(const std::string &name) {
-    if (!segments.contains(name)) {
-        auto segment = std::make_shared<Segment>(name);
-        segments[name] = segment;
+Segment::Ref Context::GetOrAddSegment(Segment::kSegmentType type) {
+    auto seg = GetSegment(type);
+    if (seg == nullptr) {
+        seg = std::make_shared<Segment>(type);
+        segments.push_back(seg);
     }
-    activeSegment = segments.at(name);
-    return true;
+    activeSegment = seg;
+    return seg;
 }
 
-bool Context::CreateEmptySegment(const std::string &name) {
-    if (HaveSegment(name)) {
-        activeSegment = segments[name];
-        return true;
-    }
+//bool Context::CreateEmptySegment(const std::string &name) {
+//    if (HaveSegment(name)) {
+//        activeSegment = segments[name];
+//        return true;
+//    }
+//
+//    auto segment = std::make_shared<Segment>(name);
+//    segments[name] = segment;
+//    activeSegment = segment;
+//    return true;
+//}
 
-    auto segment = std::make_shared<Segment>(name);
-    segments[name] = segment;
-    activeSegment = segment;
-    return true;
-}
-
-bool Context::SetActiveSegment(const std::string &name) {
-    if (!segments.contains(name)) {
-        return false;
-    }
-    activeSegment = segments.at(name);
-    if (activeSegment->currentChunk == nullptr) {
-        if (activeSegment->chunks.empty()) {
-            fmt::println(stderr, "Linker, Compiled unit can't link - no data!");
-            return false;
-        }
-        activeSegment->currentChunk =  activeSegment->chunks[0];
-    }
-    return true;
-}
+//bool Context::SetActiveSegment(const std::string &name) {
+//    if (!segments.contains(name)) {
+//        return false;
+//    }
+//    activeSegment = segments.at(name);
+//    if (activeSegment->currentChunk == nullptr) {
+//        if (activeSegment->chunks.empty()) {
+//            fmt::println(stderr, "Linker, Compiled unit can't link - no data!");
+//            return false;
+//        }
+//        activeSegment->currentChunk =  activeSegment->chunks[0];
+//    }
+//    return true;
+//}
 uint64_t Context::GetCurrentWriteAddress() {
     if (activeSegment == nullptr) {
         fmt::println(stderr, "Compiler, not active segment!!");
@@ -296,25 +347,49 @@ uint64_t Context::GetCurrentWriteAddress() {
     return activeSegment->currentChunk->GetCurrentWriteAddress();
 }
 
-bool Context::HaveSegment(const std::string &name) {
-    return segments.contains(name);
+bool Context::HaveSegment(Segment::kSegmentType type) {
+    // easier to read..
+    auto it = std::ranges::find_if(segments.begin(), segments.end(), [type](Segment::Ref v)-> bool {
+        return (v->Type() == type);
+    });
+    return (it != segments.end());
 }
 
-const Segment::Ref Context::GetSegment(const std::string segName) {
-    if (!segments.contains(segName)) {
+const Segment::Ref Context::GetSegment(Segment::kSegmentType type) {
+    auto it = std::ranges::find_if(segments.begin(), segments.end(), [type](Segment::Ref v)-> bool {
+        return (v->Type() == type);
+    });
+    if (it == segments.end()) {
         return nullptr;
     }
-    return segments.at(segName);
+    return *it;
 }
 
 size_t Context::GetSegments(std::vector<Segment::Ref> &outSegments) {
-    for(auto [k, v] : segments) {
-        outSegments.push_back(v);
+    outSegments.insert(outSegments.end(), segments.begin(), segments.end());
+    return outSegments.size();
+}
+size_t Context::GetSegmentsOfType(Segment::kSegmentType ofType, std::vector<Segment::Ref> &outSegments) const {
+    for (auto &unit : units) {
+        for (auto &seg: unit.GetSegments()) {
+            if (seg->Type() == ofType) {
+                outSegments.push_back(seg);
+            }
+        }
     }
+    // Sort them - this is what we normally want - and if we don't, it doesn't matter...
+    std::sort(outSegments.begin(), outSegments.end(), [](const Segment::Ref &a, const Segment::Ref &b)->bool {
+        return (b->StartAddress() - a->StartAddress());
+    });
+
     return outSegments.size();
 }
 
-std::unordered_map<std::string, Segment::Ref> &Context::GetSegments() {
+std::vector<Segment::Ref> &Context::GetSegments() {
+    return segments;
+}
+
+const std::vector<Segment::Ref> &Context::GetSegments() const {
     return segments;
 }
 
@@ -325,11 +400,13 @@ Segment::Ref Context::GetActiveSegment() {
 }
 
 
-size_t Context::GetSegmentEndAddress(const std::string &name) {
-    if (!segments.contains(name)) {
+// FIXME: Remove this - unless used (in that case try to refactor)
+size_t Context::GetSegmentEndAddress(Segment::kSegmentType type) {
+    auto seg = GetSegment(type);
+    if (seg == nullptr) {
         return 0;
     }
-    return segments.at(name)->EndAddress();
+    return seg->EndAddress();
 }
 
 

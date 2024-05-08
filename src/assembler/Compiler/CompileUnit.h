@@ -43,15 +43,19 @@ namespace gnilk {
 
             // Segment handling
             bool EnsureChunk();
-            bool CreateEmptySegment(const std::string &name);
-            bool GetOrAddSegment(const std::string &name, uint64_t address);
-            bool SetActiveSegment(const std::string &name);
-            bool HaveSegment(const std::string &name);
+            Segment::Ref CreateEmptySegment(Segment::kSegmentType type);
+            Segment::Ref GetOrAddSegment(Segment::kSegmentType type, uint64_t address);
+            const Segment::Ref GetSegment(Segment::kSegmentType type);
+            size_t GetSegmentEndAddress(Segment::kSegmentType type);
+            //bool SetActiveSegment(Segment::kSegmentType type);
+            bool HaveSegment(Segment::kSegmentType type);
             Segment::Ref GetActiveSegment();
+
             size_t GetSegments(std::vector<Segment::Ref> &outSegments) const;
-            const Segment::Ref GetSegment(const std::string segName);
-            size_t GetSegmentEndAddress(const std::string &name);
+            const std::vector<Segment::Ref> &GetSegments() const;
+
             uint64_t GetCurrentWriteAddress();
+            uint64_t GetCurrentRelativeWriteAddress();
         public: // Local identifiers
             bool HasConstant(const std::string &name);
             void AddConstant(const std::string &name, ast::ConstLiteral::Ref constant);
@@ -127,7 +131,7 @@ namespace gnilk {
 
             std::vector<EmitStatementBase::Ref> emitStatements;
 
-            std::unordered_map<std::string, Segment::Ref> segments;
+            std::vector<Segment::Ref> segments;
             Segment::Ref activeSegment = nullptr;
 
             std::vector<std::string> exports;   // we export these things...

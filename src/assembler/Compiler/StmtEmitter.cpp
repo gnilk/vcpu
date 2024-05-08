@@ -164,19 +164,13 @@ bool EmitMetaStatement::Finalize(gnilk::assembler::CompileUnit &context) {
 }
 
 bool EmitMetaStatement::FinalizeSegment(CompileUnit &context) {
-    if ((segmentName == "text") || (segmentName == "code")) {
-        context.CreateEmptySegment(".text");
-        return true;
+    auto [ok, type] = Segment::TypeFromString(segmentName);
+    if (!ok) {
+        fmt::println("Compiler, unsupported segment type {}, use: .code/.text or .data", segmentName);
+        return false;
     }
-    if (segmentName == "data") {
-        context.CreateEmptySegment(".data");
-        return true;
-    }
-    if (segmentName == "bss") {
-        context.CreateEmptySegment(".bss");
-        return true;
-    }
-    return false;
+    context.CreateEmptySegment(type);
+    return true;
 }
 
 EmitExportStatement::EmitExportStatement() {
@@ -426,22 +420,26 @@ bool EmitIdentifierStatement::Finalize(CompileUnit &context) {
     }
     ident->chunk = context.GetActiveSegment()->CurrentChunk();
     if (ident->chunk == nullptr) {
-        fmt::println(stderr, "Compiler, no active 'chunk' in segment {}", ident->segment->Name());
-
-        // Create a new chunk at the exact write address
-        auto loadAddress = context.GetCurrentWriteAddress();
-        ident->segment->CreateChunk(loadAddress);
-        ident->chunk = context.GetActiveSegment()->CurrentChunk();
+//        fmt::println(stderr, "Compiler, no active 'chunk' in segment {}", ident->segment->Name());
+//        // FIXME: Is this path even a good thing??
+//
+//        // Create a new chunk at the exact write address
+//        auto loadAddress = context.GetCurrentWriteAddress();
+//        ident->segment->CreateChunk(loadAddress);
+//        ident->chunk = context.GetActiveSegment()->CurrentChunk();
         return false;
     }
     // Set the absolute address
     ident->absoluteAddress = context.GetCurrentWriteAddress();
+    ident->relativeAddress = context.GetCurrentRelativeWriteAddress();
+
     fmt::println("EmitIdentifier, {} @ {}", symbol, ident->absoluteAddress);
     // Update the export - this way we create a shortcut when the linker kicks in and wants to write out the
     // symbol table for all exports...
     if (context.HasExport(symbol)) {
         auto identExport = context.GetExport(symbol);
         identExport->absoluteAddress = ident->absoluteAddress;
+        identExport->relativeAddress = ident->relativeAddress;
     }
     return true;
 }
@@ -569,12 +567,15 @@ bool EmitCodeStatement::Finalize(gnilk::assembler::CompileUnit &context) {
             // this is actually not an export - this is an import for this module!
             identifier = context.AddImport(symbol);
         }
+        auto relocatedPlaceholder = placeholderAddress + currentSegment->CurrentChunk()->GetRelativeWriteAddress();
+        // FIXME: Not sure we should add the current write address here...
         identifier->resolvePoints.push_back({
                                                     .segment = currentSegment,
                                                     .chunk = currentSegment->CurrentChunk(),
                                                     .opSize = opSize,
                                                     .isRelative = isRelative,
-                                                    .placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
+                                                    .placeholderAddress =  relocatedPlaceholder,
+                                                    //.placeholderAddress =  context.GetCurrentWriteAddress() + placeholderAddress,
                                             });
 
 

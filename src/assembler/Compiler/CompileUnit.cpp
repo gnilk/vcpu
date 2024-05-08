@@ -5,6 +5,8 @@
 
 #include <memory>
 #include <unordered_map>
+#include <algorithm>
+
 #include "CompileUnit.h"
 #include "Compiler/Context.h"
 
@@ -34,7 +36,7 @@ bool CompileUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, as
 
 // Process all statements and emit the data, this will actually produce the byte code
 bool CompileUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {
-    CreateEmptySegment(".text");
+    CreateEmptySegment(Segment::kSegmentType::Code);
 
     for(auto stmt : GetEmitStatements()) {
         EnsureChunk();
@@ -73,71 +75,71 @@ bool CompileUnit::EnsureChunk() {
     activeSegment->CreateChunk(GetCurrentWriteAddress());
     return true;
 }
-bool CompileUnit::GetOrAddSegment(const std::string &name, uint64_t address) {
-    if (!segments.contains(name)) {
-        auto segment = std::make_shared<Segment>(name, address);
-        segments[name] = segment;
+
+Segment::Ref CompileUnit::GetOrAddSegment(Segment::kSegmentType type, uint64_t address) {
+    auto seg = GetSegment(type);
+    if (seg == nullptr) {
+        seg = std::make_shared<Segment>(type, address);
+        segments.push_back(seg);
     }
-    activeSegment = segments.at(name);
-    return true;
+    activeSegment = seg;
+    return activeSegment;
 }
 
-bool CompileUnit::CreateEmptySegment(const std::string &name) {
-    if (HaveSegment(name)) {
-        activeSegment = segments[name];
-        return true;
-    }
-
-    auto segment = std::make_shared<Segment>(name);
-    segments[name] = segment;
-    activeSegment = segment;
-    return true;
+Segment::Ref CompileUnit::CreateEmptySegment(Segment::kSegmentType type) {
+    return GetOrAddSegment(type, 0);
 }
+//    if (!segments.contains(type)) {
+//        return false;
+//    }
+//    activeSegment = segments.at(type);
+//    if (activeSegment->currentChunk == nullptr) {
+//        if (activeSegment->chunks.empty()) {
+//            fmt::println(stderr, "Linker, Compiled unit can't link - no data!");
+//            return false;
+//        }
+//        activeSegment->currentChunk =  activeSegment->chunks[0];
+//    }
+//    return true;
+//}
 
-bool CompileUnit::SetActiveSegment(const std::string &name) {
-    if (!segments.contains(name)) {
-        return false;
-    }
-    activeSegment = segments.at(name);
-    if (activeSegment->currentChunk == nullptr) {
-        if (activeSegment->chunks.empty()) {
-            fmt::println(stderr, "Linker, Compiled unit can't link - no data!");
-            return false;
-        }
-        activeSegment->currentChunk =  activeSegment->chunks[0];
-    }
-    return true;
+const std::vector<Segment::Ref> &CompileUnit::GetSegments() const {
+    return segments;
 }
-
-bool CompileUnit::HaveSegment(const std::string &name) {
-    return segments.contains(name);
-}
-
-const Segment::Ref CompileUnit::GetSegment(const std::string segName) {
-    if (!segments.contains(segName)) {
-        return nullptr;
-    }
-    return segments.at(segName);
-}
-
-size_t CompileUnit::GetSegments(std::vector<Segment::Ref> &outSegments) const {
-    for(auto [k, v] : segments) {
-        outSegments.push_back(v);
-    }
-    return outSegments.size();
-}
-
 
 Segment::Ref CompileUnit::GetActiveSegment() {
     return activeSegment;
 }
 
 
-size_t CompileUnit::GetSegmentEndAddress(const std::string &name) {
-    if (!segments.contains(name)) {
+size_t CompileUnit::GetSegmentEndAddress(Segment::kSegmentType type) {
+    auto seg = GetSegment(type);
+    if (seg == nullptr) {
         return 0;
     }
-    return segments.at(name)->EndAddress();
+    return seg->EndAddress();
+}
+
+bool CompileUnit::HaveSegment(Segment::kSegmentType type) {
+    auto it = std::ranges::find_if(segments.begin(), segments.end(), [type](Segment::Ref v)-> bool {
+        return (v->Type() == type);
+    });
+    return (it != segments.end());
+}
+
+const Segment::Ref CompileUnit::GetSegment(Segment::kSegmentType type) {
+    auto it = std::ranges::find_if(segments.begin(), segments.end(), [type](Segment::Ref v)-> bool {
+        return (v->Type() == type);
+    });
+    if (it == segments.end()) {
+        return nullptr;
+    }
+    return *it;
+}
+
+size_t CompileUnit::GetSegments(std::vector<Segment::Ref> &outSegments) const {
+    outSegments.insert(outSegments.end(), segments.begin(), segments.end());
+    return outSegments.size();
 }
 
 size_t CompileUnit::Write(const std::vector<uint8_t> &data) {
@@ -163,6 +165,18 @@ uint64_t CompileUnit::GetCurrentWriteAddress() {
         return 0;
     }
     return activeSegment->currentChunk->GetCurrentWriteAddress();
+}
+uint64_t CompileUnit::GetCurrentRelativeWriteAddress() {
+    if (activeSegment == nullptr) {
+        fmt::println(stderr, "Compiler, not active segment!!");
+        return 0;
+    }
+    if (activeSegment->currentChunk == nullptr) {
+        // if no chunk - we ship back zero - as we will create one on first write...
+        return 0;
+    }
+    return activeSegment->currentChunk->GetRelativeWriteAddress();
+
 }
 
 

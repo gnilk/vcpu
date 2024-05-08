@@ -40,6 +40,7 @@ namespace gnilk {
             Segment::Ref segment = nullptr;;
             Segment::DataChunk::Ref chunk = nullptr;
             uint64_t absoluteAddress = 0;
+            uint64_t relativeAddress = 0;
             std::vector<IdentifierResolvePoint> resolvePoints;
         };
 

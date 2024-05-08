@@ -214,6 +214,7 @@ namespace gnilk {
         public:
             EmitCodeStatement();
             virtual ~EmitCodeStatement() = default;
+
             bool Process(CompileUnit &context) override;
             bool Finalize(CompileUnit &context) override;
 
