@@ -12,7 +12,6 @@
 #include "CompileUnit.h"
 
 #include "elfio/elfio.hpp"
-#include "Linker/DummyLinker.h"
 #include "Linker/RawLinker.h"
 #include "Linker/ElfLinker.h"
 
@@ -62,8 +61,7 @@ bool Compiler::Compile(gnilk::ast::Program::Ref program) {
 //
 bool Compiler::Link() {
     if (linker == nullptr) {
-        //static DummyLinker dummyLinker;
-        linker = std::make_shared<RawLinker>(); //&dummyLinker;
+        linker = std::make_shared<RawLinker>();
     }
     DurationTimer timer;
     auto result = linker->Link(context);
