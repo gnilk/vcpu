@@ -472,6 +472,9 @@ DLL_EXPORT int test_compiler_call_backrelative_label(ITesting *t) {
     auto compileOk = compiler.CompileAndLink(ast);
     TR_ASSERT(t, compileOk == true);
     auto binary = compiler.Data();
+    printf("Binary:\n");
+    HexDump::ToConsole(binary.data(),binary.size());
+
     TR_ASSERT(t, binary == expectedBinary);
 
     return kTR_Pass;
@@ -512,7 +515,6 @@ DLL_EXPORT int test_compiler_call_label(ITesting *t) {
     printf("Binary:\n");
     HexDump::ToConsole(binary.data(),binary.size());
 
-
     memcpy(ram, binary.data(), binary.size());
 
     printf("Disasm:\n");
@@ -527,8 +529,6 @@ DLL_EXPORT int test_compiler_call_label(ITesting *t) {
             break;
         }
     }
-
-
 
     TR_ASSERT(t, binary == expectedBinary);
 

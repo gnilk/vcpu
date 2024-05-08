@@ -20,8 +20,12 @@ DLL_EXPORT int test_segment(ITesting *t) {
     return kTR_Pass;
 }
 DLL_EXPORT int test_segment_chunksort(ITesting *t) {
-    auto segment = std::make_shared<Segment>("name", 0);
+    auto segment = std::make_shared<Segment>(Segment::kSegmentType::Code, 0);
+    TR_ASSERT(t, segment->Type() == Segment::kSegmentType::Code);
+
     int byte = 0x00;
+
+
     // Write 16 bytes in to all chunks...
     for(int i=0;i<16;i++, byte++) segment->WriteByte(byte);
     segment->CreateChunk(100);
@@ -43,7 +47,10 @@ DLL_EXPORT int test_segment_chunksort(ITesting *t) {
     return kTR_Pass;
 }
 DLL_EXPORT int test_segment_chunkfromaddr(ITesting *t) {
-    auto segment = std::make_shared<Segment>("name", 0);
+    auto segment = std::make_shared<Segment>(Segment::kSegmentType::Code, 0);
+    TR_ASSERT(t, segment->Type() == Segment::kSegmentType::Code);
+
+
     int byte = 0x00;
     for(int i=0;i<16;i++, byte++) segment->WriteByte(byte);
     segment->CreateChunk(100);
