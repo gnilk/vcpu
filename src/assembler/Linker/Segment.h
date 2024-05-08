@@ -50,29 +50,43 @@ namespace gnilk {
                 size_t WriteByte(uint8_t byte);
                 void ReplaceAt(uint64_t offset, uint64_t newValue);
                 void ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize);
-
+                uint64_t GetRelativeWriteAddress();
                 uint64_t GetCurrentWriteAddress();
             protected:
                 uint64_t loadAddress = LOAD_ADDR_APPEND;
                 std::vector<uint8_t> data;
-            };
+            }; // class DataChunk
 
+            enum class kSegmentType {
+                Code,
+                Data,
+            };
             using Ref = std::shared_ptr<Segment>;
         public:
-            Segment(const std::string &segName);
-            Segment(const std::string &segName, uint64_t address);
+            Segment(kSegmentType type);
+            Segment(kSegmentType type, uint64_t address);
             virtual ~Segment() = default;
 
             void CopyFrom(const Segment::Ref other);
             bool CreateChunk(uint64_t loadAddress);
+            void AddChunk(DataChunk::Ref chunk);
 
+            static std::pair<bool, kSegmentType> TypeFromString(const std::string &typeName);
+            static const std::string &TypeName(Segment::kSegmentType type);
+
+            kSegmentType Type() const;
             const std::string &Name() const;
+
+            // Chunks are already sorted!
             const std::vector<DataChunk::Ref> &DataChunks();
             DataChunk::Ref ChunkFromAddress(uint64_t address);
+
+            // Will resort after creating
             DataChunk::Ref CurrentChunk();
             void SetLoadAddress(uint64_t newLoadAddress);
             uint64_t StartAddress();
             uint64_t EndAddress();
+
 
 
             size_t Write(const std::vector<uint8_t> &srcData);
@@ -83,7 +97,7 @@ namespace gnilk {
 
 
         protected:
-            std::string name = {};
+            kSegmentType type;
             uint64_t loadAddress = 0;
             std::vector<uint8_t> data;
 

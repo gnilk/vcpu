@@ -10,11 +10,11 @@
 using namespace gnilk;
 using namespace gnilk::assembler;
 
-Segment::Segment(const std::string &segName) : name(segName) {
+Segment::Segment(kSegmentType segmentType) : type(segmentType) {
     // No chunks created here - this is used by the linker which merges the chunks from another segment..
 }
 
-Segment::Segment(const std::string &segName, uint64_t address) : name(segName), loadAddress(address) {
+Segment::Segment(kSegmentType segmentType, uint64_t address) : type(segmentType), loadAddress(address) {
     CreateChunk(loadAddress);
 }
 
@@ -29,12 +29,6 @@ void Segment::CopyFrom(const Segment::Ref other) {
     }
 }
 bool Segment::CreateChunk(uint64_t loadAddress) {
-    // If the current one is empty - just change the load address and continue...
-    // Don't do this - might be a bloody good reason someone is doing this...
-    //if ((currentChunk!=nullptr) && currentChunk->IsEmpty()) {
-    //    currentChunk->SetLoadAddress(loadAddress);
-    //    return true;
-   // }
 
    if (loadAddress == 0) {
        // Perhaps enable this warning later - once we have a proper warning-level system..
@@ -47,22 +41,46 @@ bool Segment::CreateChunk(uint64_t loadAddress) {
     // FIXME: Verify that this load-address is not overlapping with existing chunks
     auto chunk = std::make_shared<Segment::DataChunk>();
     chunk->loadAddress = loadAddress;
+    AddChunk(chunk);
+    return true;
+}
+
+void Segment::AddChunk(DataChunk::Ref chunk) {
     chunks.push_back(chunk);
     // Sort chunks based on load-address
     // Note: If not load address given (i.e. no .org statement) then we just 'append' and the load address we compare to is 0
     std::sort(chunks.begin(), chunks.end(),[](const DataChunk::Ref &a, const DataChunk::Ref &b) {
-       return (a->LoadAddress() < b->LoadAddress());
+        return (a->LoadAddress() < b->LoadAddress());
     });
     currentChunk = chunk;
-    return true;
 }
-
 const std::vector<Segment::DataChunk::Ref> &Segment::DataChunks() {
     return chunks;
 }
 
 Segment::DataChunk::Ref Segment::CurrentChunk() {
     return currentChunk;
+}
+
+std::pair<bool, Segment::kSegmentType> Segment::TypeFromString(const std::string &typeName) {
+    if ((typeName == "code") || (typeName == ".code")) {
+        return {true, kSegmentType::Code};
+    } else if ((typeName == "data") || (typeName == ".data")) {
+        return {true, kSegmentType::Data};
+    }
+    return {false,{}};
+}
+
+const std::string &Segment::TypeName(Segment::kSegmentType type) {
+    static std::unordered_map<Segment::kSegmentType, std::string> typeToName = {
+            {kSegmentType::Data, "data"},
+            {kSegmentType::Code, "code"},
+    };
+    return typeToName[type];
+}
+
+Segment::kSegmentType Segment::Type() const {
+    return type;
 }
 
 Segment::DataChunk::Ref Segment::ChunkFromAddress(uint64_t address) {
@@ -76,6 +94,11 @@ Segment::DataChunk::Ref Segment::ChunkFromAddress(uint64_t address) {
 
 // This should be enough if they are properly sorted!
 uint64_t Segment::StartAddress() {
+    // In case empty - we assume 0
+    if (chunks.empty()) {
+        return 0;
+    }
+
     return chunks[0]->LoadAddress();
 }
 
@@ -90,7 +113,7 @@ uint64_t Segment::EndAddress() {
 }
 
 const std::string &Segment::Name() const {
-    return name;
+    return Segment::TypeName(type);
 }
 
 uint64_t Segment::GetCurrentWriteAddress() {
@@ -238,4 +261,7 @@ size_t Segment::DataChunk::Write(const std::vector<uint8_t> &srcData) {
 
 uint64_t Segment::DataChunk::GetCurrentWriteAddress() {
     return LoadAddress() + data.size();
+}
+uint64_t Segment::DataChunk::GetRelativeWriteAddress() {
+    return data.size();
 }
