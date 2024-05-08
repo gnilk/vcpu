@@ -202,12 +202,13 @@ size_t Segment::DataChunk::WriteByte(uint8_t byte) {
     data.push_back(byte);
     return 1;
 }
-void Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue) {
+bool Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue) {
     if (data.size() < 8) {
-        return;
+        return false;
     }
     if (offset > (data.size() - 8)) {
-        return;
+        fmt::println(stderr, "DataChunk, out of range, trying to write to {} size={}", offset, data.size());
+        return false;
     }
 
     data[offset++] = (newValue>>56 & 0xff);
@@ -218,14 +219,17 @@ void Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue) {
     data[offset++] = (newValue>>16 & 0xff);
     data[offset++] = (newValue>>8 & 0xff);
     data[offset++] = (newValue & 0xff);
+
+    return true;
 }
 
-void Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
+bool Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::OperandSize opSize) {
     if (data.size() < vcpu::ByteSizeOfOperandSize(opSize)) {
-        return;
+        return false;
     }
     if (offset > (data.size() - vcpu::ByteSizeOfOperandSize(opSize))) {
-        return;
+        fmt::println(stderr, "DataChunk, out of range, trying to write to {} size={}", offset, data.size());
+        return false;
     }
     switch(opSize) {
         case vcpu::OperandSize::Byte :
@@ -252,6 +256,7 @@ void Segment::DataChunk::ReplaceAt(uint64_t offset, uint64_t newValue, vcpu::Ope
             data[offset++] = (newValue & 0xff);
             break;
     }
+    return true;
 }
 
 size_t Segment::DataChunk::Write(const std::vector<uint8_t> &srcData) {

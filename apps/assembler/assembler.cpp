@@ -10,7 +10,7 @@
 #include "fmt/format.h"
 #include "Parser/Parser.h"
 
-#include "Linker/DummyLinker.h"
+#include "Linker/RawLinker.h"
 #include "Linker/ElfLinker.h"
 
 
@@ -44,7 +44,7 @@ int main(int argc, const char **argv) {
                 case 't' : {
                     auto linkerName = argv[++i];
                     if (linkerName == std::string("raw")) {
-                        ptrUseLinker = std::make_shared<gnilk::assembler::DummyLinker>();
+                        ptrUseLinker = std::make_shared<gnilk::assembler::RawLinker>();
                     } else if (linkerName == std::string("elf")) {
                         ptrUseLinker = std::make_shared<gnilk::assembler::ElfLinker>();
                     } else {
