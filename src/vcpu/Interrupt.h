@@ -12,6 +12,7 @@ namespace gnilk {
     namespace vcpu {
         // These are part of the CPU emulation and NOT callbacks to the emulator...
         typedef uint64_t ISR_FUNC;
+        typedef uint64_t EXP_FUNC;
         // All except initial_sp/pc are set to 0 during startup
         // initial_sp = last byte in RAM
         // initial_pc = VCPU_INITIAL_PC (which is default to 0x2000)
@@ -20,12 +21,18 @@ namespace gnilk {
             uint64_t initial_sp;        // 0
             uint64_t initial_pc;        // 1
             // Exceptions
-            ISR_FUNC exp_illegal_instr; // 2
-            ISR_FUNC exp_hard_fault;    // 3
-            ISR_FUNC exp_div_zero;      // 4
-            ISR_FUNC exp_debug_trap;    // 5
-            ISR_FUNC exp_mmu_fault;     // 6
-            ISR_FUNC exp_fpu_fault;     // 7
+            // FIXME: we can detect many-more, like
+            //  - invalid-isr state (issuing RTI outside of an interrupt)
+            //  - invalid-exp state (issuing RTE outside of an exception handler)
+            //  - invalid-address mode (or unsupported address mode)
+            //  - stack-empty (any auto-stack decrement function where the stack is already empty, pop/ret)
+            //
+            EXP_FUNC exp_illegal_instr; // 2
+            EXP_FUNC exp_hard_fault;    // 3
+            EXP_FUNC exp_div_zero;      // 4
+            EXP_FUNC exp_debug_trap;    // 5
+            EXP_FUNC exp_mmu_fault;     // 6
+            EXP_FUNC exp_fpu_fault;     // 7
 
             // Interrupt Service Routines
             ISR_FUNC isr0;        // 8
@@ -55,6 +62,16 @@ namespace gnilk {
             // Peripherals, 8 possible interrupts
             uint16_t reserved:8;
         };
+
+        typedef enum : uint8_t {
+            InvalidInstruction = 0x01,
+            HardFault = 0x02,
+            DivisionByZero = 0x04,
+            DebugTrap = 0x08,
+            MMUFault = 0x10,
+            FPUFault = 0x20,
+        }  CPUExceptionFlag;
+
 
         struct CPUIntControlBits {
             uint16_t int0 : 1;
