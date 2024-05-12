@@ -12,6 +12,7 @@
 #include "Compiler/StmtEmitter.h"
 
 using namespace gnilk::assembler;
+using namespace gnilk::vcpu;
 
 extern "C" {
 DLL_EXPORT int test_stmtemitter(ITesting *t);
@@ -58,11 +59,11 @@ DLL_EXPORT int test_stmtemitter_call_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
             0xc0,0x03,0x01,                             // 0, Call label, opSize = lword, [reg|mode] = 0|immediate, <address of label> = 0x0d
             0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0d,    // 3, This is the replace point - sits at offset 4
-            0xf1,                       // 11
-            0x00,                       // 12 WHALT!
-            0xf1,                       // 13 <- call should go here (offset of label)
-            0xf1,                       // 14
-            0xf0,                       // 15 <- return, should be ip+1 => 5
+            OperandCode ::NOP,                       // 11
+            OperandCode ::BRK,                       // 12 WHALT!
+            OperandCode ::NOP,                       // 13 <- call should go here (offset of label)
+            OperandCode ::NOP,                       // 14
+            OperandCode ::RET,                       // 15 <- return, should be ip+1 => 5
     };
 
     std::vector<std::string> codes={
@@ -93,11 +94,11 @@ DLL_EXPORT int test_stmtemitter_call_label(ITesting *t) {
 DLL_EXPORT int test_stmtemitter_call_relative_label(ITesting *t) {
     std::vector<uint8_t> expectedBinary= {
             0xc0,0x00,0x01,0x03,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
-            0xf1,                       // 4
-            0x00,                       // 5 WHALT!
-            0xf1,                       // 6 <- call should go here
-            0xf1,                       // 7
-            0xf0,                       // 8 <- return, should be ip+1 => 5
+            OperandCode ::NOP,                       // 4
+            OperandCode ::BRK,                       // 5 WHALT!
+            OperandCode ::NOP,                       // 6 <- call should go here
+            OperandCode ::NOP,                       // 7
+            OperandCode ::RET,                       // 8 <- return, should be ip+1 => 5
     };
     std::vector<std::string> codes={
             {
