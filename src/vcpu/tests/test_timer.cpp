@@ -51,6 +51,7 @@ DLL_EXPORT int test_timer_ticks1000hz(ITesting *t) {
     timer.Initialize();
     int tc = 0;
     auto dur = std::chrono::system_clock::now() - tStart;
+    printf("Running timer for 5 seconds - measuring number of ticks\n");
     while(std::chrono::duration_cast<std::chrono::seconds>(dur).count() < 5) {
         if (timer.Update()) {
             tc++;
@@ -65,7 +66,7 @@ DLL_EXPORT int test_timer_ticks1000hz(ITesting *t) {
 
 DLL_EXPORT int test_timer_interrupt(ITesting *t) {
     uint8_t program[]= {
-        0xf1,0x00,0x00,
+        OperandCode::NOP,0x00,0x00,
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
