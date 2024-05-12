@@ -29,15 +29,10 @@ DLL_EXPORT int test_exceptions(ITesting *t) {
 DLL_EXPORT int test_exceptions_illegal_instr(ITesting *t) {
     VirtualCPU vcpu;
     // See: 'Interrupt.h' for definition
-    uint64_t isrTable[]= {
-            0x00,0x00,  // SP/PC reserved locations
-            0x1000,       // Illegal instr.
-            0x00,
-            0x00,
-            0x00,
-            0x00,
-            0x00,
+    ISR_VECTOR_TABLE isrTable = {
+            .exp_illegal_instr = 0x1000,
     };
+
     uint8_t expRoutine[]={
             // move.l d0,0x01
             0x20,0x03,0x03,0x01, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,
@@ -46,7 +41,7 @@ DLL_EXPORT int test_exceptions_illegal_instr(ITesting *t) {
             // nop
             OperandCode::NOP,
             // rti
-            OperandCode::RTI,
+            OperandCode::RTE,
     };
     uint8_t mainCode[]={
             // nop,nop,nop,brk
@@ -54,7 +49,7 @@ DLL_EXPORT int test_exceptions_illegal_instr(ITesting *t) {
             OperandCode::NOP, OperandCode::NOP, OperandCode::NOP, OperandCode::BRK
     };
     vcpu.Begin(ram, 32*4096);
-    vcpu.LoadDataToRam(0, isrTable, sizeof(isrTable));
+    vcpu.LoadDataToRam(0, &isrTable, sizeof(isrTable));
     vcpu.LoadDataToRam(0x1000, expRoutine, sizeof(expRoutine));
     vcpu.LoadDataToRam(0x2000, mainCode, sizeof(mainCode));
 
@@ -65,7 +60,7 @@ DLL_EXPORT int test_exceptions_illegal_instr(ITesting *t) {
     });
 
     vcpu.SetInstrPtr(0x2000);
-    vcpu.EnableException(CPUExceptionId::InvalidInstruction);
+    vcpu.EnableException(CPUExceptionFlag::InvalidInstruction);
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..

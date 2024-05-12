@@ -28,9 +28,8 @@ DLL_EXPORT int test_int(ITesting *t) {
 }
 DLL_EXPORT int test_int_invoke(ITesting *t) {
     VirtualCPU vcpu;
-    uint64_t isrTable[]= {
-        0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-        0x1000,
+    ISR_VECTOR_TABLE isrTable = {
+            .isr0 = 0x1000,
     };
     uint8_t isrRoutine[]={
         // move.l d0,0x01
@@ -47,7 +46,7 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
         OperandCode::NOP, OperandCode::NOP, OperandCode::NOP, OperandCode::BRK
     };
     vcpu.Begin(ram, 32*4096);
-    vcpu.LoadDataToRam(0, isrTable, sizeof(isrTable));
+    vcpu.LoadDataToRam(0, &isrTable, sizeof(isrTable));
     vcpu.LoadDataToRam(0x1000, isrRoutine, sizeof(isrTable));
     vcpu.LoadDataToRam(0x2000, mainCode, sizeof(isrTable));
 
