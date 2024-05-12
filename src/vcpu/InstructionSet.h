@@ -159,7 +159,17 @@ namespace gnilk {
             ADD = 0x30,
             SUB = 0x40,
             MUL = 0x50,
-            DIV = 0x60,
+            DIV = 0x55,
+
+            // TODO: Relocate these to 0x60 -> requires fixing quite a lot of unit-tests
+            //       However,extension testing becomes easy and we just have to test if (byte & 0xf0) => Extension
+            //       And op on 4 bits in the decoder stage is very simple...
+            RET = 0x60,
+            // pop addr. from stack and jump absolute..
+            NOP = 0x61,
+            RTI = 0x62, // Return from Interrupt
+
+
             PUSH = 0x70,
             POP = 0x80,
             CMP = 0x90,
@@ -195,11 +205,13 @@ namespace gnilk {
             LSL = 0xE5, // Logical Shift Right, 0 will be shifted in (or carry??)
             ASL = 0xE6, // Arithmetic Shift Left, CARRY will be shifted out, sign will be preserved..
 
+            // Extension instr. space [0x60..0x6f]
+            FP16 = 0xF0,        // half precision 16bit floating point instructions, IEEE 754-2008
+            FP32 = 0xF1,        // 32bit floating point instruction, IEEE 754-2008
 
-            RET = 0xF0,
-            // pop addr. from stack and jump absolute..
-            NOP = 0xF1,
-            RTI = 0xF2, // Return from Interrupt
+            EXT = 0xF6,         // Extension of instr. set - not yet decided how I want this to work..
+            SIMD = 0xF8,        // vector instructions?
+
             EOC = 0xff,
             // End of code
         } OperandCode;
