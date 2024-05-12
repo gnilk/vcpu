@@ -38,13 +38,13 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
         // syscall
         0xc2,
         // nop
-        0xf1,
+        OperandCode::NOP,
         // rti
-        0xf2,
+        OperandCode::RTI,
     };
     uint8_t mainCode[]={
         // nop,nop,nop,brk
-        0xf1, 0xf1, 0xf1, 0x00
+        OperandCode::NOP, OperandCode::NOP, OperandCode::NOP, OperandCode::BRK
     };
     vcpu.Begin(ram, 32*4096);
     vcpu.LoadDataToRam(0, isrTable, sizeof(isrTable));
