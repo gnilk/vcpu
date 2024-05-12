@@ -52,6 +52,7 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSy
 #
 # Virtual CPU unit test sources
 #
+list(APPEND vcputestsrc src/vcpu/tests/test_exceptions.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_integration.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_interrupt.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_pipeline.cpp)

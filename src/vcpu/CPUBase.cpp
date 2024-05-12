@@ -35,10 +35,6 @@ void CPUBase::Reset() {
 
 }
 
-void CPUBase::Panic() {
-    fmt::println(stderr, "CPUBase, PANIC!");
-    exit(1);
-}
 
 
 void *CPUBase::GetRawPtrToRAM(uint64_t addr) {
@@ -144,4 +140,67 @@ void CPUBase::InvokeISRHandlers() {
             isrControlBlock.isrState = CPUISRState::Executing;
         }
     }
+}
+
+//
+// Exceptions
+// Similar to interrupts except;
+// - raised directly, CPU instr.ptr is changed and next stepping will be in the interrupt handler
+// - in case of exception within an exception handler, we will halt the CPU
+//
+bool CPUBase::RaiseException(CPUExceptionId exceptionId) {
+    fmt::println(stderr, "CPUBase, Exception - {}", (int)exceptionId);
+
+    // Don't raise exceptions within the exception handler
+    if (expControlBlock.isrState != CPUISRState::Waiting) {
+        // Already within an exception
+        // FIXME: Reboot..
+        return false;
+    }
+
+    auto &exceptionCntrl = GetExceptionCntrl();
+
+    // Is this enabled?
+    if (!(exceptionCntrl.data.longword & exceptionId)) {
+        return false;
+    }
+
+    //
+    // Need to queue interrupts - as the CPU status register can only hold 1 ISR combo at any given time
+    //
+    // the TYPE is mapped to an interrupt level (there are 8) - in total we should be able to handle X ISR handlers
+    // with TYPE <-> INT mappings...
+    //
+    expControlBlock.intMask = {};
+    expControlBlock.interruptId = 0;
+    expControlBlock.isrState = CPUISRState::Flagged;
+
+    return InvokeExceptionHandlers(exceptionId);
+}
+void CPUBase::EnableException(int exceptionMask) {
+    auto &exceptionControl = GetExceptionCntrl();
+    exceptionControl.data.longword |= exceptionMask;
+}
+
+bool CPUBase::InvokeExceptionHandlers(CPUExceptionId exceptionId)  {
+    if (isrVectorTable == nullptr) {
+        return false;
+    }
+    auto &exceptionControl = GetExceptionCntrl();
+    for(int i=0;i<7;i++) {
+        // Is this enabled and raised?
+        if (exceptionControl.data.longword & (1<<i)) {
+            // Save current registers
+            expControlBlock.registersBefore = registers;
+            // Move the ISR type to a register...
+            registers.dataRegisters[0].data.longword = exceptionId;
+            // Note: take this depending on the exception type...
+            registers.instrPointer.data.longword = isrVectorTable->exp_illegal_instr;
+            // Update the state
+            expControlBlock.isrState = CPUISRState::Executing;
+
+            return true;
+        }
+    }
+    return false;
 }

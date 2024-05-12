@@ -36,6 +36,11 @@ namespace gnilk {
             uint16_t reserved : 7;
         };
 
+
+        typedef enum : uint8_t {
+            InvalidInstruction = 0x01,
+        }  CPUExceptionId;
+
         enum class CPUStatusFlags : uint16_t {
             None = 0,
             Carry = 1,
@@ -167,7 +172,9 @@ namespace gnilk {
 
         struct ISRControlBlock {
             CPUIntMask intMask = {};
-            CPUInterruptId interruptId = {};
+            union {
+                CPUInterruptId interruptId = {};
+            };
             Registers registersBefore = {};
             RegisterValue rti = {};  // special register for RTI
             CPUISRState isrState = CPUISRState::Waiting;
@@ -376,8 +383,12 @@ namespace gnilk {
                 return isrControlBlock.isrState;
             }
 
+            // Exceptions
+            void EnableException(int exceptionMask);
+            virtual bool RaiseException(CPUExceptionId exceptionId);
+            bool InvokeExceptionHandlers(CPUExceptionId exceptionId);
+
         protected:
-            virtual void Panic();
 
             template<typename T>
             T FetchFromInstrPtr() {
@@ -466,6 +477,9 @@ namespace gnilk {
             // Used to stash all information during an interrupt..
             // Note: We should have one of these per interrupt - 8 of them...
             ISRControlBlock isrControlBlock;
+            // Same as for interrupt but for exceptions
+            // Not sure I want this - need to rethink how to deal with this in case of exceptions within interrupts
+            ISRControlBlock expControlBlock;
 
             //MemoryUnit memoryUnit;
             MMU memoryUnit;

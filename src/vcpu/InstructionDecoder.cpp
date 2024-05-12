@@ -272,7 +272,9 @@ uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
 std::string InstructionDecoder::ToString() const {
     if (!GetInstructionSet().contains(code.opCode)) {
         // Note, we don't raise an exception - this is a helper for SW - not an actual HW type of function
-        return ("invalid instruction");
+        std::string invalid;
+        fmt::format_to(std::back_inserter(invalid), "invalid instr. {:#x} @ {:#x}", (int)code.opCode, ofsStartInstr);
+        return invalid;
     }
     auto desc = *GetOpDescFromClass(code.opCode);
     std::string opString;

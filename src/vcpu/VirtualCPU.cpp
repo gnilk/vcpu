@@ -69,6 +69,8 @@ void VirtualCPU::Reset() {
 // Use this for debugging and similar..
 bool VirtualCPU::Step() {
 
+    // FIXME: Need to check if ISR's are enabled
+
 
     // 1) update peripherals
     UpdatePeripherals();
