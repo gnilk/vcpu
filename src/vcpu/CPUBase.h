@@ -377,6 +377,8 @@ namespace gnilk {
             }
 
         protected:
+            virtual void Panic();
+
             template<typename T>
             T FetchFromInstrPtr() {
                 auto address = registers.instrPointer.data.longword;

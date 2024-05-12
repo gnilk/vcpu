@@ -35,6 +35,11 @@ void CPUBase::Reset() {
 
 }
 
+void CPUBase::Panic() {
+    fmt::println(stderr, "CPUBase, PANIC!");
+    exit(1);
+}
+
 
 void *CPUBase::GetRawPtrToRAM(uint64_t addr) {
     if (addr > szRam) {
