@@ -42,7 +42,7 @@ namespace gnilk {
         //    0  | Op Code
         //    1  | OpSizeAndFamily (rrFF | rrSS)
         //           SS, Size bits 0,1 (0,1,2,3)
-        //           FF, Family bits [0 - integer, 1 - control, 2 - floating]
+        //           FF, Family bits [0 - integer, 1 - control, 2 - floating]   <- floating can be deprecated, fpu handling through instr.extensions
         //           rr, Reserved
         //    2  | Dst Register and Flags: RRRR | FFFF => upper 4 bits register index (0..7 => D0..D7, 8..15 => A0..A7)
         //       |  Flags [FFFF] -> [RR|AA]
@@ -168,6 +168,7 @@ namespace gnilk {
             // pop addr. from stack and jump absolute..
             NOP = 0x61,
             RTI = 0x62, // Return from Interrupt
+            RTE = 0x63, // Return from Exception
 
 
             PUSH = 0x70,

@@ -53,6 +53,7 @@ namespace gnilk {
             void ExecuteCallInstr(InstructionDecoder& instrDecoder);
             void ExecuteRetInstr(InstructionDecoder& instrDecoder);
             void ExecuteRtiInstr(InstructionDecoder& instrDecoder);
+            void ExecuteRteInstr(InstructionDecoder& instrDecoder);
             void ExecuteLeaInstr(InstructionDecoder& instrDecoder);
             void ExecuteLsrInstr(InstructionDecoder& instrDecoder);
             void ExecuteLslInstr(InstructionDecoder& instrDecoder);
