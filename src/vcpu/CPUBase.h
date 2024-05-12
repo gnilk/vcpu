@@ -22,6 +22,9 @@ namespace gnilk {
     namespace vcpu {
 
         // perhaps copy M68k status bits...
+        // FIXME: I would actually like to get rid of these - as it would make parallel execution so much simpler
+        //        one idea is to have X number of ALU control registers and specific instructions using them
+        //        and have the default instruction overflow/underflow predictably
         struct CPUStatusBits {
             uint16_t carry : 1;
             uint16_t overflow : 1;
@@ -37,9 +40,6 @@ namespace gnilk {
         };
 
 
-        typedef enum : uint8_t {
-            InvalidInstruction = 0x01,
-        }  CPUExceptionId;
 
         enum class CPUStatusFlags : uint16_t {
             None = 0,
@@ -119,6 +119,8 @@ namespace gnilk {
             //   - Exception mask register
             //   - Copy of CPU Status Register?
             //   - Other?
+            // Consider:
+            //   - zero-register, fixed register with value 0 (makes 'bnz/bez' type of instructions easier, when/if we change the cmp/branch logic to 'bn<op> <regA>, <regB>, label'
             //
             // Layout:
             //  cr0 - INT Mask, zeroed out on reset (0 - disabled, 1 - enabled)     => gives 64 possible interrupts
@@ -168,16 +170,26 @@ namespace gnilk {
             Flagged = 1,
             Executing = 2,
         };
+        enum class CPUExceptionState {
+            Idle = 0,
+            Raised = 1,
+            Executing = 2,
+        };
 
 
         struct ISRControlBlock {
             CPUIntMask intMask = {};
-            union {
-                CPUInterruptId interruptId = {};
-            };
+            CPUInterruptId interruptId = {};
             Registers registersBefore = {};
             RegisterValue rti = {};  // special register for RTI
             CPUISRState isrState = CPUISRState::Waiting;
+        };
+
+        struct ExceptionControlBlock {
+            CPUExceptionFlag flag = {};
+            Registers registersBefore = {};
+            RegisterValue rte = {}; // This is RTI - reusing the same instructions
+            CPUExceptionState state = CPUExceptionState::Idle;
         };
 
 
@@ -384,11 +396,13 @@ namespace gnilk {
             }
 
             // Exceptions
-            void EnableException(int exceptionMask);
-            virtual bool RaiseException(CPUExceptionId exceptionId);
-            bool InvokeExceptionHandlers(CPUExceptionId exceptionId);
+            void EnableException(CPUExceptionFlag  exception);
+            virtual bool RaiseException(CPUExceptionFlag exceptionId);
+            bool InvokeExceptionHandlers(CPUExceptionFlag exceptionId);
 
         protected:
+
+            bool IsExceptionEnabled(CPUExceptionFlag  exceptionFlag);
 
             template<typename T>
             T FetchFromInstrPtr() {
@@ -477,14 +491,7 @@ namespace gnilk {
             // Used to stash all information during an interrupt..
             // Note: We should have one of these per interrupt - 8 of them...
             ISRControlBlock isrControlBlock;
-
-            // FIXME: We should not reuse the ISR Control Block here
-            //        Exceptions are more complex and complicated.
-            //        Instead, we should have a reserved area in memory where we store everything and let 'a0' point
-            //        to it - this allows a debugger to pick up the information...
-            //        Also - returning from an Exception handler we should either 'halt' or 'continue' (perhaps more)
-            //
-            ISRControlBlock expControlBlock;
+            ExceptionControlBlock expControlBlock;
 
             //MemoryUnit memoryUnit;
             MMU memoryUnit;

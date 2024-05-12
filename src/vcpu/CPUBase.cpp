@@ -148,54 +148,61 @@ void CPUBase::InvokeISRHandlers() {
 // - raised directly, CPU instr.ptr is changed and next stepping will be in the interrupt handler
 // - in case of exception within an exception handler, we will halt the CPU
 //
-bool CPUBase::RaiseException(CPUExceptionId exceptionId) {
-    fmt::println(stderr, "CPUBase, Exception - {}", (int)exceptionId);
+bool CPUBase::RaiseException(CPUExceptionFlag exception) {
+
+    if (!IsExceptionEnabled(exception)) {
+        fmt::println(stderr, "CPUBase, exception not enabled - {:#x}", (int)exception);
+        return false;
+    }
 
     // Don't raise exceptions within the exception handler
-    if (expControlBlock.isrState != CPUISRState::Waiting) {
+    if (expControlBlock.state != CPUExceptionState::Idle) {
         // Already within an exception
-        // FIXME: Reboot..
+        fmt::println(stderr, "CPUBase, nested low-level exception - {:#x}", (int)exception);
+        // FIXME: reboot?
         return false;
     }
 
     auto &exceptionCntrl = GetExceptionCntrl();
 
     // Is this enabled?
-    if (!(exceptionCntrl.data.longword & exceptionId)) {
+    if (!(exceptionCntrl.data.longword & exception)) {
         return false;
     }
 
+    fmt::println(stderr, "CPUBase, raising exception - {:#x}", (int)exception);
 
-    expControlBlock.intMask = {};
-    expControlBlock.interruptId = 0;
-    expControlBlock.isrState = CPUISRState::Flagged;
+    expControlBlock.flag = exception;
+    expControlBlock.state = CPUExceptionState::Raised;
 
-    return InvokeExceptionHandlers(exceptionId);
+    return InvokeExceptionHandlers(exception);
 }
-void CPUBase::EnableException(int exceptionMask) {
+
+bool CPUBase::IsExceptionEnabled(CPUExceptionFlag  exceptionFlag) {
     auto &exceptionControl = GetExceptionCntrl();
-    exceptionControl.data.longword |= exceptionMask;
+    return (exceptionControl.data.longword & exceptionFlag);
 }
 
-bool CPUBase::InvokeExceptionHandlers(CPUExceptionId exceptionId)  {
+void CPUBase::EnableException(CPUExceptionFlag exception) {
+    auto &exceptionControl = GetExceptionCntrl();
+    exceptionControl.data.longword |= exception;
+}
+
+bool CPUBase::InvokeExceptionHandlers(CPUExceptionFlag exception)  {
     if (isrVectorTable == nullptr) {
         return false;
     }
     auto &exceptionControl = GetExceptionCntrl();
-    for(int i=0;i<7;i++) {
-        // Is this enabled and raised?
-        if (exceptionControl.data.longword & (1<<i)) {
-            // Save current registers
-            expControlBlock.registersBefore = registers;
-            // Move the ISR type to a register...
-            registers.dataRegisters[0].data.longword = exceptionId;
-            // Note: take this depending on the exception type...
-            registers.instrPointer.data.longword = isrVectorTable->exp_illegal_instr;
-            // Update the state
-            expControlBlock.isrState = CPUISRState::Executing;
 
-            return true;
-        }
-    }
-    return false;
+    // Perhaps not needed..
+    expControlBlock.flag = exception;
+    // Save current registers
+    expControlBlock.registersBefore = registers;
+    // Move the ISR type to a register...
+    registers.dataRegisters[0].data.longword = exception;
+    // Note: take this depending on the exception type...
+    registers.instrPointer.data.longword = isrVectorTable->exp_illegal_instr;
+    // Update the state
+    expControlBlock.state = CPUExceptionState::Executing;
+    return true;
 }
