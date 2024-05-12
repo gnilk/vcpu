@@ -269,8 +269,8 @@ DLL_EXPORT int test_vcpu_instr_move_indirect(ITesting *t) {
     uint8_t program[] = {
             0x28,0x03,0x83,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x11,        // lea a0, 0x11
             0x20,0x00,0x03,0x80,                                                // move.b d0, (a0)
-            0x00,                       // 0x10 BRK
-            0xf1,                       // 0x17 <- we will read this value in the second instr..
+            OperandCode::BRK,                       // 0x10 BRK
+            OperandCode::NOP,           // 0x17 <- we will read this value in the second instr..
     };
 
     VirtualCPU vcpu;
@@ -282,7 +282,7 @@ DLL_EXPORT int test_vcpu_instr_move_indirect(ITesting *t) {
 
     vcpu.Step();
     TR_ASSERT(t, regs.addressRegisters[0].data.longword == 0x11);
-    TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0xf1);
+    TR_ASSERT(t, regs.dataRegisters[0].data.byte == OperandCode::NOP);
 
     return kTR_Pass;
 }
@@ -443,12 +443,12 @@ DLL_EXPORT int test_vcpu_instr_pop(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
     // 0xf1 = NOP
     uint8_t program[]={
-        0xc0,0x00,0x01,0x02,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
-        0xf1,                       // 4 <- return address
-        0x00,                       // 5 HALT!
-        0xf1,                       // 6 <- call should go here
-        0xf1,                       // 7
-        0xf0,                       // 8 <- return, should be ip+1 => 5
+        OperandCode::CALL,0x00,0x01,0x02,        // 0, Call IP+2   ; from en of instr -> 4+3 => 7
+        OperandCode::NOP,                       // 4 <- return address
+        OperandCode::BRK,                       // 5 HALT!
+        OperandCode::NOP,                       // 6 <- call should go here
+        OperandCode::NOP,                       // 7
+        OperandCode::RET,                       // 8 <- return, should be ip+1 => 5
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
@@ -472,11 +472,11 @@ DLL_EXPORT int test_vcpu_instr_call(ITesting *t) {
 DLL_EXPORT int test_vcpu_instr_nop(ITesting *t) {
     // FIXME: We should consider this to be a implicit instruction
     uint8_t program[]={
-        0xf1,
-        0xf1,
-        0xf1,
-        0xf1,
-        0x00,
+            OperandCode::NOP,
+            OperandCode::NOP,
+            OperandCode::NOP,
+            OperandCode::NOP,
+            OperandCode::BRK,
     };
     VirtualCPU vcpu;
     vcpu.QuickStart(program, 1024);
@@ -816,12 +816,12 @@ DLL_EXPORT int test_vcpu_instr_bne(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_halt(ITesting *t) {
     uint8_t program[]={
-        0xf1,0x00,0x00,0x00,   // nop
-        0x00,   0x00,0x00,0x00,// break
-        0xf1, 0x00,0x00,0x00,  // nop - should never execute
-        0xf1,  0x00,0x00,0x00, // nop
-        0xf1,  0x00,0x00,0x00, // nop
-        0xf1,  0x00,0x00,0x00, // nop
+            OperandCode::NOP,0x00,0x00,0x00,   // nop
+            0x00,   0x00,0x00,0x00,// break
+            OperandCode::NOP, 0x00,0x00,0x00,  // nop - should never execute
+            OperandCode::NOP,  0x00,0x00,0x00, // nop
+            OperandCode::NOP,  0x00,0x00,0x00, // nop
+            OperandCode::NOP,  0x00,0x00,0x00, // nop
     };
     VirtualCPU vcpu;
     auto &status = vcpu.GetStatusReg();
