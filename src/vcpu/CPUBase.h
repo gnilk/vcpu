@@ -477,8 +477,13 @@ namespace gnilk {
             // Used to stash all information during an interrupt..
             // Note: We should have one of these per interrupt - 8 of them...
             ISRControlBlock isrControlBlock;
-            // Same as for interrupt but for exceptions
-            // Not sure I want this - need to rethink how to deal with this in case of exceptions within interrupts
+
+            // FIXME: We should not reuse the ISR Control Block here
+            //        Exceptions are more complex and complicated.
+            //        Instead, we should have a reserved area in memory where we store everything and let 'a0' point
+            //        to it - this allows a debugger to pick up the information...
+            //        Also - returning from an Exception handler we should either 'halt' or 'continue' (perhaps more)
+            //
             ISRControlBlock expControlBlock;
 
             //MemoryUnit memoryUnit;

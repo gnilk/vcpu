@@ -165,12 +165,7 @@ bool CPUBase::RaiseException(CPUExceptionId exceptionId) {
         return false;
     }
 
-    //
-    // Need to queue interrupts - as the CPU status register can only hold 1 ISR combo at any given time
-    //
-    // the TYPE is mapped to an interrupt level (there are 8) - in total we should be able to handle X ISR handlers
-    // with TYPE <-> INT mappings...
-    //
+
     expControlBlock.intMask = {};
     expControlBlock.interruptId = 0;
     expControlBlock.isrState = CPUISRState::Flagged;
