@@ -75,8 +75,6 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
             fmt::println(stderr, "Invalid operand: {} - raising exception handler (if available)", decoder.code.opCodeByte);
             //
             if (!cpu.RaiseException(CPUExceptionFlag::InvalidInstruction)) {
-                // Halt CPU if we couldn't raise the exception handler for some reason
-                cpu.registers.statusReg.flags.halt = 1;
                 return false;
             }
 
