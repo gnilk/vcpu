@@ -19,7 +19,7 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
     {OperandCode::BRK,{.name="brk", .features = {} }},
     {OperandCode::RET,{.name="ret", .features = {} }},
     {OperandCode::RTI,{.name="rti", .features = {} }},
-    {OperandCode::RTI,{.name="rte", .features = {} }},
+    {OperandCode::RTE,{.name="rte", .features = {} }},
 {OperandCode::BEQ,{.name="beq", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Branching}},
 {OperandCode::BNE,{.name="bne", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Branching}},
 
