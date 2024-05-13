@@ -88,7 +88,7 @@ void CPUBase::UpdatePeripherals() {
 }
 
 void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
-    if (isrControlBlock.isrState != CPUISRState::Waiting) {
+    if (GetISRState(interruptId) != CPUISRState::Waiting) {
         // Already within an ISR - do NOT execute another
         return;
     }
@@ -112,6 +112,7 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
     // the TYPE is mapped to an interrupt level (there are 8) - in total we should be able to handle X ISR handlers
     // with TYPE <-> INT mappings...
     //
+    auto &isrControlBlock = GetISRControlBlock(interruptId);
     isrControlBlock.intMask = mask;
     isrControlBlock.interruptId = interruptId;
     isrControlBlock.isrState = CPUISRState::Flagged;
@@ -121,25 +122,46 @@ void CPUBase::EnableInterrupt(CPUIntMask interrupt) {
     auto &intCntrl = GetInterruptCntrl();
     intCntrl.data.longword |= interrupt;
 }
+ISRControlBlock *CPUBase::GetActiveISRControlBlock() {
+    return activeISR;
+}
+void CPUBase::ResetActiveISR() {
+    activeISR = nullptr;
+}
+void CPUBase::SetActiveISR(CPUInterruptId interruptId) {
+    // FIXME: We should have some bits in the CNTRL register for this!
+    activeISR = &isrControlBlocks[interruptId];
+}
 
-void CPUBase::InvokeISRHandlers() {
+bool CPUBase::InvokeISRHandlers() {
     if (isrVectorTable == nullptr) {
-        return;
+        return false;
     }
     auto &intCntrl = GetInterruptCntrl();
-    for(int i=0;i<7;i++) {
+    for(int i=0;i<MAX_INTERRUPTS;i++) {
         // Is this enabled and raised?
-        if ((l64a(intCntrl.data.longword & (1<<i))) && (isrControlBlock.isrState == CPUISRState::Flagged)) {
+        auto &isrControlBlock = GetISRControlBlock(i);
+
+        if ((intCntrl.data.longword & (1<<i)) && (isrControlBlock.isrState == CPUISRState::Flagged)) {
             // Save current registers
             isrControlBlock.registersBefore = registers;
             // Move the ISR type to a register...
             registers.dataRegisters[0].data.longword = isrControlBlock.interruptId;
+
             // reassign it..
             registers.instrPointer.data.longword = isrVectorTable->isr0;
             // Update the state
             isrControlBlock.isrState = CPUISRState::Executing;
+
+            // Set it active
+            SetActiveISR(isrControlBlock.interruptId);
+
+
+            // We need to break now, since we will be executing an ISR - and even if there is another pending - we can't have multiple...
+            return true;
         }
     }
+    return false;
 }
 
 //

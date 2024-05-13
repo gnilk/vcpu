@@ -629,17 +629,22 @@ void InstructionSetImpl::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
 }
 
 void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
-    if (cpu.isrControlBlock.isrState != CPUISRState::Executing) {
+    // FIXME: Need to know which ISR we are coming from!!!
+    CPUInterruptId interruptId = 0;
+    auto &isrControlBlock = cpu.GetISRControlBlock(interruptId);
+
+    if (isrControlBlock.isrState != CPUISRState::Executing) {
         // FIXME: HAve specific instruction for this?
         cpu.RaiseException(CPUExceptionFlag::HardFault);
         return;
     }
     // Restore registers, this will restore ALL incl. status and interrupt masks
     // is this what we want?
-    cpu.registers = cpu.isrControlBlock.registersBefore;
+    cpu.registers = isrControlBlock.registersBefore;
+    cpu.ResetActiveISR();
 
     // Reset the ISR State
-    cpu.isrControlBlock.isrState = CPUISRState::Waiting;
+    isrControlBlock.isrState = CPUISRState::Waiting;
 }
 
 void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
@@ -649,11 +654,14 @@ void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
         return;
     }
     // Restore registers, this will restore ALL incl. status and interrupt masks
-    // is this what we want?
-    cpu.registers = cpu.isrControlBlock.registersBefore;
+    cpu.registers = cpu.expControlBlock.registersBefore;
+
+    // We are pointing to the instruction causing the illegal instruction - let's point on next..
+    cpu.registers.instrPointer.data.longword += 1;
 
     // Reset the ISR State
     cpu.expControlBlock.state = CPUExceptionState::Idle;
+
 }
 
 //

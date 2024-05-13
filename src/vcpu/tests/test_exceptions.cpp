@@ -66,7 +66,7 @@ DLL_EXPORT int test_exceptions_illegal_instr(ITesting *t) {
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..
-        if ((vcpu.GetISRState() == CPUISRState::Executing) || (!vcpu.GetStatusReg().flags.halt)) {
+        if ((vcpu.GetISRState(0) == CPUISRState::Executing) || (!vcpu.GetStatusReg().flags.halt)) {
             fmt::println("{} {}{:#x} {}",i,
                          (vcpu.GetLastDecodedInstr()->GetISRStateBefore()==CPUISRState::Executing)?'*':' ',
                          vcpu.GetLastDecodedInstr()->cpuRegistersBefore.instrPointer.data.longword,
@@ -116,7 +116,10 @@ DLL_EXPORT int test_exceptions_in_isr(ITesting *t) {
 
     uint8_t mainCode[]={
             // nop,nop,nop,brk
-            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP, OperandCode::BRK
+            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP,
+            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP,
+            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP,
+            OperandCode::BRK
     };
     vcpu.Begin(ram, 32*4096);
     vcpu.LoadDataToRam(0, &isrTable, sizeof(isrTable));
@@ -138,10 +141,10 @@ DLL_EXPORT int test_exceptions_in_isr(ITesting *t) {
     vcpu.SetInstrPtr(0x2000);
     vcpu.EnableInterrupt(INT0);
     vcpu.EnableException(CPUExceptionFlag::InvalidInstruction);
-    for(int i=0;i<15;i++) {
+    for(int i=0;i<30;i++) {
         vcpu.Step();
         // this print is quite wrong..
-        if ((vcpu.GetISRState() == CPUISRState::Executing) || (!vcpu.GetStatusReg().flags.halt)) {
+        if ((vcpu.GetISRState(0) == CPUISRState::Executing) || (!vcpu.GetStatusReg().flags.halt)) {
             fmt::println("{} {}{:#x} {}",i,
                          (vcpu.GetLastDecodedInstr()->GetISRStateBefore()==CPUISRState::Executing)?'*':' ',
                          vcpu.GetLastDecodedInstr()->cpuRegistersBefore.instrPointer.data.longword,
@@ -155,8 +158,9 @@ DLL_EXPORT int test_exceptions_in_isr(ITesting *t) {
     fmt::println("irq counter={}", irq_counter);
     fmt::println("exp counter={}", exp_counter);
 
+    // The ISR is on the timer - which makes it a bit jiggy to have absolute values here...
     TR_ASSERT(t, irq_counter > 0);
-    TR_ASSERT(t, exp_counter == 1);
+    TR_ASSERT(t, exp_counter > 1);
 
     return kTR_Pass;
 }
@@ -201,7 +205,7 @@ DLL_EXPORT int test_exceptions_nested(ITesting *t) {
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..
-        if ((vcpu.GetISRState() == CPUISRState::Executing) || (!vcpu.GetStatusReg().flags.halt)) {
+        if ((vcpu.GetISRState(0) == CPUISRState::Executing) || (!vcpu.GetStatusReg().flags.halt)) {
             fmt::println("{} {}{:#x} {}",i,
                          (vcpu.GetLastDecodedInstr()->GetISRStateBefore()==CPUISRState::Executing)?'*':' ',
                          vcpu.GetLastDecodedInstr()->cpuRegistersBefore.instrPointer.data.longword,

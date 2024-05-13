@@ -13,6 +13,8 @@ namespace gnilk {
         // These are part of the CPU emulation and NOT callbacks to the emulator...
         typedef uint64_t ISR_FUNC;
         typedef uint64_t EXP_FUNC;
+
+        static constexpr int MAX_INTERRUPTS = 8;
         // All except initial_sp/pc are set to 0 during startup
         // initial_sp = last byte in RAM
         // initial_pc = VCPU_INITIAL_PC (which is default to 0x2000)
@@ -101,11 +103,12 @@ namespace gnilk {
             INT6 = 64,
             INT7 = 128,
         };
+
         inline constexpr bool operator & (CPUIntControl lhs, CPUIntMask rhs) {
             return lhs.data.bits & rhs;
         }
 
-        typedef uint64_t CPUInterruptId;
+        typedef uint8_t CPUInterruptId;
 
         // Not quite sure I want/need this
         enum CPUKnownIntIds : uint64_t {

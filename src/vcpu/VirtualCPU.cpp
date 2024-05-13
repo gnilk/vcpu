@@ -81,10 +81,12 @@ bool VirtualCPU::Step() {
 
     lastDecodedInstruction.cpuRegistersBefore = registers;
     lastDecodedInstruction.instrDecoder = {};
-    lastDecodedInstruction.isrStateBefore = isrControlBlock.isrState;
+    if (GetActiveISRControlBlock() != nullptr) {
+        lastDecodedInstruction.isrStateBefore = GetActiveISRControlBlock()->isrState;
+    }
 
     // if CPU is halted and we idle/waiting for ISR, don't decode and skip..
-    if ((registers.statusReg.flags.halt == 1) && (isrControlBlock.isrState == CPUISRState::Waiting)) {
+    if ((registers.statusReg.flags.halt == 1) && (GetActiveISRControlBlock() != nullptr)) {
         // FIXME: A lot of things are 'wrong' here - esp. when we dump 'lastDecodedInstr'..
         return true;
     }
@@ -99,7 +101,9 @@ bool VirtualCPU::Step() {
     }
 
     UpdateMMU();
-    lastDecodedInstruction.isrStateAfter = isrControlBlock.isrState;
+    if (GetActiveISRControlBlock() != nullptr) {
+        lastDecodedInstruction.isrStateAfter = GetActiveISRControlBlock()->isrState;
+    }
     lastDecodedInstruction.cpuRegistersAfter = registers;
     lastDecodedInstruction.instrDecoder = instrDecoder;
     return true;

@@ -394,9 +394,17 @@ namespace gnilk {
             virtual void UpdatePeripherals();
         // Interrupt Controller Interface
             void RaiseInterrupt(CPUInterruptId interruptId) override;
-            void InvokeISRHandlers();
-            CPUISRState GetISRState() {
-                return isrControlBlock.isrState;
+            // Returns
+            //   true if any of the ISR handlers changed the current Instr.Ptr in order to execute next
+            bool InvokeISRHandlers();
+
+            CPUISRState GetISRState(CPUInterruptId interruptId) {
+                return GetISRControlBlock(interruptId).isrState;
+            }
+
+            // FIXME: Range checking..
+            ISRControlBlock &GetISRControlBlock(CPUInterruptId interruptId) {
+                return isrControlBlocks[interruptId];
             }
 
             // Exceptions
@@ -405,7 +413,9 @@ namespace gnilk {
             bool InvokeExceptionHandlers(CPUExceptionFlag exceptionId);
 
         protected:
-
+            ISRControlBlock *GetActiveISRControlBlock();
+            void ResetActiveISR();
+            void SetActiveISR(CPUInterruptId interruptId);
             bool IsExceptionEnabled(CPUExceptionFlag  exceptionFlag);
 
             template<typename T>
@@ -493,8 +503,9 @@ namespace gnilk {
             Registers registers = {};
 
             // Used to stash all information during an interrupt..
-            // Note: We should have one of these per interrupt - 8 of them...
-            ISRControlBlock isrControlBlock;
+            // FIXME: Move to emulated RAM  => FIX MEMORY LAYOUT!!!
+            ISRControlBlock *activeISR = nullptr;
+            ISRControlBlock isrControlBlocks[MAX_INTERRUPTS] = {};
             ExceptionControlBlock expControlBlock;
 
             //MemoryUnit memoryUnit;
