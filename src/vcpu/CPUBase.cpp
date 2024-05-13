@@ -150,23 +150,18 @@ void CPUBase::InvokeISRHandlers() {
 //
 bool CPUBase::RaiseException(CPUExceptionFlag exception) {
 
-    if (!IsExceptionEnabled(exception)) {
-        fmt::println(stderr, "CPUBase, exception not enabled - {:#x}", (int)exception);
-        return false;
-    }
-
-    // Don't raise exceptions within the exception handler
+    // Don't raise exceptions unless idle (we are already in an exception handler)
     if (expControlBlock.state != CPUExceptionState::Idle) {
         // Already within an exception
-        fmt::println(stderr, "CPUBase, nested low-level exception - {:#x}", (int)exception);
-        // FIXME: reboot?
+        fmt::println(stderr, "CPUBase, nested exception detected, halting CPU");
+        Halt();
         return false;
     }
 
-    auto &exceptionCntrl = GetExceptionCntrl();
-
-    // Is this enabled?
-    if (!(exceptionCntrl.data.longword & exception)) {
+    // Is it enabled?
+    if (!IsExceptionEnabled(exception)) {
+        fmt::println(stderr, "CPUBase, exception not enabled for {:#x} - halting cpu", (int)exception);
+        Halt();
         return false;
     }
 

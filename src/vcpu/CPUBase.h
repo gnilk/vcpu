@@ -251,6 +251,10 @@ namespace gnilk {
                 return registers.statusReg.flags.halt;
             }
 
+            void Halt() {
+                registers.statusReg.flags.halt = 1;
+            }
+
             const Registers &GetRegisters() const {
                 return registers;
             }
