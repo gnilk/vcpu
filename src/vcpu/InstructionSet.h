@@ -146,7 +146,22 @@ namespace gnilk {
             }
         }
 
-        // FIXME: Consider NOP to be a pseudo instruction (i.e. encode like 'move.b d0,d0' - or whatever has not side-effect)
+
+        //
+        // Consider special instruction for
+        // - copy exception control block to memory address, either this is to a pre-reserved area
+        //
+        //      like:
+        //          cpctrl    [mask]            <- after copy, CR7 contains address of ctrl-block
+        //          move.l    a0,cr7            <- get a local copy of CR7
+        //          ; need to disable mmu before this...
+        //          move.l    d0,(a0+exp.mask)  <- read data out of exception ctrl block
+        //
+        //      or (this requires CPU to copy via MMU)
+        //          lea     a0, my_ctrl_block_area
+        //          cpctrl  [mask]                  <- copy to a0
+        //          move.l  d0, (a0+exp.mask)
+        //
 
         // These are the op-codes, there is plenty of 'air' inbetween the numbers - no real thought went in to the
         // numbers as such. The opcodes are 8-bit..
