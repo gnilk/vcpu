@@ -62,7 +62,7 @@ DLL_EXPORT int test_exceptions_illegal_instr(ITesting *t) {
     });
 
     vcpu.SetInstrPtr(0x2000);
-    vcpu.EnableException(CPUExceptionFlag::InvalidInstruction);
+    vcpu.EnableException(CPUKnownExceptions::kInvalidInstruction);
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..
@@ -140,7 +140,7 @@ DLL_EXPORT int test_exceptions_in_isr(ITesting *t) {
 
     vcpu.SetInstrPtr(0x2000);
     vcpu.EnableInterrupt(INT0);
-    vcpu.EnableException(CPUExceptionFlag::InvalidInstruction);
+    vcpu.EnableException(CPUKnownExceptions::kInvalidInstruction);
     for(int i=0;i<30;i++) {
         vcpu.Step();
         // this print is quite wrong..
@@ -201,7 +201,7 @@ DLL_EXPORT int test_exceptions_nested(ITesting *t) {
     });
 
     vcpu.SetInstrPtr(0x2000);
-    vcpu.EnableException(CPUExceptionFlag::InvalidInstruction);
+    vcpu.EnableException(CPUKnownExceptions::kInvalidInstruction);
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..
