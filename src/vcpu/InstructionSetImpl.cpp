@@ -14,7 +14,7 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
     switch(decoder.code.opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
-            cpu.registers.statusReg.flags.halt = 1;
+            cpu.Halt();
             // Enable this
             // pipeline.Flush();
             break;
@@ -629,26 +629,30 @@ void InstructionSetImpl::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
 }
 
 void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
-    // FIXME: Need to know which ISR we are coming from!!!
-    CPUInterruptId interruptId = 0;
-    auto &isrControlBlock = cpu.GetISRControlBlock(interruptId);
+    // Check if the CPU is executing the ISR?
 
-    if (isrControlBlock.isrState != CPUISRState::Executing) {
+    if (!cpu.IsCPUISRActive()) {
+        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        return;
+    }
+
+    // Active ISR is stored in the CPU status control register...
+    auto isrControlBlock = cpu.GetActiveISRControlBlock();
+
+    if (isrControlBlock->isrState != CPUISRState::Executing) {
         // FIXME: HAve specific instruction for this?
         cpu.RaiseException(CPUExceptionFlag::HardFault);
         return;
     }
     // Restore registers, this will restore ALL incl. status and interrupt masks
     // is this what we want?
-    cpu.registers = isrControlBlock.registersBefore;
+    cpu.registers = isrControlBlock->registersBefore;
+    // This will reset the state and a few other things
     cpu.ResetActiveISR();
-
-    // Reset the ISR State
-    isrControlBlock.isrState = CPUISRState::Waiting;
 }
 
 void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
-    if (cpu.expControlBlock.state != CPUExceptionState::Executing) {
+    if (!cpu.IsCPUExpActive()) {
         // FIXME: Raise invalid CPU state exception
         cpu.RaiseException(CPUExceptionFlag::HardFault);
         return;
@@ -660,8 +664,7 @@ void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
     cpu.registers.instrPointer.data.longword += 1;
 
     // Reset the ISR State
-    cpu.expControlBlock.state = CPUExceptionState::Idle;
-
+    cpu.ResetActiveExp();
 }
 
 //

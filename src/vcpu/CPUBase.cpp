@@ -122,15 +122,34 @@ void CPUBase::EnableInterrupt(CPUIntMask interrupt) {
     auto &intCntrl = GetInterruptCntrl();
     intCntrl.data.longword |= interrupt;
 }
+
 ISRControlBlock *CPUBase::GetActiveISRControlBlock() {
-    return activeISR;
+    auto interruptId = registers.cntrlRegisters.named.intExceptionStatus.interruptId;
+    return &isrControlBlocks[interruptId];
 }
+
+// This will update the Interrupt/Exception CR status register
+void CPUBase::SetCPUISRActiveState(bool isActive) {
+    registers.cntrlRegisters.named.intExceptionStatus.intActive = isActive?1:0;
+}
+bool CPUBase::IsCPUISRActive() {
+    return (registers.cntrlRegisters.named.intExceptionStatus.intActive==1);
+}
+
 void CPUBase::ResetActiveISR() {
-    activeISR = nullptr;
+
+    // Reset the control block for the active ISR..
+    auto isrControlBlock = GetActiveISRControlBlock();
+    isrControlBlock->isrState = CPUISRState::Waiting;
+
+    // Reset status register values
+    SetCPUISRActiveState(false);
+    registers.cntrlRegisters.named.intExceptionStatus.interruptId = 0;
 }
+
 void CPUBase::SetActiveISR(CPUInterruptId interruptId) {
-    // FIXME: We should have some bits in the CNTRL register for this!
-    activeISR = &isrControlBlocks[interruptId];
+    registers.cntrlRegisters.named.intExceptionStatus.interruptId = interruptId;
+    SetCPUISRActiveState(true);
 }
 
 bool CPUBase::InvokeISRHandlers() {
@@ -156,7 +175,6 @@ bool CPUBase::InvokeISRHandlers() {
             // Set it active
             SetActiveISR(isrControlBlock.interruptId);
 
-
             // We need to break now, since we will be executing an ISR - and even if there is another pending - we can't have multiple...
             return true;
         }
@@ -172,9 +190,7 @@ bool CPUBase::InvokeISRHandlers() {
 //
 bool CPUBase::RaiseException(CPUExceptionFlag exception) {
 
-    // Don't raise exceptions unless idle (we are already in an exception handler)
-    if (expControlBlock.state != CPUExceptionState::Idle) {
-        // Already within an exception
+    if (IsCPUExpActive()) {
         fmt::println(stderr, "CPUBase, nested exception detected, halting CPU");
         Halt();
         return false;
@@ -205,6 +221,24 @@ void CPUBase::EnableException(CPUExceptionFlag exception) {
     exceptionControl.data.longword |= exception;
 }
 
+void CPUBase::SetActiveException(CPUExceptionFlag exceptionId) {
+    registers.cntrlRegisters.named.intExceptionStatus.exceptionId = exceptionId;
+    SetCPUExpActiveState(true);
+}
+
+void CPUBase::SetCPUExpActiveState(bool isActive) {
+    registers.cntrlRegisters.named.intExceptionStatus.expActive = isActive?1:0;
+}
+
+bool CPUBase::IsCPUExpActive() {
+    return (registers.cntrlRegisters.named.intExceptionStatus.expActive == 1);
+}
+
+void CPUBase::ResetActiveExp() {
+    SetCPUExpActiveState(false);
+    expControlBlock.state = CPUExceptionState::Idle;
+}
+
 bool CPUBase::InvokeExceptionHandlers(CPUExceptionFlag exception)  {
     if (isrVectorTable == nullptr) {
         return false;
@@ -221,5 +255,7 @@ bool CPUBase::InvokeExceptionHandlers(CPUExceptionFlag exception)  {
     registers.instrPointer.data.longword = isrVectorTable->exp_illegal_instr;
     // Update the state
     expControlBlock.state = CPUExceptionState::Executing;
+
+    SetActiveException(exception);
     return true;
 }

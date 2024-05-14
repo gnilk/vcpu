@@ -102,6 +102,17 @@ namespace gnilk {
         static constexpr CPUStatusFlags CPUStatusAritMask = CPUStatusFlags::Overflow | CPUStatusFlags::Carry | CPUStatusFlags::Zero | CPUStatusFlags::Negative | CPUStatusFlags::Extend;
         static constexpr CPUStatusFlags CPUStatusAritInvMask = (CPUStatusFlags::Overflow | CPUStatusFlags::Carry | CPUStatusFlags::Zero  | CPUStatusFlags::Negative | CPUStatusFlags::Extend) ^ 0xff;
 
+        enum class CPUISRState {
+            Waiting = 0,
+            Flagged = 1,
+            Executing = 2,
+        };
+        enum class CPUExceptionState {
+            Idle = 0,
+            Raised = 1,
+            Executing = 2,
+        };
+
 
         struct Registers {
             // 8 General purpose registers
@@ -125,11 +136,11 @@ namespace gnilk {
             // Layout:
             //  cr0 - INT Mask, zeroed out on reset (0 - disabled, 1 - enabled)     => gives 64 possible interrupts
             //  cr1 - Exception Mask, zeroed out on reset (0 - disabled, 1 - enabled) => gives 64 possible exceptions
-            //  cr2 - Status Register copy (is this necessary - I think, it makes it possible to copy the whole status reg over to something else)
+            //  cr2 - Interrupt/Execption Status Register
             //  cr3 - mmu control register
             //  cr4 - mmu page table address
             //  cr5 - CPU ID or similar (feature register)
-            //  cr6 - reserved, unused
+            //  cr6 - INT ID
             //  cr7 - reserved, unused
             struct Control {
                 RegisterValue cr0 = {};
@@ -140,10 +151,28 @@ namespace gnilk {
                 RegisterValue cr6 = {};
                 RegisterValue cr7 = {};
             };
+
+            struct IntExceptionStatusControl {
+                uint8_t interruptId : 8;        // 256 interrupts should be enough... whohahaha
+                uint8_t intActive : 1;          // true if executing
+                uint8_t intReserved : 7;        // <- could potentially be used as an extension bit
+
+                uint8_t exceptionId : 8;        // 256 exception TYPES should be enough... whohahaha
+                uint8_t expActive : 1;          // true if executing
+                uint8_t expReserved : 7;        // <- coult potentially be used as an extension bit
+
+                // Unused 32 bits in the control register...
+                uint32_t future;
+            };
+
+
             struct NamedControl {
                 RegisterValue intMask = {};
                 RegisterValue exceptionMask = {};
-                RegisterValue statusRegCopy = {};
+                union {
+                    RegisterValue intExceptionStatusReg = {};
+                    IntExceptionStatusControl intExceptionStatus;  // contains the active interrupt/exception register
+                };
                 RegisterValue mmuControl = {};
                 RegisterValue mmuPageTableAddress = {};
                 RegisterValue cpuid = {};
@@ -165,16 +194,6 @@ namespace gnilk {
             CPUStatusReg statusReg = {};
         };
 
-        enum class CPUISRState {
-            Waiting = 0,
-            Flagged = 1,
-            Executing = 2,
-        };
-        enum class CPUExceptionState {
-            Idle = 0,
-            Raised = 1,
-            Executing = 2,
-        };
 
 
         struct ISRControlBlock {
@@ -392,7 +411,11 @@ namespace gnilk {
             void AddPeripheral(CPUIntMask intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
             void ResetPeripherals();
             virtual void UpdatePeripherals();
-        // Interrupt Controller Interface
+
+            // Interrupt Controller Interface
+            bool IsCPUISRActive();
+            bool IsCPUExpActive();
+
             void RaiseInterrupt(CPUInterruptId interruptId) override;
             // Returns
             //   true if any of the ISR handlers changed the current Instr.Ptr in order to execute next
@@ -402,9 +425,9 @@ namespace gnilk {
                 return GetISRControlBlock(interruptId).isrState;
             }
 
-            // FIXME: Range checking..
             ISRControlBlock &GetISRControlBlock(CPUInterruptId interruptId) {
-                return isrControlBlocks[interruptId];
+                int blockIndex = interruptId & (MAX_INTERRUPTS - 1);
+                return isrControlBlocks[blockIndex];
             }
 
             // Exceptions
@@ -416,6 +439,12 @@ namespace gnilk {
             ISRControlBlock *GetActiveISRControlBlock();
             void ResetActiveISR();
             void SetActiveISR(CPUInterruptId interruptId);
+
+            void SetCPUISRActiveState(bool isActive);
+            void SetCPUExpActiveState(bool isActive);
+            void SetActiveException(CPUExceptionFlag exceptionId);
+            void ResetActiveExp();
+
             bool IsExceptionEnabled(CPUExceptionFlag  exceptionFlag);
 
             template<typename T>
@@ -504,7 +533,7 @@ namespace gnilk {
 
             // Used to stash all information during an interrupt..
             // FIXME: Move to emulated RAM  => FIX MEMORY LAYOUT!!!
-            ISRControlBlock *activeISR = nullptr;
+            //ISRControlBlock *activeISR = nullptr;
             ISRControlBlock isrControlBlocks[MAX_INTERRUPTS] = {};
             ExceptionControlBlock expControlBlock;
 

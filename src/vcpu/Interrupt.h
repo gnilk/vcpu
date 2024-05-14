@@ -14,7 +14,9 @@ namespace gnilk {
         typedef uint64_t ISR_FUNC;
         typedef uint64_t EXP_FUNC;
 
+        // MUST BE POWER of 2, used like this: index = interrupt & (MAX_INTERRUPTS - 1);
         static constexpr int MAX_INTERRUPTS = 8;
+
         // All except initial_sp/pc are set to 0 during startup
         // initial_sp = last byte in RAM
         // initial_pc = VCPU_INITIAL_PC (which is default to 0x2000)
@@ -65,6 +67,7 @@ namespace gnilk {
             uint16_t reserved:8;
         };
 
+        // FIXME: Used interleaved between flags and ID
         typedef enum : uint8_t {
             InvalidInstruction = 0x01,
             HardFault = 0x02,
