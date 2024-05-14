@@ -188,7 +188,7 @@ bool CPUBase::InvokeISRHandlers() {
 // - raised directly, CPU instr.ptr is changed and next stepping will be in the interrupt handler
 // - in case of exception within an exception handler, we will halt the CPU
 //
-bool CPUBase::RaiseException(CPUExceptionFlag exception) {
+bool CPUBase::RaiseException(CPUExceptionId exceptionId) {
 
     if (IsCPUExpActive()) {
         fmt::println(stderr, "CPUBase, nested exception detected, halting CPU");
@@ -197,31 +197,36 @@ bool CPUBase::RaiseException(CPUExceptionFlag exception) {
     }
 
     // Is it enabled?
-    if (!IsExceptionEnabled(exception)) {
-        fmt::println(stderr, "CPUBase, exception not enabled for {:#x} - halting cpu", (int)exception);
+    if (!IsExceptionEnabled(exceptionId)) {
+        fmt::println(stderr, "CPUBase, exception not enabled for {:#x} - halting cpu", (int)exceptionId);
         Halt();
         return false;
     }
 
-    fmt::println(stderr, "CPUBase, raising exception - {:#x}", (int)exception);
+    fmt::println(stderr, "CPUBase, raising exception - {:#x}", (int)exceptionId);
 
-    expControlBlock.flag = exception;
     expControlBlock.state = CPUExceptionState::Raised;
-
-    return InvokeExceptionHandlers(exception);
+    return InvokeExceptionHandlers(exceptionId);
 }
 
-bool CPUBase::IsExceptionEnabled(CPUExceptionFlag  exceptionFlag) {
+// Helper
+static constexpr CPUExceptionFlag CPUExpIdToFlag(CPUExceptionId exceptionId) {
+    return (CPUExceptionFlag)(static_cast<uint64_t>(1) << exceptionId);
+}
+
+
+bool CPUBase::IsExceptionEnabled(CPUExceptionId  exceptionId) {
     auto &exceptionControl = GetExceptionCntrl();
-    return (exceptionControl.data.longword & exceptionFlag);
+    return (exceptionControl.data.longword & CPUExpIdToFlag(exceptionId));
 }
 
-void CPUBase::EnableException(CPUExceptionFlag exception) {
+
+void CPUBase::EnableException(CPUExceptionId exceptionId) {
     auto &exceptionControl = GetExceptionCntrl();
-    exceptionControl.data.longword |= exception;
+    exceptionControl.data.longword |= CPUExpIdToFlag(exceptionId);
 }
 
-void CPUBase::SetActiveException(CPUExceptionFlag exceptionId) {
+void CPUBase::SetActiveException(CPUExceptionId exceptionId) {
     registers.cntrlRegisters.named.intExceptionStatus.exceptionId = exceptionId;
     SetCPUExpActiveState(true);
 }
@@ -239,23 +244,23 @@ void CPUBase::ResetActiveExp() {
     expControlBlock.state = CPUExceptionState::Idle;
 }
 
-bool CPUBase::InvokeExceptionHandlers(CPUExceptionFlag exception)  {
+bool CPUBase::InvokeExceptionHandlers(CPUExceptionId exceptionId)  {
     if (isrVectorTable == nullptr) {
         return false;
     }
     auto &exceptionControl = GetExceptionCntrl();
 
     // Perhaps not needed..
-    expControlBlock.flag = exception;
+    expControlBlock.flag = CPUExpIdToFlag(exceptionId);
     // Save current registers
     expControlBlock.registersBefore = registers;
     // Move the ISR type to a register...
-    registers.dataRegisters[0].data.longword = exception;
+    registers.dataRegisters[0].data.longword = exceptionId;
     // Note: take this depending on the exception type...
     registers.instrPointer.data.longword = isrVectorTable->exp_illegal_instr;
     // Update the state
     expControlBlock.state = CPUExceptionState::Executing;
 
-    SetActiveException(exception);
+    SetActiveException(exceptionId);
     return true;
 }

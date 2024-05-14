@@ -431,9 +431,9 @@ namespace gnilk {
             }
 
             // Exceptions
-            void EnableException(CPUExceptionFlag  exception);
-            virtual bool RaiseException(CPUExceptionFlag exceptionId);
-            bool InvokeExceptionHandlers(CPUExceptionFlag exceptionId);
+            void EnableException(CPUExceptionId  exceptionId);
+            virtual bool RaiseException(CPUExceptionId exceptionId);
+            bool InvokeExceptionHandlers(CPUExceptionId exceptionId);
 
         protected:
             ISRControlBlock *GetActiveISRControlBlock();
@@ -442,10 +442,10 @@ namespace gnilk {
 
             void SetCPUISRActiveState(bool isActive);
             void SetCPUExpActiveState(bool isActive);
-            void SetActiveException(CPUExceptionFlag exceptionId);
+            void SetActiveException(CPUExceptionId exceptionId);
             void ResetActiveExp();
 
-            bool IsExceptionEnabled(CPUExceptionFlag  exceptionFlag);
+            bool IsExceptionEnabled(CPUExceptionId  exceptionFlag);
 
             template<typename T>
             T FetchFromInstrPtr() {
@@ -533,7 +533,6 @@ namespace gnilk {
 
             // Used to stash all information during an interrupt..
             // FIXME: Move to emulated RAM  => FIX MEMORY LAYOUT!!!
-            //ISRControlBlock *activeISR = nullptr;
             ISRControlBlock isrControlBlocks[MAX_INTERRUPTS] = {};
             ExceptionControlBlock expControlBlock;
 

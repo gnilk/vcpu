@@ -15,6 +15,8 @@ namespace gnilk {
         typedef uint64_t EXP_FUNC;
 
         // MUST BE POWER of 2, used like this: index = interrupt & (MAX_INTERRUPTS - 1);
+        // Maximum we can hold is currently 256 interrupts
+        // this is defined by the CR2 (Control Register 2) layout. Which reserves 8 bits for the interrupt ID..
         static constexpr int MAX_INTERRUPTS = 8;
 
         // All except initial_sp/pc are set to 0 during startup
@@ -67,8 +69,19 @@ namespace gnilk {
             uint16_t reserved:8;
         };
 
-        // FIXME: Used interleaved between flags and ID
-        typedef enum : uint8_t {
+        typedef uint64_t CPUExceptionId;
+
+        typedef enum : CPUExceptionId {
+            kHardFault = 0,
+            kInvalidInstruction = 1,
+            kDivisionByZero = 2,
+            kDebugTrap = 2,
+            kMMUFault = 2,
+            kFPUFault = 2,
+        } CPUKnownExceptions;
+
+
+        typedef enum : uint64_t {
             InvalidInstruction = 0x01,
             HardFault = 0x02,
             DivisionByZero = 0x04,
@@ -76,6 +89,8 @@ namespace gnilk {
             MMUFault = 0x10,
             FPUFault = 0x20,
         }  CPUExceptionFlag;
+
+
 
 
         struct CPUIntControlBits {

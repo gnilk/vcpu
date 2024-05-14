@@ -74,7 +74,7 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
         default:
             fmt::println(stderr, "Invalid operand: {} - raising exception handler (if available)", decoder.code.opCodeByte);
             //
-            if (!cpu.RaiseException(CPUExceptionFlag::InvalidInstruction)) {
+            if (!cpu.RaiseException(CPUKnownExceptions::kInvalidInstruction)) {
                 return false;
             }
 
@@ -133,7 +133,7 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
 void InstructionSetImpl::ExecuteBneInstr(InstructionDecoder& instrDecoder) {
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
         // FIXME: Invalid address mode
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     // zero must not be set in order to jump
@@ -167,7 +167,7 @@ void InstructionSetImpl::ExecuteBeqInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
         // FIXME: Invalid address mode
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     // zero must be in order to jump
@@ -198,7 +198,7 @@ void InstructionSetImpl::ExecuteCmpInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode == AddressMode::Immediate) {
         // FIXME: Invalid address mode
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
@@ -234,7 +234,7 @@ void InstructionSetImpl::ExecuteAslInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // FIXME: Invalid address mode
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
 
@@ -292,7 +292,7 @@ void InstructionSetImpl::ExecuteAsrInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // FIXME: Invalid address mode
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     auto &dstReg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
@@ -395,7 +395,7 @@ void InstructionSetImpl::ExecuteLslInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // FIXME: Invalid address mode
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -424,7 +424,7 @@ void InstructionSetImpl::ExecuteLsrInstr(InstructionDecoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         // FIXME: Invalid address mode
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -620,7 +620,7 @@ void InstructionSetImpl::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
     if (cpu.stack.empty()) {
         // FIXME: Raise CPU exception!
         fmt::println(stderr, "RET - no return address - stack empty!!");
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     auto newInstrAddr = cpu.stack.top();
@@ -632,7 +632,7 @@ void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
     // Check if the CPU is executing the ISR?
 
     if (!cpu.IsCPUISRActive()) {
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
 
@@ -641,7 +641,7 @@ void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
 
     if (isrControlBlock->isrState != CPUISRState::Executing) {
         // FIXME: HAve specific instruction for this?
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     // Restore registers, this will restore ALL incl. status and interrupt masks
@@ -654,7 +654,7 @@ void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
 void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
     if (!cpu.IsCPUExpActive()) {
         // FIXME: Raise invalid CPU state exception
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         return;
     }
     // Restore registers, this will restore ALL incl. status and interrupt masks
@@ -686,7 +686,7 @@ void InstructionSetImpl::WriteToDst(InstructionDecoder& instrDecoder, const Regi
 //        reg.data = v.data;
 
     } else {
-        cpu.RaiseException(CPUExceptionFlag::HardFault);
+        cpu.RaiseException(CPUKnownExceptions::kHardFault);
         fmt::println("Address mode not supported!!!!!");
         exit(1);
     }
