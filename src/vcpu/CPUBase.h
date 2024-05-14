@@ -136,7 +136,7 @@ namespace gnilk {
             // Layout:
             //  cr0 - INT Mask, zeroed out on reset (0 - disabled, 1 - enabled)     => gives 64 possible interrupts
             //  cr1 - Exception Mask, zeroed out on reset (0 - disabled, 1 - enabled) => gives 64 possible exceptions
-            //  cr2 - Interrupt/Execption Status Register
+            //  cr2 - Interrupt/Exception Status Register
             //  cr3 - mmu control register
             //  cr4 - mmu page table address
             //  cr5 - CPU ID or similar (feature register)
