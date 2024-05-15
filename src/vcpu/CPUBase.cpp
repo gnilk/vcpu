@@ -61,7 +61,7 @@ void CPUBase::UpdateMMU() {
 //    memoryUnit.SetPageTranslationVAddr(cr1);
 }
 
-void CPUBase::AddPeripheral(CPUIntMask intMask, CPUInterruptId interruptId, Peripheral::Ref peripheral) {
+void CPUBase::AddPeripheral(CPUIntFlag intMask, CPUInterruptId interruptId, Peripheral::Ref peripheral) {
     ISRPeripheralInstance instance = {
         .intMask = intMask,
         .interruptId = interruptId,
@@ -102,7 +102,7 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
     auto &intCntrl = GetInterruptCntrl();
 
     // Is this enabled?
-    if (!(intCntrl.data.longword & mask)) {
+    if (!(intCntrl.data.bits & mask)) {
         return;
     }
 
@@ -118,9 +118,9 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
     isrControlBlock.isrState = CPUISRState::Flagged;
 }
 
-void CPUBase::EnableInterrupt(CPUIntMask interrupt) {
+void CPUBase::EnableInterrupt(CPUIntFlag interrupt) {
     auto &intCntrl = GetInterruptCntrl();
-    intCntrl.data.longword |= interrupt;
+    intCntrl.data.bits |= interrupt;
 }
 
 ISRControlBlock *CPUBase::GetActiveISRControlBlock() {
@@ -161,7 +161,7 @@ bool CPUBase::InvokeISRHandlers() {
         // Is this enabled and raised?
         auto &isrControlBlock = GetISRControlBlock(i);
 
-        if ((intCntrl.data.longword & (1<<i)) && (isrControlBlock.isrState == CPUISRState::Flagged)) {
+        if ((intCntrl.data.bits & (1<<i)) && (isrControlBlock.isrState == CPUISRState::Flagged)) {
             // Save current registers
             isrControlBlock.registersBefore = registers;
             // Move the ISR type to a register...

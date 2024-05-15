@@ -140,12 +140,12 @@ bool InstructionPipeline::BeginNext(CPUBase &cpu) {
 
 void SuperScalarCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
-    AddPeripheral(CPUIntMask::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1));
+    AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1));
 }
 
 void SuperScalarCPU::Begin(void *ptrRam, size_t sizeOfRam) {
     CPUBase::Begin(ptrRam, sizeOfRam);
-    AddPeripheral(CPUIntMask::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1000));
+    AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1000));
 }
 
 

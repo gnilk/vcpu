@@ -167,7 +167,14 @@ namespace gnilk {
 
 
             struct NamedControl {
-                RegisterValue intMask = {};
+                union {
+                    RegisterValue intMaskReg = {};
+                    CPUIntControl intControl;
+                };
+                union {
+                    RegisterValue exceptionMaskReg = {};
+                    CPUExceptionControl exceptionControl;
+                };
                 RegisterValue exceptionMask = {};
                 union {
                     RegisterValue intExceptionStatusReg = {};
@@ -197,7 +204,7 @@ namespace gnilk {
 
 
         struct ISRControlBlock {
-            CPUIntMask intMask = {};
+            CPUIntFlag intMask = {};
             CPUInterruptId interruptId = {};
             Registers registersBefore = {};
             RegisterValue rti = {};  // special register for RTI
@@ -310,8 +317,8 @@ namespace gnilk {
                 return registers.statusReg;
             }
 
-            RegisterValue &GetInterruptCntrl() {
-                return registers.cntrlRegisters.named.intMask;
+            CPUIntControl &GetInterruptCntrl() {
+                return registers.cntrlRegisters.named.intControl;
             }
 
             RegisterValue &GetExceptionCntrl() {
@@ -407,8 +414,8 @@ namespace gnilk {
                 }
 
             }
-            void EnableInterrupt(CPUIntMask interrupt);
-            void AddPeripheral(CPUIntMask intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
+            void EnableInterrupt(CPUIntFlag interrupt);
+            void AddPeripheral(CPUIntFlag intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
             void ResetPeripherals();
             virtual void UpdatePeripherals();
 
@@ -522,7 +529,7 @@ namespace gnilk {
             void UpdateMMU();
         protected:
             struct ISRPeripheralInstance {
-                CPUIntMask intMask;
+                CPUIntFlag intMask;
                 CPUInterruptId interruptId;
                 Peripheral::Ref peripheral;
             };
@@ -546,7 +553,7 @@ namespace gnilk {
             // FIXME: Remove this and let the supplied RAM hold the stack...
             std::stack<RegisterValue> stack;
 
-            std::unordered_map<CPUInterruptId , CPUIntMask> interruptMapping;
+            std::unordered_map<CPUInterruptId , CPUIntFlag> interruptMapping;
             std::unordered_map<uint32_t, SysCall::Ref> syscalls;
 
 

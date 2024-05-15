@@ -34,7 +34,8 @@ namespace gnilk {
             //  - stack-empty (any auto-stack decrement function where the stack is already empty, pop/ret)
             //
             EXP_FUNC exp_illegal_instr; // 2
-            EXP_FUNC exp_hard_fault;    // 3
+            EXP_FUNC exp_invalid_addrmode; // 2
+            EXP_FUNC exp_hard_fault;    // 3        // Or reset vector...
             EXP_FUNC exp_div_zero;      // 4
             EXP_FUNC exp_debug_trap;    // 5
             EXP_FUNC exp_mmu_fault;     // 6
@@ -54,19 +55,26 @@ namespace gnilk {
 #pragma pack(pop)
 
         // This should go into the CPUIntCntrlRegister as a mask...
-        struct CPUExceptionControl {
+        struct CPUExceptionControlBits {
             // CPU hard interrupts
-            uint16_t illegal_instr:1;   // 0
-            uint16_t hard_fault:1;      // 1
-            uint16_t div_zero:1;        // 2
-            uint16_t debug_trap:1;      // 3
-            uint16_t mmu_fault:1;       // 4
-            uint16_t fpu_fault:1;       // 5
-            uint16_t cpu_reserved_1:1;  // 6
-            uint16_t cpu_reserved_2:1;  // 7
+            uint16_t hard_fault:1;          // 0
+            uint16_t illegal_instr:1;       // 1
+            uint16_t illegal_addr_mode:1;   // 2
+            uint16_t div_zero:1;            // 3
+            uint16_t debug_trap:1;          // 4
+            uint16_t mmu_fault:1;           // 5
+            uint16_t fpu_fault:1;           // 6
+            uint16_t cpu_reserved_1:1;      // 7
 
-            // Peripherals, 8 possible interrupts
+            // Let's reserve another 8 so we have 16 bits in total for this...
             uint16_t reserved:8;
+        };
+
+        struct CPUExceptionControl {
+            union {
+                CPUExceptionControlBits flags;
+                uint16_t bits;
+            } data;
         };
 
         typedef uint64_t CPUExceptionId;
@@ -74,20 +82,22 @@ namespace gnilk {
         typedef enum : CPUExceptionId {
             kHardFault = 0,
             kInvalidInstruction = 1,
-            kDivisionByZero = 2,
-            kDebugTrap = 2,
-            kMMUFault = 2,
-            kFPUFault = 2,
+            kInvalidAddrMode = 2,
+            kDivisionByZero = 3,
+            kDebugTrap = 4,
+            kMMUFault = 5,
+            kFPUFault = 6,
         } CPUKnownExceptions;
 
 
         typedef enum : uint64_t {
-            InvalidInstruction = 0x01,
-            HardFault = 0x02,
-            DivisionByZero = 0x04,
-            DebugTrap = 0x08,
-            MMUFault = 0x10,
-            FPUFault = 0x20,
+            HardFault = 0x01,
+            InvalidInstruction = 0x02,
+            InvalidAddrMode = 0x04,
+            DivisionByZero = 0x08,
+            DebugTrap = 0x10,
+            MMUFault = 0x20,
+            FPUFault = 0x40,
         }  CPUExceptionFlag;
 
 
@@ -111,7 +121,7 @@ namespace gnilk {
             } data;
         };
 
-        enum CPUIntMask : uint16_t {
+        enum CPUIntFlag : uint16_t {
             INT0 = 1,
             INT1 = 2,
             INT2 = 4,
@@ -122,7 +132,7 @@ namespace gnilk {
             INT7 = 128,
         };
 
-        inline constexpr bool operator & (CPUIntControl lhs, CPUIntMask rhs) {
+        inline constexpr bool operator & (CPUIntControl lhs, CPUIntFlag rhs) {
             return lhs.data.bits & rhs;
         }
 
