@@ -11,6 +11,15 @@
 
 namespace gnilk {
     namespace vcpu {
+
+
+        // This is the memory mapping for the timer...
+        struct TimerConfigBlock {
+            uint64_t control = {};
+            uint64_t freqSec = {};
+            uint64_t tickCounter = {};
+        };
+
         class Timer : public Peripheral {
         public:
             using clock = std::chrono::high_resolution_clock;
@@ -20,12 +29,16 @@ namespace gnilk {
             }
             virtual ~Timer() = default;
 
+            // FIXME: Timer should be created with a pointer to memory block for timer-cfg
             static Ref Create(uint64_t freqHz);
 
             void Initialize() override;
             bool Update() override;
         private:
+            // move this out of here - should be in the 'TimerConfigBlock'
             uint64_t freqSec = 1;   // 32khz is the default.
+
+            // Internal - for emulation//
             bool bHaveFirstTime = false;
             clock::time_point tLast;
         };

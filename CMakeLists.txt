@@ -55,6 +55,7 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSy
 list(APPEND vcputestsrc src/vcpu/tests/test_exceptions.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_integration.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_interrupt.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_memlayout.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_pipeline.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_soc.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_timer.cpp)

@@ -18,6 +18,9 @@
 #include "Interrupt.h"
 #include "RegisterValue.h"
 
+// Bring in some Peripherals
+#include "Timer.h"
+
 namespace gnilk {
     namespace vcpu {
 
@@ -181,7 +184,7 @@ namespace gnilk {
                     IntExceptionStatusControl intExceptionStatus;  // contains the active interrupt/exception register
                 };
                 RegisterValue mmuControl = {};
-                RegisterValue mmuPageTableAddress = {};
+                RegisterValue mmuPageTableAddress = {};             // FIXME: could be moved to the 'MemoryLayout' block - no need to take a full register for this (or?)
                 RegisterValue cpuid = {};
                 RegisterValue reservedA = {};
                 RegisterValue reservedB = {};
@@ -218,6 +221,23 @@ namespace gnilk {
             CPUExceptionState state = CPUExceptionState::Idle;
         };
 
+        //
+        // This defines the memory layout in emulated RAM
+        // Note: We can move various control registers here instead of allocating registers for them
+        //
+        struct MemoryLayout {
+            ISR_VECTOR_TABLE    isrVectorTable = {};
+            ExceptionControlBlock exceptionControlBlock  __attribute__ ((aligned (1024))) = {};
+            ISRControlBlock isrControlBlocks[MAX_INTERRUPTS];
+
+            // HW Mapping of various things - like GPIO, I2C, SPI, UART?
+
+            // FIXME: Just testing a few things
+            TimerConfigBlock timer0;
+            TimerConfigBlock timer1;
+            TimerConfigBlock timer2;
+            TimerConfigBlock timer3;
+        };
 
 
         static const uint64_t VCPU_RESERVED_RAM = 0x2000;
@@ -415,7 +435,7 @@ namespace gnilk {
 
             }
             void EnableInterrupt(CPUIntFlag interrupt);
-            void AddPeripheral(CPUIntFlag intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
+            bool AddPeripheral(CPUIntFlag intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
             void ResetPeripherals();
             virtual void UpdatePeripherals();
 
@@ -538,15 +558,19 @@ namespace gnilk {
             size_t szRam = 0;
             Registers registers = {};
 
-            // Used to stash all information during an interrupt..
-            // FIXME: Move to emulated RAM  => FIX MEMORY LAYOUT!!!
-            ISRControlBlock isrControlBlocks[MAX_INTERRUPTS] = {};
-            ExceptionControlBlock expControlBlock;
 
             //MemoryUnit memoryUnit;
             MMU memoryUnit;
+            MemoryLayout *systemBlock = nullptr;
 
+            // Short cut pointers into the systemBlock...
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
+            // Used to stash all information during an interrupt..
+            // FIXME: Move to emulated RAM  => FIX MEMORY LAYOUT!!!
+            ISRControlBlock *isrControlBlocks = nullptr;
+            ExceptionControlBlock *expControlBlock = nullptr;
+
+
 
             std::vector<ISRPeripheralInstance> peripherals;
 

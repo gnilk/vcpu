@@ -658,7 +658,7 @@ void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
         return;
     }
     // Restore registers, this will restore ALL incl. status and interrupt masks
-    cpu.registers = cpu.expControlBlock.registersBefore;
+    cpu.registers = cpu.expControlBlock->registersBefore;
 
     // We are pointing to the instruction causing the illegal instruction - let's point on next..
     cpu.registers.instrPointer.data.longword += 1;

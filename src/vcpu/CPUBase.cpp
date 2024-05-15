@@ -15,6 +15,8 @@ void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
     szRam = sizeOfRam;
 
     memset(&registers, 0, sizeof(registers));
+
+    // NOTE: The System Block is not initialized in this...
 }
 
 void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
@@ -28,7 +30,11 @@ void CPUBase::Reset() {
     memset(&registers, 0, sizeof(registers));
     memset(ram, 0, szRam);
 
-    isrVectorTable = (ISR_VECTOR_TABLE*)ram;
+    systemBlock  = (MemoryLayout *)ram;
+
+    isrVectorTable = &systemBlock->isrVectorTable; //(ISR_VECTOR_TABLE*)ram;
+    isrControlBlocks = systemBlock->isrControlBlocks;   // array - no need to grab pointer...
+    expControlBlock = &systemBlock->exceptionControlBlock;
 
     isrVectorTable->initial_sp = szRam-1;
     isrVectorTable->initial_pc = VCPU_INITIAL_PC;
@@ -61,7 +67,13 @@ void CPUBase::UpdateMMU() {
 //    memoryUnit.SetPageTranslationVAddr(cr1);
 }
 
-void CPUBase::AddPeripheral(CPUIntFlag intMask, CPUInterruptId interruptId, Peripheral::Ref peripheral) {
+bool CPUBase::AddPeripheral(CPUIntFlag intMask, CPUInterruptId interruptId, Peripheral::Ref peripheral) {
+
+    if (systemBlock == nullptr) {
+        fmt::println(stderr, "CPU started with 'QuickStart' - no support for peripherals, use 'Begin' to properly setup interrupts and other advanced features");
+        return false;
+    }
+
     ISRPeripheralInstance instance = {
         .intMask = intMask,
         .interruptId = interruptId,
@@ -73,6 +85,8 @@ void CPUBase::AddPeripheral(CPUIntFlag intMask, CPUInterruptId interruptId, Peri
     peripheral->SetInterruptController(this);
     peripheral->MapToInterrupt(interruptId);
     peripherals.push_back(instance);
+
+    return true;
 }
 
 void CPUBase::ResetPeripherals() {
@@ -88,6 +102,12 @@ void CPUBase::UpdatePeripherals() {
 }
 
 void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
+
+    // Can't do this unless we have been started with 'Begin'...
+    if (systemBlock == nullptr) {
+        return;
+    }
+
     if (GetISRState(interruptId) != CPUISRState::Waiting) {
         // Already within an ISR - do NOT execute another
         return;
@@ -119,6 +139,12 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
 }
 
 void CPUBase::EnableInterrupt(CPUIntFlag interrupt) {
+    // This is a developer problem...
+    if (systemBlock == nullptr) {
+        fmt::println(stderr, "CPUBase, started with 'QuickStart' no exception handling, use 'Begin' to get advanced features");
+        exit(1);
+    }
+
     auto &intCntrl = GetInterruptCntrl();
     intCntrl.data.bits |= interrupt;
 }
@@ -189,6 +215,10 @@ bool CPUBase::InvokeISRHandlers() {
 // - in case of exception within an exception handler, we will halt the CPU
 //
 bool CPUBase::RaiseException(CPUExceptionId exceptionId) {
+    if (systemBlock == nullptr) {
+        fmt::println(stderr, "CPUBase, started with 'QuickStart' no exception handling, use 'Begin' to get advanced features");
+        return false;
+    }
 
     if (IsCPUExpActive()) {
         fmt::println(stderr, "CPUBase, nested exception detected, halting CPU");
@@ -205,7 +235,7 @@ bool CPUBase::RaiseException(CPUExceptionId exceptionId) {
 
     fmt::println(stderr, "CPUBase, raising exception - {:#x}", (int)exceptionId);
 
-    expControlBlock.state = CPUExceptionState::Raised;
+    expControlBlock->state = CPUExceptionState::Raised;
     return InvokeExceptionHandlers(exceptionId);
 }
 
@@ -222,6 +252,12 @@ bool CPUBase::IsExceptionEnabled(CPUExceptionId  exceptionId) {
 
 
 void CPUBase::EnableException(CPUExceptionId exceptionId) {
+    // This is a developer problem...
+    if (systemBlock == nullptr) {
+        fmt::println(stderr, "CPUBase, started with 'QuickStart' no exception handling, use 'Begin' to get advanced features");
+        exit(1);
+    }
+
     auto &exceptionControl = GetExceptionCntrl();
     exceptionControl.data.longword |= CPUExpIdToFlag(exceptionId);
 }
@@ -241,25 +277,25 @@ bool CPUBase::IsCPUExpActive() {
 
 void CPUBase::ResetActiveExp() {
     SetCPUExpActiveState(false);
-    expControlBlock.state = CPUExceptionState::Idle;
+    expControlBlock->state = CPUExceptionState::Idle;
 }
 
 bool CPUBase::InvokeExceptionHandlers(CPUExceptionId exceptionId)  {
-    if (isrVectorTable == nullptr) {
+    if (systemBlock == nullptr) {
         return false;
     }
     auto &exceptionControl = GetExceptionCntrl();
 
     // Perhaps not needed..
-    expControlBlock.flag = CPUExpIdToFlag(exceptionId);
+    expControlBlock->flag = CPUExpIdToFlag(exceptionId);
     // Save current registers
-    expControlBlock.registersBefore = registers;
+    expControlBlock->registersBefore = registers;
     // Move the ISR type to a register...
     registers.dataRegisters[0].data.longword = exceptionId;
     // Note: take this depending on the exception type...
     registers.instrPointer.data.longword = isrVectorTable->exp_illegal_instr;
     // Update the state
-    expControlBlock.state = CPUExceptionState::Executing;
+    expControlBlock->state = CPUExceptionState::Executing;
 
     SetActiveException(exceptionId);
     return true;
