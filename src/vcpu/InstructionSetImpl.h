@@ -31,10 +31,6 @@ namespace gnilk {
             InstructionSetImpl(InstructionSetImpl &&other) noexcept : InstructionSetImpl(other.cpu) {
 
             }
-            InstructionSetImpl &operator = (InstructionSetImpl &&other) noexcept {
-                cpu = other.cpu;
-                return *this;
-            }
 
             bool ExecuteInstruction(InstructionDecoder &decoder) override;
 
