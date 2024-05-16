@@ -9,6 +9,10 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+CPUBase::~CPUBase() {
+    DoEnd();
+}
+
 // QuickStart won't initialize the ISR Table and reserve stuff - it will just assign the RAM ptr
 void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
     ram = static_cast<uint8_t *>(ptrRam);
@@ -23,6 +27,12 @@ void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
     ram = static_cast<uint8_t *>(ptrRam);
     szRam = sizeOfRam;
     Reset();
+}
+void CPUBase::End() {
+    DoEnd();
+}
+void CPUBase::DoEnd() {
+    DelPeripherals();
 }
 
 void CPUBase::Reset() {
@@ -94,6 +104,13 @@ bool CPUBase::AddPeripheral(CPUIntFlag intMask, CPUInterruptId interruptId, Peri
     peripheral->Start();
 
     return true;
+}
+void CPUBase::DelPeripherals() {
+    for(auto &p : peripherals) {
+        p.peripheral->Stop();
+    }
+    // FIXME: Clear interrupt mappings..
+    peripherals.clear();
 }
 
 void CPUBase::ResetPeripherals() {

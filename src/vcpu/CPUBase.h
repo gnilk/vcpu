@@ -286,12 +286,13 @@ namespace gnilk {
             using Ref = std::shared_ptr<CPUBase>;
         public:
             CPUBase() = default;
-            virtual ~CPUBase() = default;
+            virtual ~CPUBase();
 
             virtual void QuickStart(void *ptrRam, size_t sizeOfRam);
-
             virtual void Begin(void *ptrRam, size_t sizeOfRam);
+            virtual void End();
             virtual void Reset();
+
             bool RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler);
 
             bool IsHalted() const {
@@ -439,6 +440,7 @@ namespace gnilk {
             }
             void EnableInterrupt(CPUIntFlag interrupt);
             bool AddPeripheral(CPUIntFlag intMAsk, CPUInterruptId interruptId, Peripheral::Ref peripheral);
+            void DelPeripherals();
             void ResetPeripherals();
             virtual void UpdatePeripherals();
 
@@ -466,6 +468,7 @@ namespace gnilk {
             bool InvokeExceptionHandlers(CPUExceptionId exceptionId);
 
         protected:
+            void DoEnd();
             ISRControlBlock *GetActiveISRControlBlock();
             void ResetActiveISR();
             void SetActiveISR(CPUInterruptId interruptId);
