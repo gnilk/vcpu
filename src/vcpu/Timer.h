@@ -46,6 +46,11 @@ namespace gnilk {
 
             bool Start() override;
             bool Stop() override;
+
+            // For unit testing
+            std::mutex &GetLock() {
+                return lock;
+            }
         protected:
             bool DoStop();
             void ThreadFunc();

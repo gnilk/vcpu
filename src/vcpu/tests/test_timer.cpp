@@ -103,6 +103,7 @@ DLL_EXPORT int test_timer_startstop(ITesting *t) {
             .tickCounter = 0,
     };
     auto timer = Timer::Create(&timerConfig);
+
     auto tStart = std::chrono::system_clock::now();
     // Start the synthetic clock
     timer->Start();
@@ -113,6 +114,7 @@ DLL_EXPORT int test_timer_startstop(ITesting *t) {
 
     printf("Configuring it; freq=1000hz, reset=1, enable=1\n");
     printf("Waiting one second, ensure tick-counter has moved\n");
+
 
     timerConfig.freqSec = 1000;
     timerConfig.control.reset = 1;
@@ -126,7 +128,7 @@ DLL_EXPORT int test_timer_startstop(ITesting *t) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     TR_ASSERT(t, timerConfig.tickCounter > 0);
 
-    printf("Disable timer\n");
+    printf("Disable timer, running=%d\n", timerConfig.control.running);
     timerConfig.control.enable = 0;
     // Wait for timer to stop running
     while(timerConfig.control.running != 0) {
@@ -138,7 +140,7 @@ DLL_EXPORT int test_timer_startstop(ITesting *t) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     TR_ASSERT(t, tc == timerConfig.tickCounter);
 
-    printf("Enable timer again\n");
+    printf("Enable timer again, running=%d\n", timerConfig.control.running);
     timerConfig.control.enable = 1;
     // Wait for timer to stop running
     while(timerConfig.control.running != 1) {
