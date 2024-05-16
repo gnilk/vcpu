@@ -10,6 +10,7 @@
 #include <stack>
 #include <functional>
 #include <memory>
+#include <mutex>
 
 #include "fmt/format.h"
 #include "InstructionSet.h"
@@ -333,6 +334,8 @@ namespace gnilk {
 
             void *GetRawPtrToRAM(uint64_t addr);
 
+            MemoryLayout *GetSystemMemoryBlock();
+
             const CPUStatusReg &GetStatusReg() const {
                 return registers.statusReg;
             }
@@ -565,12 +568,12 @@ namespace gnilk {
 
             // Short cut pointers into the systemBlock...
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;
-            // Used to stash all information during an interrupt..
-            // FIXME: Move to emulated RAM  => FIX MEMORY LAYOUT!!!
             ISRControlBlock *isrControlBlocks = nullptr;
             ExceptionControlBlock *expControlBlock = nullptr;
+            // End short cut pointers
 
 
+            std::mutex isrLock;
 
             std::vector<ISRPeripheralInstance> peripherals;
 

@@ -141,6 +141,18 @@ DLL_EXPORT int test_exceptions_in_isr(ITesting *t) {
     vcpu.SetInstrPtr(0x2000);
     vcpu.EnableInterrupt(INT0);
     vcpu.EnableException(CPUKnownExceptions::kInvalidInstruction);
+
+    // Need to enable the timer...
+    auto sysblock = vcpu.GetSystemMemoryBlock();
+    sysblock->timer0.freqSec = 1000;
+    sysblock->timer0.control.reset = 1;
+    sysblock->timer0.control.enable = 1;
+    // Make this a generic thing
+    while(sysblock->timer0.control.running != 1) {
+        std::this_thread::yield();
+    }
+
+
     for(int i=0;i<30;i++) {
         vcpu.Step();
         // this print is quite wrong..

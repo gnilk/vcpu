@@ -36,14 +36,16 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
         0x20,0x03,0x03,0x01, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,
         // syscall
         0xc2,
-        // nop
-        OperandCode::NOP,
         // rti
         OperandCode::RTI,
     };
     uint8_t mainCode[]={
         // nop,nop,nop,brk
-        OperandCode::NOP, OperandCode::NOP, OperandCode::NOP, OperandCode::BRK
+            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP,
+            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP,
+            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP,
+            OperandCode::NOP, OperandCode::NOP, OperandCode::NOP,
+            OperandCode::BRK
     };
     vcpu.Begin(ram, 32*4096);
     vcpu.LoadDataToRam(0, &isrTable, sizeof(isrTable));
@@ -58,6 +60,19 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
 
     vcpu.SetInstrPtr(0x2000);
     vcpu.EnableInterrupt(INT0);
+
+    // Need to enable the timer...
+    auto sysblock = vcpu.GetSystemMemoryBlock();
+    sysblock->timer0.freqSec = 10;      // Lower the frequency, otherwise the only thing happening is the ISR routine being invoked...
+    sysblock->timer0.control.reset = 1;
+    sysblock->timer0.control.enable = 1;
+    // Make this a generic thing
+    while(sysblock->timer0.control.running != 1) {
+        std::this_thread::yield();
+    }
+
+    printf("Addresses with '*' indicate INT routine\n");
+
     for(int i=0;i<15;i++) {
         vcpu.Step();
         // this print is quite wrong..
@@ -69,7 +84,8 @@ DLL_EXPORT int test_int_invoke(ITesting *t) {
         } else {
             fmt::println("{} --- halted ---", i);
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(250));
+        // This will more or less cause ISR routine to constantly be invoked...
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     fmt::println("irq counter={}", irq_counter);

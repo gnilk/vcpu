@@ -4,7 +4,7 @@
 
 #include "fmt/format.h"
 #include "CPUBase.h"
-
+#include <mutex>
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -50,6 +50,10 @@ void *CPUBase::GetRawPtrToRAM(uint64_t addr) {
     return &ram[addr];
 }
 
+MemoryLayout *CPUBase::GetSystemMemoryBlock() {
+    return systemBlock;
+}
+
 bool CPUBase::RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler) {
     if (syscalls.contains(id)) {
         fmt::println(stderr, "SysCall with id {} ({:#x}) already exists",  id,id);
@@ -86,6 +90,9 @@ bool CPUBase::AddPeripheral(CPUIntFlag intMask, CPUInterruptId interruptId, Peri
     peripheral->MapToInterrupt(interruptId);
     peripherals.push_back(instance);
 
+    // Now allow the Peripheral to start, generally a peripheral would kick off internal threads and what not..
+    peripheral->Start();
+
     return true;
 }
 
@@ -117,7 +124,11 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
         return;
     }
 
-    // FIXME: Lock ISR handling here!
+
+    //
+    // Let's lock the ISR data
+    //
+    std::lock_guard<std::mutex> guard(isrLock);
 
     // Is this mapped??
     if (interruptMapping.find(interruptId) == interruptMapping.end()) {
@@ -151,6 +162,7 @@ void CPUBase::EnableInterrupt(CPUIntFlag interrupt) {
         exit(1);
     }
 
+    std::lock_guard<std::mutex> guard(isrLock);
     auto &intCntrl = GetInterruptCntrl();
     intCntrl.data.bits |= interrupt;
 }
@@ -188,6 +200,9 @@ bool CPUBase::InvokeISRHandlers() {
     if (isrVectorTable == nullptr) {
         return false;
     }
+
+    std::lock_guard<std::mutex> guard(isrLock);
+
     auto &intCntrl = GetInterruptCntrl();
     for(int i=0;i<MAX_INTERRUPTS;i++) {
         // Is this enabled and raised?
