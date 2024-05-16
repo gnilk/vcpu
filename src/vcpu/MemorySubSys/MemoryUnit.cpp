@@ -88,36 +88,36 @@ void MMU::Touch(const uint64_t address) {
     cacheController.Touch(address);
 }
 
-int32_t MMU::WriteInternalFromExternal(uint64_t address, const void *src, size_t nBytes) {
+int32_t MMU::WriteInternalFromExternal(uint64_t virtualAddress, const void *src, size_t nBytes) {
     // FIXME: Address translation
-    if (!SoC::Instance().IsAddressCacheable(address)) {
-        auto bus = SoC::Instance().GetDataBusForAddress(address);
+    if (!SoC::Instance().IsAddressCacheable(virtualAddress)) {
+        auto bus = SoC::Instance().GetDataBusForAddress(virtualAddress);
         if (bus == nullptr) {
             return -1;
         }
         // FIXME: The non-cache-able bus should work on smaller values - 32bit?
-        bus->WriteData(address, src, nBytes);
+        bus->WriteData(virtualAddress, src, nBytes);
         return (int32_t)nBytes;
     }
 
-    return cacheController.WriteInternalFromExternal(address, src, nBytes);
+    return cacheController.WriteInternalFromExternal(virtualAddress, src, nBytes);
 }
-void MMU::ReadInternalToExternal(void *dst, uint64_t address, size_t nBytes) {
+void MMU::ReadInternalToExternal(void *dst, uint64_t virtualAddress, size_t nBytes) {
     // FIXME: Address translation
-    if (!SoC::Instance().IsAddressCacheable(address)) {
-        auto bus = SoC::Instance().GetDataBusForAddress(address);
+    if (!SoC::Instance().IsAddressCacheable(virtualAddress)) {
+        auto bus = SoC::Instance().GetDataBusForAddress(virtualAddress);
         if (bus == nullptr) {
             return;
         }
-        bus->ReadData(dst, address, nBytes);
+        bus->ReadData(dst, virtualAddress, nBytes);
         return;
     }
-    cacheController.ReadInternalToExternal(dst, address, nBytes);
+    cacheController.ReadInternalToExternal(dst, virtualAddress, nBytes);
 }
 
 
 // Copy to external (native) RAM from the emulated RAM...
-int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nBytes) {
+int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcVirtualAddress, size_t nBytes) {
     static uint8_t tmpCacheLine[GNK_L1_CACHE_LINE_SIZE];
     if (nBytes > GNK_L1_CACHE_LINE_SIZE) {
         return -1;
@@ -125,7 +125,7 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nB
     if (nBytes == 0) {
         return 0;
     }
-    if (!SoC::Instance().HaveRegionForAddress(srcAddress)) {
+    if (!SoC::Instance().HaveRegionForAddress(srcVirtualAddress)) {
         // FIXME: Raise exception
         return 0;
     }
@@ -133,16 +133,16 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcAddress, size_t nB
     // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
 
 
-    auto databus = SoC::Instance().GetDataBusForAddress(srcAddress);
+    auto databus = SoC::Instance().GetDataBusForAddress(srcVirtualAddress);
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
-    databus->ReadLine(tmpCacheLine, srcAddress);
+    databus->ReadLine(tmpCacheLine, srcVirtualAddress);
     memcpy(dstPtr, tmpCacheLine, nBytes);
     return nBytes;
 }
 
 
 // Copy to emulated RAM from native RAM...
-int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t nBytes) {
+int32_t MMU::CopyToRamFromExt(uint64_t dstVirtualAddr, const void *srcAddress, size_t nBytes) {
     static uint8_t tmpCacheLine[GNK_L1_CACHE_LINE_SIZE];
     if (nBytes > GNK_L1_CACHE_LINE_SIZE) {
         return -1;
@@ -150,18 +150,18 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstAddr, const void *srcAddress, size_t n
     if (nBytes == 0) {
         return 0;
     }
-    if (!SoC::Instance().HaveRegionForAddress(dstAddr)) {
+    if (!SoC::Instance().HaveRegionForAddress(dstVirtualAddr)) {
         // FIXME: Raise exception
         return 0;
     }
 
     // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
 
-    auto databus = SoC::Instance().GetDataBusForAddress(dstAddr);
+    auto databus = SoC::Instance().GetDataBusForAddress(dstVirtualAddr);
 
     memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
     memcpy(tmpCacheLine, srcAddress, nBytes);
-    databus->WriteLine(dstAddr, tmpCacheLine);
+    databus->WriteLine(dstVirtualAddr, tmpCacheLine);
 
     return nBytes;
 }

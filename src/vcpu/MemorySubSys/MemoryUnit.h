@@ -153,8 +153,8 @@ namespace gnilk {
             bool IsAddressValid(uint64_t address);
 
 
-            __inline uint8_t constexpr RegionFromAddress(uint64_t address) {
-                uint8_t region = (address & VCPU_SOC_REGION_MASK) >> (VCPU_SOC_REGION_SHIFT);
+            __inline uint8_t constexpr RegionFromAddress(uint64_t virtualAddress) {
+                uint8_t region = (virtualAddress & VCPU_SOC_REGION_MASK) >> (VCPU_SOC_REGION_SHIFT);
                 return region;
             }
 
@@ -163,20 +163,20 @@ namespace gnilk {
                 return region;
             }
 
-            __inline uint64_t constexpr PageTableIndexFromAddress(uint64_t address) {
-                uint64_t offset = (address & VCPU_MMU_PAGE_TABLE_IDX_MASK) >> (VCPU_MMU_PAGE_TABLE_SHIFT);
+            __inline uint64_t constexpr PageTableIndexFromAddress(uint64_t virtualAddress) {
+                uint64_t offset = (virtualAddress & VCPU_MMU_PAGE_TABLE_IDX_MASK) >> (VCPU_MMU_PAGE_TABLE_SHIFT);
                 return offset;
             }
-            __inline uint64_t constexpr PageDescriptorIndexFromAddress(uint64_t address) {
-                uint64_t offset = (address & VCPU_MMU_PAGE_DESC_IDX_MASK) >> (VCPU_MMU_PAGE_DESC_SHIFT);
+            __inline uint64_t constexpr PageDescriptorIndexFromAddress(uint64_t virtualAddress) {
+                uint64_t offset = (virtualAddress & VCPU_MMU_PAGE_DESC_IDX_MASK) >> (VCPU_MMU_PAGE_DESC_SHIFT);
                 return offset;
             }
-            __inline uint64_t constexpr PageTableEntryIndexFromAddress(uint64_t address) {
-                uint64_t offset = (address & VCPU_MMU_PAGE_ENTRY_IDX_MASK) >> (VCPU_MMU_PAGE_ENTRY_SHIFT);
+            __inline uint64_t constexpr PageTableEntryIndexFromAddress(uint64_t virtualAddress) {
+                uint64_t offset = (virtualAddress & VCPU_MMU_PAGE_ENTRY_IDX_MASK) >> (VCPU_MMU_PAGE_ENTRY_SHIFT);
                 return offset;
             }
-            __inline uint64_t constexpr PageOffsetFromAddress(uint64_t address) {
-                uint64_t offset = (address & VCPU_MMU_PAGE_OFFSET_MASK);
+            __inline uint64_t constexpr PageOffsetFromAddress(uint64_t virtualAddress) {
+                uint64_t offset = (virtualAddress & VCPU_MMU_PAGE_OFFSET_MASK);
                 return offset;
             }
 
@@ -187,16 +187,16 @@ namespace gnilk {
 
 
             template<typename T>
-            int32_t Write(uint64_t address, const T &value) {
+            int32_t Write(uint64_t virtualAddress, const T &value) {
                 static_assert(std::is_integral_v<T> == true);
-                return WriteInternalFromExternal(address, &value, sizeof(T));
+                return WriteInternalFromExternal(virtualAddress, &value, sizeof(T));
             }
 
             template<typename T>
-            T Read(uint64_t address) {
+            T Read(uint64_t virtualAddress) {
                 static_assert(std::is_integral_v<T> == true);
                 T value;
-                ReadInternalToExternal(&value, address, sizeof(T));
+                ReadInternalToExternal(&value, virtualAddress, sizeof(T));
                 return value;
             }
 
