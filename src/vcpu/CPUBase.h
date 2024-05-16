@@ -233,10 +233,10 @@ namespace gnilk {
             // HW Mapping of various things - like GPIO, I2C, SPI, UART?
 
             // FIXME: Just testing a few things
-            TimerConfigBlock timer0;
-            TimerConfigBlock timer1;
-            TimerConfigBlock timer2;
-            TimerConfigBlock timer3;
+            TimerConfigBlock timer0 = {};
+            TimerConfigBlock timer1 = {};
+            TimerConfigBlock timer2 = {};
+            TimerConfigBlock timer3 = {};
         };
 
 

@@ -19,6 +19,8 @@ namespace gnilk {
             virtual ~Peripheral() = default;
 
             virtual void Initialize() {}
+            virtual bool Start() { return false; }
+            virtual bool Stop() { return false; }
             virtual bool Update() { return false; }
 
             void SetInterruptController(InterruptController *newCntrl) {

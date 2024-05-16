@@ -96,6 +96,10 @@ void CPUBase::ResetPeripherals() {
 }
 
 void CPUBase::UpdatePeripherals() {
+    // This makes Peripherals run in sync with the CPU - but that's not quite true what they do
+    // Instead they run based on electrical signals and the CPU samples them
+
+    // Still, keeping this interface in case I did something stupid..
     for(auto &p : peripherals) {
         p.peripheral->Update();
     }
@@ -112,6 +116,8 @@ void CPUBase::RaiseInterrupt(CPUInterruptId interruptId) {
         // Already within an ISR - do NOT execute another
         return;
     }
+
+    // FIXME: Lock ISR handling here!
 
     // Is this mapped??
     if (interruptMapping.find(interruptId) == interruptMapping.end()) {
