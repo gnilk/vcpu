@@ -621,6 +621,7 @@ void InstructionSetImpl::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
         // FIXME: Raise CPU exception!
         fmt::println(stderr, "RET - no return address - stack empty!!");
         cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.Halt();
         return;
     }
     auto newInstrAddr = cpu.stack.top();
