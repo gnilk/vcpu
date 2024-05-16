@@ -278,9 +278,11 @@ namespace gnilk {
 
         class InstructionSetImpl;
         class InstructionDecoder;
+        class InstructionDecoderBase;
         // FIXME: the ISR controller should be part of the SOC
         class CPUBase : public InterruptController {
-            friend InstructionDecoder;
+            friend InstructionDecoder;          // FIXME: Is this needed now?
+            friend InstructionDecoderBase;
             friend InstructionSetImpl;
         public:
             using Ref = std::shared_ptr<CPUBase>;

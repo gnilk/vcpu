@@ -262,11 +262,6 @@ uint64_t InstructionDecoder::ComputeRelativeAddress(CPUBase &cpuBase, const Rela
     return relativeAddrOfs;
 }
 
-uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
-    // Note: FetchFromRam will modifiy the address!!!!
-    auto nextByte = cpu.FetchFromPhysicalRam<uint8_t>(memoryOffset);
-    return nextByte;
-}
 
 
 std::string InstructionDecoder::ToString() const {

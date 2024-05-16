@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <memory>
+#include "InstructionDecoderBase.h"
 #include "InstructionSet.h"
 #include "CPUBase.h"
 
@@ -14,7 +15,7 @@ namespace gnilk {
     namespace vcpu {
 
 
-        class InstructionDecoder {
+        class InstructionDecoder : public InstructionDecoderBase {
         public:
             using Ref = std::shared_ptr<InstructionDecoder>;
             struct RelativeAddressing {
@@ -43,7 +44,7 @@ namespace gnilk {
             virtual ~InstructionDecoder() = default;
             static InstructionDecoder::Ref Create(uint64_t memoryOffset);
 
-            bool Tick(CPUBase &cpu);
+            bool Tick(CPUBase &cpu) override;
             // Make this private when it works
             bool ExecuteTickFromIdle(CPUBase &cpu);
             bool ExecuteTickDecodeAddrMode(CPUBase &cpu);
@@ -107,7 +108,6 @@ namespace gnilk {
             };
 
         protected:
-            uint8_t NextByte(CPUBase &cpu);
             // Helper for 'ToString'
             std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const;
             // Perhaps move to base class
@@ -128,10 +128,6 @@ namespace gnilk {
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand
 
-        private:
-            uint64_t memoryOffset = {};
-            uint64_t ofsStartInstr = {};
-            uint64_t ofsEndInstr = {};
         };
 
         // This is more or less a wrapper around the InstructionDecoder

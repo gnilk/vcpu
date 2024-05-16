@@ -49,6 +49,12 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/HWMappedBus.cpp src/vcpu/MemorySubSys/
 list(APPEND vcpusrc src/vcpu/MemorySubSys/RamBus.cpp src/vcpu/MemorySubSys/RamBus.h)
 # temp...
 list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSys/PageAllocator.h)
+
+
+# SIMD extensions
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSet.cpp src/vcpu/Simd/SIMDInstructionSet.h)
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionDecoder.cpp src/vcpu/Simd/SIMDInstructionDecoder.h)
+
 #
 # Virtual CPU unit test sources
 #
@@ -112,7 +118,7 @@ list(APPEND asmtestsrc src/assembler/tests/test_stmtemitter.cpp)
 
 
 # test library for vcpu
-add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${commonsrc})
+add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_compile_options(test PUBLIC -DTRUN_USE_V1)
 target_include_directories(test PUBLIC src/vcpu)
 target_include_directories(test PUBLIC src/assembler)
@@ -127,12 +133,12 @@ endif()
 #
 # Emulator and Assembler apps
 #
-add_executable(emu apps/emulator/emulator.cpp ${emusrc} ${vcpusrc} ${commonsrc})
+add_executable(emu apps/emulator/emulator.cpp ${emusrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_include_directories(emu PUBLIC src/vcpu)
 target_include_directories(emu PUBLIC src/common)
 target_include_directories(emu PUBLIC src/ext/ELFIO)
 
-add_executable(asm apps/assembler/assembler.cpp ${asmsrc} ${vcpusrc} ${commonsrc})
+add_executable(asm apps/assembler/assembler.cpp ${asmsrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
 target_include_directories(asm PUBLIC src/common)
 target_include_directories(asm PUBLIC src/vcpu)
