@@ -140,12 +140,23 @@ bool InstructionPipeline::BeginNext(CPUBase &cpu) {
 
 void SuperScalarCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
-    AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1));
+    // In quick-start mode we create a 'fake' timer - there is no mapping to anything in RAM...
+    static TimerConfigBlock timerConfigBlock = {
+            .control = {
+                    .enable = 1,
+                    .reset = 1,
+            },
+            .freqSec = 1,
+            .tickCounter = 0,
+    };
+
+    AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(&timerConfigBlock));
 }
 
 void SuperScalarCPU::Begin(void *ptrRam, size_t sizeOfRam) {
     CPUBase::Begin(ptrRam, sizeOfRam);
-    AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(1000));
+    // Create the timers
+    AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(&systemBlock->timer0));
 }
 
 
