@@ -77,7 +77,7 @@ namespace gnilk {
 
 //        Upper 32                            |              Lower 32
 //        bit   63                                                                              0
-//        RRRR BBBB 0000 0000 0000 0000 0000 TTTT | TTTT DDDD DDDD PPPP PPPP AAAA AAAA AAAA
+//        xxxx RRRR 0000 0000 0000 0000 0000 TTTT | TTTT DDDD DDDD PPPP PPPP AAAA AAAA AAAA
 //
 //        This gives 36 bit linear address space per mapped region!
 //        Easily extended to 42 bits (just more levels of tables).
@@ -85,8 +85,11 @@ namespace gnilk {
 //
 //       Not quite sure how I should handle these...
 //
-//                BBBB - Region, the region is a 16 bit lookup inside the MMU - regions are predefined and can not change in runtime
-//                Ex:
+//        RRRR - Region, the region is a 4 bit lookup inside the MMU - regions are predefined and can not change in runtime
+//               The MMU supports MAX 16 regions of memory...
+//        xxxx - Reserved, should be left to zero...
+//
+//  Ex:
 //        TTTT - Table index
 //        DDDD - Descriptor index
 //        PPPP - Page Table Entry index

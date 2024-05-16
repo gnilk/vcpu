@@ -26,14 +26,15 @@ namespace gnilk {
             kRegionFlag_Cache = 0x10,   // Should this region be cached or not
             kRegionFlag_NonVolatile = 0x20, // Non-volatile memory - will be preserved when 'Reset' is called
             kRegionFlag_HWMapping = 0x40,   // This a region which is mapped to hardware
+            kRegionFlag_User = 0x80,    // Is this a user or supervisor region
         };
 
         using MemoryAccessHandler = std::function<void(BusBase::kMemOp op, uint64_t address)>;
         // Should each region be tied to a memory bus - or is this optional?
         // Also - a region is global across all MMU instances...
         struct MemoryRegion {
-            uint64_t rangeStart, rangeEnd;
-            uint64_t firstVirtualAddr = 0;
+            uint64_t vAddrStart, vAddrEnd;      // Virtual addresses
+            //uint64_t firstVirtualAddr = 0;
             MemoryAccessHandler cbAccessHandler = nullptr;
             uint8_t flags = 0;
 
@@ -122,11 +123,9 @@ namespace gnilk {
                     return false;
                 }
 
-                address &= VCPU_SOC_ADDR_MASK;
-
                 // Outside region address range?
-                if (address < regions[idxRegion].rangeStart) return false;
-                if (address > regions[idxRegion].rangeEnd) return false;
+                if (address < regions[idxRegion].vAddrStart) return false;
+                if (address > regions[idxRegion].vAddrEnd) return false;
 
                 return true;
             }

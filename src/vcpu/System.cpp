@@ -52,11 +52,10 @@ void SoC::CreateDefaultRAMRegion(size_t idxRegion) {
     // Setup region 0 - this is the default RAM region
     auto &region = GetRegion(idxRegion);
     region.flags = kRegionFlag_Valid | kRegionFlag_Cache | kRegionFlag_Execute | kRegionFlag_Read | kRegionFlag_Write;
-    region.rangeStart = 0x0000'0000'0000'0000;
-    region.rangeEnd   = 0x0000'000f'ffff'ffff;
-    region.firstVirtualAddr = (uint64_t(0) << VCPU_SOC_REGION_SHIFT) | region.rangeStart;
-    region.cbAccessHandler = nullptr;
+    region.vAddrStart = 0x0000'0000'0000'0000;
+    region.vAddrEnd   = 0x0000'000f'ffff'ffff;
 
+    region.cbAccessHandler = nullptr;
 
     region.szPhysical = 65536;
     region.ptrPhysical = new uint8_t[region.szPhysical];
@@ -71,9 +70,8 @@ void SoC::CreateDefaultRAMRegion(size_t idxRegion) {
 void SoC::CreateDefaultHWRegion(size_t idxRegion) {
     auto &region = GetRegion(idxRegion);
     region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Write | kRegionFlag_HWMapping;
-    region.rangeStart = 0x0000'0000'0000'0000;
-    region.rangeEnd   = 0x0000'0000'0000'ffff;
-    region.firstVirtualAddr = (uint64_t(1) << VCPU_SOC_REGION_SHIFT) | region.rangeStart;
+    region.vAddrStart = 0x0100'0000'0000'0000;          // (uint64_t(1) << VCPU_SOC_REGION_SHIFT)
+    region.vAddrEnd   = 0x0100'0000'0000'ffff;          // (uint64_t(1) << VCPU_SOC_REGION_SHIFT)
     region.bus = HWMappedBus::Create();
     region.cbAccessHandler = nullptr;
 }
@@ -81,9 +79,9 @@ void SoC::CreateDefaultHWRegion(size_t idxRegion) {
 void SoC::CreateDefaultFlashRegion(size_t idxRegion) {
     auto &region = GetRegion(idxRegion);
     region.flags = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Execute |  kRegionFlag_NonVolatile;
-    region.rangeStart = 0x0000'0000'0000'0000;
-    region.rangeEnd   = 0x0000'0000'0000'ffff;
-    region.firstVirtualAddr = (uint64_t(2) << VCPU_SOC_REGION_SHIFT) | region.rangeStart;
+
+    region.vAddrStart = 0x0200'0000'0000'0000;  // (uint64_t(2) << VCPU_SOC_REGION_SHIFT)
+    region.vAddrEnd   = 0x0200'0000'0000'ffff;
     region.szPhysical = 65536;
     region.ptrPhysical = new uint8_t[region.szPhysical];
     // make sure we do this...
@@ -111,14 +109,14 @@ MemoryRegion *SoC::GetFirstRegionMatching(uint8_t kRegionFlags) {
 
 void SoC::MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end) {
     regions[region].flags = flags | kRegionFlag_Valid;
-    regions[region].rangeStart = start;
-    regions[region].rangeEnd = end;
+    regions[region].vAddrStart = start;
+    regions[region].vAddrEnd = end;
 }
 
 void SoC::MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler) {
     regions[region].flags = flags | kRegionFlag_Valid;
-    regions[region].rangeStart = start;
-    regions[region].rangeEnd = end;
+    regions[region].vAddrStart = start;
+    regions[region].vAddrEnd = end;
     regions[region].cbAccessHandler = handler;
 }
 
