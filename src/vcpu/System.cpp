@@ -26,7 +26,7 @@ void SoC::Initialize() {
 
 void SoC::Reset() {
     for(int i=0;i<VCPU_SOC_MAX_REGIONS;i++) {
-        if (!regions[i].flags & kRegionFlag_Valid) continue;
+        if (!(regions[i].flags & kRegionFlag_Valid)) continue;
         if (regions[i].flags & kRegionFlag_NonVolatile) continue;
         if (regions[i].ptrPhysical == nullptr) continue;
 
