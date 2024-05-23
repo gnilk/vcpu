@@ -14,6 +14,13 @@
 
 namespace gnilk {
     namespace vcpu {
+
+        typedef float fp32;
+        typedef double fp64;
+
+        struct SIMDRegister {
+            float fp1,fp2,fp3,fp4;
+        };
         // This is the SIMD/CU instruction set extension for VCPU
         // One can use this 'as-is' with a RAW instruction stream or through the generic CPU InstructionBase
         // which will then be mapped through one of the 15 extensions (0xf0..0xfe)
