@@ -14,6 +14,9 @@
 namespace gnilk {
     namespace vcpu {
 
+        // FIXME: MOVE THIS - impl is in 'InstructionSet'
+        InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t extCode);
+
 
         class InstructionDecoder : public InstructionDecoderBase {
         public:
@@ -34,6 +37,7 @@ namespace gnilk {
                 kStateDecodeAddrMode,
                 kStateReadMem,
                 kStateFinished,
+                kStateDecodeExtension,      // Decoding is deferred to extension..
             };
             State state = {};
         public:
@@ -44,14 +48,16 @@ namespace gnilk {
             virtual ~InstructionDecoder() = default;
             static InstructionDecoder::Ref Create(uint64_t memoryOffset);
 
+            void Reset() override;
+            bool Decode(CPUBase &cpu);          // Single pass decoding - executes all ticks
             bool Tick(CPUBase &cpu) override;
             // Make this private when it works
             bool ExecuteTickFromIdle(CPUBase &cpu);
             bool ExecuteTickDecodeAddrMode(CPUBase &cpu);
             bool ExecuteTickReadMem(CPUBase &cpu);
-
-            bool Decode(CPUBase &cpu);
+            bool ExecuteTickDecodeExt(CPUBase &cpu);
             // Converts a decoded instruction back to it's mnemonic form
+
             std::string ToString() const;
 
             // const RegisterValue &GetDstValue() {
@@ -118,7 +124,26 @@ namespace gnilk {
 
             size_t ComputeInstrSize() const;
             size_t ComputeOpArgSize(const OperandArg &opArg) const;
+            bool IsExtension(uint8_t opCodeByte) const;
+
+            const State &GetState() {
+                return state;
+            }
+            void ChangeState(State newState) {
+                state = newState;
+            }
+
+            InstructionDecoderBase::Ref GetDecoderForInstrExt(uint8_t ext);
+
+            InstructionDecoderBase::Ref extDecoder = nullptr;
+
         public:
+            // FIXME: TEMP TEMP
+            InstructionDecoderBase::Ref GetCurrentExtDecoder() {
+                return extDecoder;
+            }
+
+
             // Used during by decoder...
 
             Operand code;

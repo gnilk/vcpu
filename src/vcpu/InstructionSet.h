@@ -232,6 +232,7 @@ namespace gnilk {
             // End of code
         } OperandCode;
 
+        static const uint8_t OperandCodeExtensionMask = 0xf0;
 
         //
         // This feature description and table should be made visible across all CPU tools..
@@ -265,6 +266,8 @@ namespace gnilk {
             // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
             Control = 128,
             // FIXME: Perhaps need absolute as well..
+
+            Extension = 256,    // Extension prefix
         };
 
         inline constexpr OperandDescriptionFlags operator |(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
@@ -285,6 +288,8 @@ namespace gnilk {
         const std::unordered_map<OperandCode, OperandDescription> &GetInstructionSet();
         std::optional<OperandDescription> GetOpDescFromClass(OperandCode opClass);
         std::optional<OperandCode> GetOperandFromStr(const std::string &str);
+
+
 
     }
 }

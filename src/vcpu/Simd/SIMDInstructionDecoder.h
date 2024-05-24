@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <memory>
 #include "SIMDInstructionSet.h"
+#include "SIMDInstructionSetImpl.h"
 #include "InstructionDecoderBase.h"
 #include "CPUBase.h"
 
@@ -15,22 +16,29 @@
 namespace gnilk {
     namespace vcpu {
         class SIMDInstructionDecoder : public InstructionDecoderBase {
+            friend SIMDInstructionSetImpl;
         public:
             SIMDInstructionDecoder() = default;
             virtual ~SIMDInstructionDecoder() = default;
 
 
-            static SIMDInstructionDecoder::Ref Create(uint64_t memoryOffset);
+            static SIMDInstructionDecoder::Ref Create();
 
+            bool Decode(CPUBase &cpu);
             bool Tick(CPUBase &cpu);
         protected:
-            bool ExecuteTickFromIdle(CPUBase &cpu);
+            bool IsComplete() override;
 
+            bool ExecuteTickFromIdle(CPUBase &cpu);
+            bool ExecuteTickReadWriteMem(CPUBase &cpu);
+
+            void ReadMem(CPUBase &cpu);
+            void WriteMem(CPUBase &cpu);
+            size_t ComputeInstrSize() const;
         protected:
             enum class State : uint8_t {
                 kStateIdle,
-                kStateDecodeAddrMode,
-                kStateReadMem,
+                kStateReadWriteMem,
                 kStateFinished,
             };
             State state = {};
@@ -41,6 +49,30 @@ namespace gnilk {
             void ChangeState(State newState) {
                 state = newState;
             }
+        protected:
+            struct Operand {
+                uint8_t opCodeByte;
+                SimdOpCode opCode;
+                SimdOperandDescription description;
+
+                uint8_t opFlagsHighByte;
+                kSimdOpSize opSize;
+                kSimdAddrMode opAddrMode;
+
+                uint8_t opFlagsLowBitsAndDst;
+                uint8_t opFlagsLowBits;
+                uint8_t opDstRegIndex;
+
+                uint8_t opSrcAAndMaskOrSrcB;
+                uint8_t opSrcAIndex;
+                union {
+                    uint8_t opSrcBIndex;
+                    uint8_t opMask;
+                };
+
+            };
+
+            Operand operand = {};
 
         };
     }

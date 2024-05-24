@@ -16,6 +16,7 @@ const std::string &InstructionDecoder::StateToString(InstructionDecoder::State s
             {InstructionDecoder::State::kStateDecodeAddrMode, "AddrMode"},
             {InstructionDecoder::State::kStateReadMem, "ReadMem"},
             {InstructionDecoder::State::kStateFinished, "Finished"},
+            {InstructionDecoder::State::kStateDecodeExtension, "Extension"},
     };
     return stateNames[s];
 }
@@ -29,6 +30,22 @@ InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
     return inst;
 }
 
+bool InstructionDecoder::Decode(CPUBase &cpu) {
+
+    // Decode using the tick functions - this will track number of ticks for the operand
+    Reset();
+    while(state != State::kStateFinished) {
+        if (!Tick(cpu)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void InstructionDecoder::Reset() {
+    ChangeState(State::kStateIdle);
+}
+
 bool InstructionDecoder::Tick(CPUBase &cpu) {
     switch(state) {
         case State::kStateIdle :
@@ -40,6 +57,9 @@ bool InstructionDecoder::Tick(CPUBase &cpu) {
         case State::kStateFinished :
             //fmt::println(stderr, "InstrDecoder - tick on state 'kStateFinished' we should never reach this - should auto-go to IDLE");
             return true;
+        case State::kStateDecodeExtension :
+            return ExecuteTickDecodeExt(cpu);
+            break;
     }
     return false;
 }
@@ -63,6 +83,16 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     if (!gnilk::vcpu::GetInstructionSet().contains(code.opCode)) {
         return false;
     }
+
+    if (IsExtension(code.opCodeByte)) {
+        // We will break here - just move one instruction forward..
+        cpu.AdvanceInstrPtr(1);
+        extDecoder = GetDecoderForInstrExt(code.opCodeByte);
+        extDecoder->Reset();
+        ChangeState(State::kStateDecodeExtension);
+        return true;
+    }
+
 
     code.description = gnilk::vcpu::GetInstructionSet().at(code.opCode);
 
@@ -107,6 +137,22 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     return true;
 }
 
+// Checks if the first byte matches the extension mask
+bool InstructionDecoder::IsExtension(uint8_t opCodeByte) const {
+    if ((opCodeByte & OperandCodeExtensionMask) != OperandCodeExtensionMask) {
+        return false;
+    }
+    return true;
+}
+
+//
+// FIXME: Need to define WHERE extensions are registered
+//
+InstructionDecoderBase::Ref InstructionDecoder::GetDecoderForInstrExt(uint8_t ext) {
+    return gnilk::vcpu::GetDecoderForExtension(ext);
+}
+
+
 //
 // this is the second tick - here we decode the Operands
 // relative addressing needs one byte per operand if used
@@ -135,16 +181,16 @@ bool InstructionDecoder::ExecuteTickReadMem(CPUBase &cpu) {
     return true;
 }
 
-bool InstructionDecoder::Decode(CPUBase &cpu) {
-
-    // Decode using the tick functions - this will track number of ticks for the operand
-    state = State::kStateIdle;
-    while(state != State::kStateFinished) {
-        if (!Tick(cpu)) {
-            return false;
-        }
+//
+// Decode an extension
+//
+bool InstructionDecoder::ExecuteTickDecodeExt(CPUBase &cpu) {
+    // FIXME: need better semantics...
+    bool result = extDecoder->Tick(cpu);
+    if (extDecoder->IsComplete()) {
+        ChangeState(State::kStateFinished);
     }
-    return true;
+    return result;
 }
 
 size_t InstructionDecoder::ComputeInstrSize() const {

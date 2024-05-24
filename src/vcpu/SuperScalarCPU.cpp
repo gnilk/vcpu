@@ -80,7 +80,8 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
                 cbDecoded(decoder);
             }
             idLastExec = pipelineDecoder.id;
-            decoder.state = InstructionDecoder::State::kStateIdle;
+            //decoder.state = InstructionDecoder::State::kStateIdle;
+            decoder.Reset();
 
             // should we 'pad' instructions up to next 32 bit boundary?
             // this would make bus-reads (or in this case L1 cache reads 32 bit - which might simplify things)

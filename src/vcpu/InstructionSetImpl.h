@@ -59,7 +59,7 @@ namespace gnilk {
             void ExecuteBeqInstr(InstructionDecoder& instrDecoder);
             void ExecuteBneInstr(InstructionDecoder& instrDecoder);
 
-
+            void ExecuteSIMDInstr(InstructionDecoder& instrDecoder);
             void WriteToDst(InstructionDecoder& instrDecoder, const RegisterValue &v);
         private:
             CPUBase &cpu;

@@ -71,6 +71,9 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
         case BNE :
             ExecuteBneInstr(decoder);
             break;
+        case SIMD:
+            ExecuteSIMDInstr(decoder);
+            break;
         default:
             fmt::println(stderr, "Invalid operand: {} - raising exception handler (if available)", decoder.code.opCodeByte);
             //
@@ -81,6 +84,15 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
     }
     return true;
 }
+
+
+// TEST TEST
+#include "Simd/SIMDInstructionSetImpl.h"
+void InstructionSetImpl::ExecuteSIMDInstr(InstructionDecoder& instrDecoder) {
+    SIMDInstructionSetImpl impl;
+    impl.ExecuteInstruction(instrDecoder);
+}
+
 ////////////////////////////
 //
 // Instruction emulation begins here

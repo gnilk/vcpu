@@ -165,73 +165,106 @@ namespace gnilk {
         //      F/I - float or int, 1 = float, 0 = int
         //      C   - update condition
         //
+        typedef enum : uint8_t {
+            kOpSize_Fp8  = 0b0000'0000,
+            kOpSize_Fp16 = 0b0100'0000,
+            kOpSize_Fp32 = 0b1000'0000,
+            kOpSize_Fp64 = 0b1100'0000,
+        } kSimdOpSize;
+        typedef enum : uint8_t {
+            kOpAddrMode_Simd = 0,               // addr mode is simd <-> simd
+            kOpAddrMode_DstReg = 0b0010'0000,   // addr mode is reg <- simd
+            kOpAddrMode_SrcReg = 0b0001'0000,   // addr mode is simd <- reg
+        } kSimdAddrMode;
 
+        typedef enum : uint8_t {
+            kOpFlag_SzFp8   = 0b0000'0000,
+            kOpFlag_SzFp16  = 0b0100'0000,
+            kOpFlag_SzFp32  = 0b1000'0000,
+            kOpFlag_SzFp64  = 0b1100'0000,
+            kOpFlag_DstAddrReg = 0b0010'0000,
+            kOpFlag_SrcAddrReg = 0b0001'0000,
+        } kSimdOpFlags;
+        static const uint8_t kSimdFlagOpSizeBitMask = 0b1100'0000;
+        static const uint8_t kSimdFlagAddrRegBitMask = 0b0011'0000;
 
 
         //
         // instructions:
-        // This is straight of taken from NVidia GPU v4
+        // This is a mix of ARMv8 SIMD/SVE/SME and nvidia GPU-4
         // http://www.renderguild.com/gpuguide.pdf
         //
-        enum class SimdOpCode : uint8_t {
-            ABS,            // absolute value
-            ADD,            // add
-            AND,            // btwise and
-            BRK,            // break out of loop
-            CALL,           // call sub routine
-            CEIL,           // ceiling
-            CMP,            // compare
-            CONT,           // continue loop
-            COS,            // cosine with reduction (-pi,pi)
-            DIV,            // divide
-            DP2,            // 2-component dot product
-            DP2A,           // 2-component dot product w/scalar add
-            DP3,            // 3-component dot product
-            DP4,            // 4-component dot product
-            DPH,            // homogeneous dot product
-            DST,            // distance vector
-            EX2,            // exponential base 2
-            FLR,            // floor
-            FRC,            // fraction
-            I2F,            // int 2 float
-            LG2,            // lograithm base 2
-            LRP,            // lerp - linerar interpolation
-            MAD,            // multiply and add
-            MAX,            // max
-            MIN,            // min
-            MOD,            // modulus per component by scalar
-            MOV,            // move
-            MUL,            // multiply
-            NOT,            // bitwise not
-            NRM,            // normalize 3 component vector
-            OR,             // bitwise or
-            PK2H,           // pack two 16bit floats
-            PK2US,          // pack two floats as unsigned 16 bit
-            PK4B,           // pack four float as signed 8 bit
-            PK4UB,          // pack four floats as unsigned 8 bit
-            POW,            // exponentiate
-            RCC,            // reciprocal (clamped)
-            RCP,            // reciprocal
-            REP,            // repeat
-            RET,            // return
-            ROUND,          // round to nearest integer
-            RSQ,            // reciprocal square root
-            SAD,            // sum of absolute differences
-            SCS,            // sin/cos without reduction
-            SHL,            // bit shift left
-            SHR,            // bit shift right
-            SIN,            // sin with reduction (-pi,pi)
-            SUB,            // subtract
-            SMP,            // sample
-            SWZ,            // extended swizzle
-            TRUNC,          // truncate (round towards zero)
-            UP2H,           // unpack two 16 bit floats
-            UP2US,          // unpack two unsigned 16-bit ints
-            UP4B,           // unpack four 8-bit ints
-            UP4UB,          // unpack four 8-bit unsigned ints
-            XOR,            // bitwise exclusive or
-            XPD,            // cross product
-        };
+        typedef enum  : uint8_t {
+            // Place these at 'MOV' for regular instr. set
+            LOAD = 0x20,           // load
+            STORE,          // store
+            //
+            HADD = 0x30,           // horizontal add
+            VMUL = 0x31,           // vector multiplication
+            //
+            UNPCKFP8  = 0x40,      // Unpack FP8
+            UNPCKFP16 = 0x41,      // Unpack FP16
+            UNPCKFP32 = 0x42,      // Unpack FP32
+            PACKFP16  = 0x48,      //
+            PACKFP32  = 0x49,      //
+            PACKFP64  = 0x4a,      //
+
+//            AND,            // btwise and
+//            BRK,            // break out of loop
+//            CALL,           // call sub routine
+//            CEIL,           // ceiling
+//            CMP,            // compare
+//            CONT,           // continue loop
+//            COS,            // cosine with reduction (-pi,pi)
+//            DIV,            // divide
+//            DP2,            // 2-component dot product
+//            DP2A,           // 2-component dot product w/scalar add
+//            DP3,            // 3-component dot product
+//            DP4,            // 4-component dot product
+//            DPH,            // homogeneous dot product
+//            DST,            // distance vector
+//            EX2,            // exponential base 2
+//            FLR,            // floor
+//            FRC,            // fraction
+//            I2F,            // int 2 float
+//            LG2,            // lograithm base 2
+//            LRP,            // lerp - linerar interpolation
+//            MAD,            // multiply and add
+//            MAX,            // max
+//            MIN,            // min
+//            MOD,            // modulus per component by scalar
+//            MOV,            // move
+//            MUL,            // multiply
+//            NOT,            // bitwise not
+//            NRM,            // normalize 3 component vector
+//            OR,             // bitwise or
+//            PK2H,           // pack two 16bit floats
+//            PK2US,          // pack two floats as unsigned 16 bit
+//            PK4B,           // pack four float as signed 8 bit
+//            PK4UB,          // pack four floats as unsigned 8 bit
+//            POW,            // exponentiate
+//            RCC,            // reciprocal (clamped)
+//            RCP,            // reciprocal
+//            REP,            // repeat
+//            RET,            // return
+//            ROUND,          // round to nearest integer
+//            RSQ,            // reciprocal square root
+//            SAD,            // sum of absolute differences
+//            SCS,            // sin/cos without reduction
+//            SHL,            // bit shift left
+//            SHR,            // bit shift right
+//            SIN,            // sin with reduction (-pi,pi)
+//            SUB,            // subtract
+//            SMP,            // sample
+//            SWZ,            // extended swizzle
+//            TRUNC,          // truncate (round towards zero)
+//            UP2H,           // unpack two 16 bit floats
+//            UP2US,          // unpack two unsigned 16-bit ints
+//            UP4B,           // unpack four 8-bit ints
+//            UP4UB,          // unpack four 8-bit unsigned ints
+//            XOR,            // bitwise exclusive or
+//            XPD,            // cross product
+        } SimdOpCode;
 
         typedef enum : uint8_t {
             kFloat,
@@ -239,14 +272,22 @@ namespace gnilk {
             kConditionCode,
         } SimdOpCodeFlags;
 
+        //
         enum class SimdOpCodeFeatureFlags : uint16_t {
-            kFeature_Float = 0x01,
-            kFeature_Integer = 0x02,
-            kFeature_Condition = 0x04,
-            kFeature_Clamping = 0x08,
-            kFeature_HalfPrecision = 0x10,
-            kFeature_Def_Float = 0x20,
-            kFeature_Def_Signed = 0x40,
+            kFeature_Size = 0x01,           // supports size
+            kFeature_AddressReg = 0x02,     // Can have address register
+            kFeature_Mask = 0x04,           // Support mask
+            kFeature_Advance = 0x08,        // Support advance - requires AddressReg
+
+            // Num operands?
+            // One (like mask) as optional?
+
+            //kFeature_Integer = 0x02,
+//            kFeature_Condition = 0x04,
+//            kFeature_Clamping = 0x08,
+//            kFeature_HalfPrecision = 0x10,
+//            kFeature_Def_Float = 0x20,
+//            kFeature_Def_Signed = 0x40,
             kFeature_Def_Unsigned = 0x80,
         };
 

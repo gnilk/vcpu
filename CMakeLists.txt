@@ -58,7 +58,12 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSy
 
 # SIMD extensions
 list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSet.cpp src/vcpu/Simd/SIMDInstructionSet.h)
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSetImpl.cpp src/vcpu/Simd/SIMDInstructionSetImpl.h)
 list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionDecoder.cpp src/vcpu/Simd/SIMDInstructionDecoder.h)
+
+# SIMD extension testing
+list(APPEND vcputestsrc src/vcpu/Simd/tests/test_simd_decoder.cpp)
+
 
 #
 # Virtual CPU unit test sources

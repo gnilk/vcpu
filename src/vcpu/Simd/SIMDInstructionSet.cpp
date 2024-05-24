@@ -8,38 +8,67 @@ using namespace gnilk;
 using namespace gnilk::vcpu;
 
 std::unordered_map<SimdOpCode, SimdOperandDescription> SIMDInstructionSet::instructionSet = {
-        {SimdOpCode::ABS,
+        {SimdOpCode::LOAD,
             {
-                 .name = "abs",
-                 .features = SimdOpCodeFeatureFlags::kFeature_Float \
-                             | SimdOpCodeFeatureFlags::kFeature_Integer \
-                             | SimdOpCodeFeatureFlags::kFeature_Condition \
-                             | SimdOpCodeFeatureFlags::kFeature_Clamping \
-                             | SimdOpCodeFeatureFlags::kFeature_HalfPrecision \
-                             | SimdOpCodeFeatureFlags::kFeature_Def_Float,
+                 .name = "ve_load",
+                 .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_AddressReg \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask \
+                             | SimdOpCodeFeatureFlags::kFeature_Advance,
             },
         },
-        {SimdOpCode::ADD,
+        {SimdOpCode::STORE,
                 {
-                        .name = "add",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Float \
-                             | SimdOpCodeFeatureFlags::kFeature_Integer \
-                             | SimdOpCodeFeatureFlags::kFeature_Condition \
-                             | SimdOpCodeFeatureFlags::kFeature_Clamping \
-                             | SimdOpCodeFeatureFlags::kFeature_HalfPrecision \
-                             | SimdOpCodeFeatureFlags::kFeature_Def_Float,
+                        .name = "ve_store",
+                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_AddressReg \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask \
+                             | SimdOpCodeFeatureFlags::kFeature_Advance,
                 },
         },
-        {SimdOpCode::AND,
+        {SimdOpCode::VMUL,
                 {
-                        .name = "and",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Integer \
-                             | SimdOpCodeFeatureFlags::kFeature_Condition \
-                             | SimdOpCodeFeatureFlags::kFeature_Def_Signed,
+                        .name = "ve_mul",
+                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask,
                 },
         },
-        {SimdOpCode::BRK,{.name="brk", .features = {} }},
-        {SimdOpCode::CALL,{.name="call", .features = {} }},
+        {SimdOpCode::HADD,
+                {
+                        .name = "ve_hadd",
+                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                },
+        },
+        {SimdOpCode::UNPCKFP8,
+                {
+                        .name = "ve_unpckfp8",
+                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                },
+        },
+        {SimdOpCode::UNPCKFP16,
+                {
+                        .name = "ve_unpckfp16",
+                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                },
+        },
+        {SimdOpCode::PACKFP16,
+                {
+                        .name = "ve_packfp16",
+                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                },
+        },
+        {SimdOpCode::PACKFP32,
+                {
+                        .name = "ve_packfp32",
+                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
+                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                },
+        },
+
 };
 
 std::unordered_map<SimdOpCode, SimdOperandDescription> &SIMDInstructionSet::GetInstructionSet() {

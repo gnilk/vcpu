@@ -4,6 +4,9 @@
 #include <unordered_map>
 #include <optional>
 #include "InstructionSet.h"
+#include "Simd/SIMDInstructionDecoder.h"
+#include "InstructionDecoder.h"
+
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -83,6 +86,8 @@ static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
   {OperandCode::POP,{.name="pop", .features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register}},
 
     {OperandCode::CALL, {.name="call", .features = OperandDescriptionFlags::Branching | OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Register  | OperandDescriptionFlags::Addressing}},
+    // Extension byte - nothing, no name - not available to the assembler
+    {OperandCode::SIMD, {.name="", .features = OperandDescriptionFlags::Extension }},
 };
 
 const std::unordered_map<OperandCode, OperandDescription> &gnilk::vcpu::GetInstructionSet() {
@@ -114,4 +119,16 @@ std::optional<OperandCode> gnilk::vcpu::GetOperandFromStr(const std::string &str
         return {};
     }
     return strToOpClassMap.at(str);
+}
+
+InstructionDecoderBase::Ref gnilk::vcpu::GetDecoderForExtension(uint8_t extCode) {
+    if (extCode == OperandCode::SIMD) {
+        // FIXME: THIS SHOULD NOT BE HERE123!@#$
+        static SIMDInstructionDecoder::Ref glbSimdDecoder  = nullptr;
+        if (glbSimdDecoder == nullptr) {
+            glbSimdDecoder = SIMDInstructionDecoder::Create();
+        }
+        return glbSimdDecoder;
+    }
+    return nullptr;
 }

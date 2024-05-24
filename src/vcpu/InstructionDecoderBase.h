@@ -12,16 +12,19 @@
 
 namespace gnilk {
     namespace vcpu {
+        class InstructionDecoder;       // This is the main instruction decoder, it must be able to check the extensions
         class InstructionDecoderBase {
+            friend InstructionDecoder;
         public:
             using Ref = std::shared_ptr<InstructionDecoderBase>;
         public:
             InstructionDecoderBase()  = default;
             virtual ~InstructionDecoderBase() = default;
-
+            virtual void Reset() { }
             virtual bool Tick(CPUBase &cpu) { return false; }
         protected:
             uint8_t NextByte(CPUBase &cpu);
+            virtual bool IsComplete() { return false; }
 
         protected:
             uint64_t memoryOffset = {};
