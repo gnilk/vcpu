@@ -16,10 +16,14 @@ if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext)
 endif()
 
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext/ELFIO)
-    message(WARNING "Installing ELFIO library")
+    message(STATUS "Installing ELFIO library")
     execute_process(COMMAND git clone https://github.com/serge1/ELFIO ${CMAKE_SOURCE_DIR}/src/ext/ELFIO)
 endif ()
 
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext/posit)
+    message(STATUS "Installing posit library")
+    execute_process(COMMAND git clone https://github.com/federicorossifr/cppposit.git ${CMAKE_SOURCE_DIR}/src/ext/posit)
+endif()
 
 
 #
@@ -125,6 +129,7 @@ target_include_directories(test PUBLIC src/vcpu)
 target_include_directories(test PUBLIC src/assembler)
 target_include_directories(test PUBLIC src/common)
 target_include_directories(test PUBLIC src/ext/ELFIO)
+target_include_directories(test PUBLIC src/ext/posit/include)
 
 if (APPLE)
     target_include_directories(test PUBLIC /usr/local/include)
@@ -138,13 +143,14 @@ add_executable(emu apps/emulator/emulator.cpp ${emusrc} ${vcpusrc} ${cpuext_simd
 target_include_directories(emu PUBLIC src/vcpu)
 target_include_directories(emu PUBLIC src/common)
 target_include_directories(emu PUBLIC src/ext/ELFIO)
+target_include_directories(emu PUBLIC src/ext/posit/include)
 
 add_executable(asm apps/assembler/assembler.cpp ${asmsrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
 target_include_directories(asm PUBLIC src/common)
 target_include_directories(asm PUBLIC src/vcpu)
 target_include_directories(asm PUBLIC src/ext/ELFIO)
-
+target_include_directories(asm PUBLIC src/ext/posit/include)
 #
 # link targets
 #
