@@ -27,25 +27,69 @@ namespace gnilk {
 
         //
         // Encoding
-        //  - Each instruction is fixed 32 bits...
+        //  - Each instruction is fixed 32 bits => might need 64bits here...
         //  - No conditional status flags <- or????
         //  - Special register for 'zero' ?
         //
         // - How many instructions do we need???
         //   This would reserve 64 instructions
-        // RRCC CCCC | FFFF | DDDD | AAAA | BBBB |
-        //
-        // How do we solve matrix multiplication?
-        //  - 4x4 is fairly easy with dp4, but still - one matrix needs to be transposed in order for that to work..
-        //  - how to "hold" -> or "point" to a matrix?
-        //    too slow to reference RAM?
-        //
-        // aPtr, aStride
-        // bPtr, bStride,
-        // dPtr, dStride,
         //
         //
-        //  RR - reserved
+        // 16 registers (too few) - I don't think I need that many flags, could expand?
+        //
+        // rrCC CCCC | FFFF FFFF | FFFF  DDDD | AAAA BBBB
+        //
+        // How to indicate if read/writes have registers from SIMD pool or Regular (like address registers)
+        // - flag?
+        // - only allow on specific instructions
+        //   - can't do: vmul  (a0),v1,v2
+        //   - must:  ve_load.fp8  v1,(a0)          <- would simplify quite a lot
+        //            ve_vload.fp8 v2,(a1)
+        //            ve_mul.fp8   v3, v2, v1
+        //            ve_store.fp8 (a2),v3          <- load/store from/to general purpose registers requires only 4 bits
+        //
+        //            ve_dp4.fp32   v3,v2,v1        <- 4 component dot product
+        //            ve_store.fp32 (a0),v3,<mask>  <- store with mask; '1110' <- store only 'three' of the 4 fp32 values
+        //            ve_store.fp32 (a0),v3,0b0001  <- store last
+        //            ve_unpckfp8.fp32  v1,v3,<mask>   <- unpack fp8 to fp32 - mask selects which group of 4 fp8 registers
+        //            ve_unpckfp8.fp8   v1,v3,<mask>   <- illegal
+        //            ve_unpckfp16.fp32  v1,v3,<mask>   <- unpack fp16 to fp32 - mask selects which group of 2 fp8 registers
+        //            ve_pckfp32.fp8  v1,v3,<mask>   <- pack fp32 to fp8 - mask selects which group of 4 fp8 registers to write
+        //            ve_bflg   <control>, label    <-
+        //
+        // Instruction set:
+        //
+        //  simple load/store
+        //      ve_load.<sz>    <ve_dst>,<src>      ; load from mem via address register
+        //      ve_store.<sz>   <dst>, <ve_src>     ; store to mem via address register
+        //      ve_move.<sz>    <ve_dst>, <ve_src>  ; move between vector registers
+        //
+        //  masked load/store
+        //      ve_load.<sz>    <ve_dst>,<src>,<mask>   ; load according to mask;  ve_load.fp32   v0,(a0),0b1010
+        //      ve_store.<sz>   <dst>,<ve_src>,<mask>   ; store according to mask
+        //
+        //  converting
+        //      ve_unpckfp8.fp32    <ve_dst>,<ve_src_fp8>, mask <- unpack fp8 to fp32 - mask selects which group of 4 fp8 values
+        //      ve_unpckfp16.fp32   <ve_dst>,<ve_src_fp16>, mask <- unpack fp16 to fp32 - mask selects which group of 2 fp16 values
+        //      ve_packfp32.fp8     <ve_dst_fp8>,<ve_src>, mask <- pack fp32 to fp8 - mask selects which group of 4 fp8 value to write
+        //      ve_packfp32.fp16    <ve_dst_fp8>,<ve_src>, mask <- pack fp32 to fp8 - mask selects which group of 4 fp8 value to write
+        //
+        //  operations
+        //      ve_mul.<sz>     <dst>,<srcA>,<srcB>     ; dst should not be same as source
+        //      ve_hadd.<sz>    <dst>,<srcA>,<srcB>     ; dst and source may be same
+        //
+        //
+        //
+        // Need to read up on the SME/SVE instructions sets..
+        //
+        // - Flags needed:
+        //   2 bits for op.size (fp8,fp16,fp32,fp64)    <- fp64 is 'reserved'
+        //   4 bits for masking
+        //
+        //  ve_load.fp32    vr0,(a0)        ; load FP32 values into vr0 from (a0)
+        //  ve_cvtss.fp32   (a0),vr0        ; copy lower single precision (fp32) to destination..  [a,b,c,d]  <- lower is 'd'
+        //
+        //  rr - reserved
         //  CC CCCC - Op Code
         //  FFFF - Flags
         //  DDDD - Destination Register
