@@ -335,6 +335,10 @@ ast::Statement::Ref Parser::ParseInstruction() {
         return nullptr;
     }
 
+    //
+    // FIXME: handle extensions!
+    //
+
     auto optionalDesc = vcpu::GetOpDescFromClass(*opClass);
 
     if (!optionalDesc.has_value()) {

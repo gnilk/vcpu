@@ -99,6 +99,7 @@ const Context &gnilk::GetLexerContext() {
         {"cr5", TokenType::ControlReg},
         {"cr6", TokenType::ControlReg},
         {"cr7", TokenType::ControlReg},
+        // FIXME: Support extensions
     };
 
     static std::unordered_map<std::string, TokenType> operators = {
