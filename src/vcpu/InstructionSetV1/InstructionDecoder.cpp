@@ -4,7 +4,7 @@
 
 #include "InstructionDecoder.h"
 #include <utility>
-#include <fmt/core.h>
+#include "fmt/core.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -21,12 +21,12 @@ const std::string &InstructionDecoder::StateToString(InstructionDecoder::State s
     return stateNames[s];
 }
 
-InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
+InstructionDecoder::Ref InstructionDecoder::Create() {
 
     auto inst = std::make_shared<InstructionDecoder>();
-    inst->memoryOffset = memoryOffset;
-    inst->ofsStartInstr = 0;
-    inst->ofsEndInstr = 0;
+//    inst->memoryOffset = memoryOffset;
+//    inst->ofsStartInstr = 0;
+//    inst->ofsEndInstr = 0;
     return inst;
 }
 

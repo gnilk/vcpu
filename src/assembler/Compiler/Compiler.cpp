@@ -8,7 +8,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetDefV1.h"
 #include "CompileUnit.h"
 
 #include "elfio/elfio.hpp"

@@ -5,7 +5,7 @@
 #ifndef VCPU_SIMDINSTRUCTIONSETIMPL_H
 #define VCPU_SIMDINSTRUCTIONSETIMPL_H
 
-#include "InstructionSetImpl.h"
+#include "InstructionSetV1/InstructionSetV1Impl.h"
 namespace gnilk {
     namespace vcpu {
 
@@ -13,9 +13,9 @@ namespace gnilk {
 
         class SIMDInstructionSetImpl : public InstructionSetImplBase {
         public:
-            bool ExecuteInstruction(InstructionDecoder &decoder) override;
+            bool ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &decoder) override;
         protected:
-            void ExecuteLoad(SIMDInstructionDecoder &decoder);
+            void ExecuteLoad(CPUBase &cpu, SIMDInstructionDecoder &decoder);
         };
     }
 }

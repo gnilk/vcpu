@@ -8,8 +8,11 @@
 #include <stdint.h>
 #include <memory>
 #include "InstructionDecoderBase.h"
-#include "InstructionSet.h"
+#include "InstructionSetDefV1.h"
 #include "CPUBase.h"
+
+#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1.h"
 
 namespace gnilk {
     namespace vcpu {
@@ -21,6 +24,7 @@ namespace gnilk {
         class InstructionDecoder : public InstructionDecoderBase {
         public:
             using Ref = std::shared_ptr<InstructionDecoder>;
+
             struct RelativeAddressing {
                 RelativeAddressMode mode;
                 // not sure this is a good idea
@@ -46,10 +50,10 @@ namespace gnilk {
         public:
             InstructionDecoder()  = default;
             virtual ~InstructionDecoder() = default;
-            static InstructionDecoder::Ref Create(uint64_t memoryOffset);
+            static InstructionDecoder::Ref Create();
 
             void Reset() override;
-            bool Decode(CPUBase &cpu);          // Single pass decoding - executes all ticks
+            bool Decode(CPUBase &cpu) override;          // Single pass decoding - executes all ticks
             bool Tick(CPUBase &cpu) override;
             // Make this private when it works
             bool ExecuteTickFromIdle(CPUBase &cpu);
@@ -58,7 +62,7 @@ namespace gnilk {
             bool ExecuteTickDecodeExt(CPUBase &cpu);
             // Converts a decoded instruction back to it's mnemonic form
 
-            std::string ToString() const;
+            std::string ToString() const override;
 
             // const RegisterValue &GetDstValue() {
             //     return dstValue;
@@ -94,6 +98,8 @@ namespace gnilk {
             RegisterValue ReadDstValue(CPUBase &cpu);
 
             uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddr);
+
+
 
             struct Operand {
                 // Used during by decoder...
@@ -134,25 +140,14 @@ namespace gnilk {
             }
 
             InstructionDecoderBase::Ref GetDecoderForInstrExt(uint8_t ext);
-
-            InstructionDecoderBase::Ref extDecoder = nullptr;
-
         public:
-            // FIXME: TEMP TEMP
-            InstructionDecoderBase::Ref GetCurrentExtDecoder() {
-                return extDecoder;
-            }
-
-
             // Used during by decoder...
-
             Operand code;
             OperandArg opArgDst;
             OperandArg opArgSrc;
 
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand
-
         };
 
         // This is more or less a wrapper around the InstructionDecoder
@@ -162,7 +157,7 @@ namespace gnilk {
             Registers cpuRegistersAfter;
             CPUISRState isrStateBefore;
             CPUISRState isrStateAfter;
-            InstructionDecoder instrDecoder;
+            InstructionDecoder instrDecoder = {};       // FIXME: Try to make this 'InstructionDecoderBase::Ref'
 
             CPUISRState GetISRStateBefore() const {
                 return isrStateBefore;

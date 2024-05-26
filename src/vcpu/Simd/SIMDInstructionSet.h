@@ -171,6 +171,7 @@ namespace gnilk {
             kOpSize_Fp32 = 0b1000'0000,
             kOpSize_Fp64 = 0b1100'0000,
         } kSimdOpSize;
+
         typedef enum : uint8_t {
             kOpAddrMode_Simd = 0,               // addr mode is simd <-> simd
             kOpAddrMode_DstReg = 0b0010'0000,   // addr mode is reg <- simd
@@ -185,6 +186,7 @@ namespace gnilk {
             kOpFlag_DstAddrReg = 0b0010'0000,
             kOpFlag_SrcAddrReg = 0b0001'0000,
         } kSimdOpFlags;
+
         static const uint8_t kSimdFlagOpSizeBitMask = 0b1100'0000;
         static const uint8_t kSimdFlagAddrRegBitMask = 0b0011'0000;
 

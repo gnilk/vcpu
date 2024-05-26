@@ -9,6 +9,18 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+bool InstructionDecoderBase::Decode(CPUBase &cpu) {
+
+    // Decode using the tick functions - this will track number of ticks for the operand
+    Reset();
+    while(!IsComplete()) {
+        if (!Tick(cpu)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 uint8_t InstructionDecoderBase::NextByte(CPUBase &cpu) {
     // Note: FetchFromRam will modifiy the address!!!!
     auto nextByte = cpu.FetchFromPhysicalRam<uint8_t>(memoryOffset);

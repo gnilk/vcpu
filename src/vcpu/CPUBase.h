@@ -13,7 +13,7 @@
 #include <mutex>
 
 #include "fmt/format.h"
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetDefV1.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "Peripheral.h"
 #include "Interrupt.h"
@@ -276,14 +276,14 @@ namespace gnilk {
         // SOC holds the DataBus and so forth...
 
 
-        class InstructionSetImpl;
+        class InstructionSetV1Impl;
         class InstructionDecoder;
         class InstructionDecoderBase;
         // FIXME: the ISR controller should be part of the SOC
         class CPUBase : public InterruptController {
             friend InstructionDecoder;          // FIXME: Is this needed now?
             friend InstructionDecoderBase;
-            friend InstructionSetImpl;
+            friend InstructionSetV1Impl;
         public:
             using Ref = std::shared_ptr<CPUBase>;
         public:

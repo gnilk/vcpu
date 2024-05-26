@@ -5,7 +5,7 @@
 #include <map>
 #include <unordered_set>
 #include "Parser.h"
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetDefV1.h"
 
 /*
  * TO-OD:

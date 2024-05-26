@@ -8,13 +8,13 @@
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
-bool SIMDInstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
-    auto baseDecoder = decoder.GetCurrentExtDecoder();
-    auto simdDecoder = std::dynamic_pointer_cast<SIMDInstructionDecoder>(baseDecoder);
+bool SIMDInstructionSetImpl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &decoder) {
+    auto &baseDecoder = decoder.GetCurrentExtDecoder();
+    auto &simdDecoder = dynamic_cast<SIMDInstructionDecoder &>(baseDecoder);
 
-    switch(simdDecoder->operand.opCode) {
+    switch(simdDecoder.operand.opCode) {
         case SimdOpCode::LOAD :
-            ExecuteLoad(*simdDecoder);
+            ExecuteLoad(cpu, simdDecoder);
             break;
         default:
             return false;
@@ -23,6 +23,6 @@ bool SIMDInstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
     return true;
 }
 
-void SIMDInstructionSetImpl::ExecuteLoad(SIMDInstructionDecoder &decoder) {
+void SIMDInstructionSetImpl::ExecuteLoad(CPUBase &cpu, SIMDInstructionDecoder &decoder) {
     printf("Execute Load\n");
 }

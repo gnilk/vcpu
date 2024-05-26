@@ -9,8 +9,8 @@
 #include <limits>
 #include "VirtualCPU.h"
 
-#include "InstructionDecoder.h"
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionDecoder.h"
+#include "InstructionSetV1/InstructionSetDefV1.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -20,7 +20,7 @@ bool InstructionPipeline::Tick(CPUBase &cpu) {
     if (!Update(cpu)) {
         return false;
     }
-    if (pipeline[idxNextAvail].decoder.state == InstructionDecoder::State::kStateIdle) {
+    if (pipeline[idxNextAvail].IsIdle()) {
         return BeginNext(cpu);
     }
     return true;
@@ -34,22 +34,23 @@ void InstructionPipeline::Flush(CPUBase &cpu) {
             fmt::println("  ResetIP to: {}", pipelineDecoder.ip.data.dword);
             cpu.SetInstrPtr(pipelineDecoder.ip.data.dword);
         }
-        fmt::println("  id={}, state={} (forcing to idle)", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder.state));
-        pipelineDecoder.decoder.state = InstructionDecoder::State::kStateIdle;
+        // FIXME: Internal decoder state
+        //fmt::println("  id={}, state={} (forcing to idle)", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder->state));
+        pipelineDecoder.ForceIdle();
     }
 }
 
 void InstructionPipeline::DbgDump() {
     fmt::println("PipeLine @ tick = {}, ID Next To Execute={}, Next decoder Index={}", tickCount, idNextExec, idxNextAvail);
     for(auto &pipelineDecoder : pipeline) {
-        fmt::println("  id={}, state={}, ticks={}", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder.state), pipelineDecoder.tickCount);
+        // FIXME: Internal decoder state
+        //fmt::println("  id={}, state={}, ticks={}", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder->state), pipelineDecoder.tickCount);
     }
 }
 
 bool InstructionPipeline::IsEmpty() {
     for(auto &pipelineDecoder : pipeline) {
-        auto &decoder = pipelineDecoder.decoder;
-        if (decoder.state != InstructionDecoder::State::kStateIdle) {
+        if (!pipelineDecoder.IsIdle()) {
             return false;
         }
     }
@@ -60,12 +61,12 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
     for (auto &pipelineDecoder : pipeline) {
         auto &decoder = pipelineDecoder.decoder;
 
-        if (decoder.state == InstructionDecoder::State::kStateIdle) {
+        if (decoder->IsIdle()) {
             continue;
         }
 
         // Tick this unless it was finished (i.e. moved back to idle)
-        if ((decoder.state != InstructionDecoder::State::kStateIdle)) {
+        if (!decoder->IsIdle()) {
             if (!pipelineDecoder.Tick(cpu)) {
                 return false;
             }
@@ -75,13 +76,13 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
 
             idNextExec = NextExecID(idNextExec);
 
-            fmt::println("Pipeline, EXECUTE id={} (idLast={}, idNext={}), ticks={}, instr={}", pipelineDecoder.id, idLastExec, idNextExec, pipelineDecoder.tickCount, decoder.ToString());
+            fmt::println("Pipeline, EXECUTE id={} (idLast={}, idNext={}), ticks={}, instr={}", pipelineDecoder.id, idLastExec, idNextExec, pipelineDecoder.tickCount, decoder->ToString());
             if (cbDecoded != nullptr) {
-                cbDecoded(decoder);
+                cbDecoded(*decoder);
             }
             idLastExec = pipelineDecoder.id;
             //decoder.state = InstructionDecoder::State::kStateIdle;
-            decoder.Reset();
+            decoder->Reset();
 
             // should we 'pad' instructions up to next 32 bit boundary?
             // this would make bus-reads (or in this case L1 cache reads 32 bit - which might simplify things)
@@ -98,7 +99,7 @@ size_t InstructionPipeline::NextExecID(size_t id) {
 }
 
 bool InstructionPipeline::CanExecute(InstructionPipeline::PipeLineDecoder &plDecoder) {
-    if (plDecoder.decoder.state != InstructionDecoder::State::kStateFinished) {
+    if (!plDecoder.IsFinished()) {
         return false;
     }
     // Enforce in-order execution

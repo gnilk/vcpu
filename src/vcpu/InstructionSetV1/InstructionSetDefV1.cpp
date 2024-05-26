@@ -3,9 +3,9 @@
 //
 #include <unordered_map>
 #include <optional>
-#include "InstructionSet.h"
+#include "InstructionSetDefV1.h"
 #include "Simd/SIMDInstructionDecoder.h"
-#include "InstructionDecoder.h"
+#include "InstructionSetV1/InstructionDecoder.h"
 
 
 using namespace gnilk;

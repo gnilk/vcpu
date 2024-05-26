@@ -6,7 +6,7 @@
 #define VCPU_STMTEMITTER_H
 #include <memory>
 
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetDefV1.h"
 #include "ast/ast.h"
 
 //
