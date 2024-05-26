@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include <memory>
-#include "SIMDInstructionSet.h"
+#include "SIMDInstructionSetDef.h"
 #include "SIMDInstructionSetImpl.h"
 #include "InstructionDecoderBase.h"
 #include "CPUBase.h"
@@ -53,7 +53,7 @@ namespace gnilk {
             struct Operand {
                 uint8_t opCodeByte;
                 SimdOpCode opCode;
-                SimdOperandDescription description;
+                OperandDescriptionBase description;
 
                 uint8_t opFlagsHighByte;
                 kSimdOpSize opSize;

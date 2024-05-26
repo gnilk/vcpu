@@ -45,8 +45,8 @@
 #include <limits>
 #include "VirtualCPU.h"
 
-#include "InstructionSetV1/InstructionDecoder.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Decoder.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 
 #include "InstructionSet.h"
 #include "InstructionSetV1/InstructionSetV1.h"
@@ -127,7 +127,7 @@ bool VirtualCPU::Step() {
     }
     lastDecodedInstruction.cpuRegistersAfter = registers;
     // FIXME: Understand directly why I need this - I think it is for 'ToString' of the last decoded instr.
-    lastDecodedInstruction.instrDecoder = dynamic_cast<InstructionDecoder&>(instrDecoder);
+    lastDecodedInstruction.instrDecoder = dynamic_cast<InstructionSetV1Decoder&>(instrDecoder);
     return true;
 }
 

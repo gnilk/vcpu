@@ -12,10 +12,10 @@
 
 namespace gnilk {
     namespace vcpu {
-        class InstructionDecoder;       // This is the main instruction decoder, it must be able to check the extensions
+        class InstructionSetV1Decoder;       // This is the main instruction decoder, it must be able to check the extensions
 
         class InstructionDecoderBase {
-            friend InstructionDecoder;
+            friend InstructionSetV1Decoder;
         public:
             using Ref = std::shared_ptr<InstructionDecoderBase>;
         public:

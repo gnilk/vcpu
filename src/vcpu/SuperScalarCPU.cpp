@@ -9,8 +9,8 @@
 #include <limits>
 #include "VirtualCPU.h"
 
-#include "InstructionSetV1/InstructionDecoder.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Decoder.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;

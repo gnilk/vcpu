@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <memory>
 #include "InstructionDecoderBase.h"
-#include "InstructionSetDefV1.h"
+#include "InstructionSetV1Def.h"
 #include "CPUBase.h"
 
 #include "InstructionSet.h"
@@ -21,9 +21,9 @@ namespace gnilk {
         InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t extCode);
 
 
-        class InstructionDecoder : public InstructionDecoderBase {
+        class InstructionSetV1Decoder : public InstructionDecoderBase {
         public:
-            using Ref = std::shared_ptr<InstructionDecoder>;
+            using Ref = std::shared_ptr<InstructionSetV1Decoder>;
 
             struct RelativeAddressing {
                 RelativeAddressMode mode;
@@ -48,9 +48,9 @@ namespace gnilk {
             static const std::string &StateToString(State s);
 
         public:
-            InstructionDecoder()  = default;
-            virtual ~InstructionDecoder() = default;
-            static InstructionDecoder::Ref Create();
+            InstructionSetV1Decoder()  = default;
+            virtual ~InstructionSetV1Decoder() = default;
+            static InstructionSetV1Decoder::Ref Create();
 
             void Reset() override;
             bool Decode(CPUBase &cpu) override;          // Single pass decoding - executes all ticks
@@ -105,7 +105,7 @@ namespace gnilk {
                 // Used during by decoder...
                 uint8_t opCodeByte;     // raw opCodeByte
                 OperandCode opCode;
-                OperandDescription description;
+                OperandDescriptionBase description;
 
                 uint8_t opSizeAndFamilyCode;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
                 OperandSize opSize; // Only if 'description.features & OperandSize' == true
@@ -121,7 +121,7 @@ namespace gnilk {
 
         protected:
             // Helper for 'ToString'
-            std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const;
+            std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionSetV1Decoder::RelativeAddressing relAddr) const;
             // Perhaps move to base class
             RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddr, int idxRegister);
 
@@ -157,7 +157,7 @@ namespace gnilk {
             Registers cpuRegistersAfter;
             CPUISRState isrStateBefore;
             CPUISRState isrStateAfter;
-            InstructionDecoder instrDecoder = {};       // FIXME: Try to make this 'InstructionDecoderBase::Ref'
+            InstructionSetV1Decoder instrDecoder = {};       // FIXME: Try to make this 'InstructionDecoderBase::Ref'
 
             CPUISRState GetISRStateBefore() const {
                 return isrStateBefore;

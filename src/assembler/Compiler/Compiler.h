@@ -8,7 +8,7 @@
 #include <functional>
 
 #include "Context.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "ast/ast.h"
 #include "CompileUnit.h"
 #include "Identifiers.h"

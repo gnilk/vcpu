@@ -5,6 +5,8 @@
 #include <memory>
 #include <utility>
 #include <assert.h>
+
+#include "SIMDInstructionSet.h"
 #include "SIMDInstructionDecoder.h"
 
 using namespace gnilk;
@@ -49,8 +51,10 @@ bool SIMDInstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     ofsStartInstr = memoryOffset;
     ofsEndInstr = memoryOffset;
 
+    auto &instructionSet = glb_InstructionSetSIMD.definition;
+
     auto opCodeByte = NextByte(cpu);
-    if (!SIMDInstructionSet::GetInstructionSet().contains(static_cast<SimdOpCode>(opCodeByte))) {
+    if (!instructionSet.GetInstructionSet().contains(static_cast<SimdOpCode>(opCodeByte))) {
         // We failed..
         cpu.AdvanceInstrPtr(1);
         return false;
@@ -59,7 +63,7 @@ bool SIMDInstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     // this is valid - so begin
     operand.opCodeByte = opCodeByte;
     operand.opCode = static_cast<SimdOpCode>(opCodeByte);
-    operand.description = SIMDInstructionSet::GetInstructionSet().at(operand.opCode);
+    operand.description = instructionSet.GetInstructionSet().at(operand.opCode);
 
     operand.opFlagsHighByte = NextByte(cpu);
     operand.opSize = static_cast<kSimdOpSize>(operand.opFlagsHighByte &  kSimdFlagOpSizeBitMask);

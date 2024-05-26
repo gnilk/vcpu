@@ -16,9 +16,6 @@
 namespace gnilk {
     namespace vcpu {
 
-        class InstructionSetV1Def : public InstructionSetDefBase {
-
-        };
         //
         // It is actually faster by some 10% to have more complicated instr. set...
         // However, I want the instruction set to be flexible and easier to handle
@@ -172,7 +169,7 @@ namespace gnilk {
         // These are the op-codes, there is plenty of 'air' inbetween the numbers - no real thought went in to the
         // numbers as such. The opcodes are 8-bit..
         // Details for each op-code is in the 'InstructionSet.cpp' file..
-        typedef enum : uint8_t {
+        typedef enum : OperandCodeBase {
             BRK = 0x00,
 
             MOV = 0x20,     // one op-code for all 'move' instructions
@@ -240,62 +237,66 @@ namespace gnilk {
 
         static const uint8_t OperandCodeExtensionMask = 0xf0;
 
-        //
-        // This feature description and table should be made visible across all CPU tools..
-        // Put it in a a separate place so it can be reused...
-        //
-        enum class OperandDescriptionFlags : uint16_t {
-            // Has operand size distinction
-            OperandSize = 1,
-            // Two operand bits, allows for 0..3 operands
-            OneOperand = 2,
-            TwoOperands = 4,
-            // Support immediate values; move d0, #<value>
-            Immediate = 8,
-            // Support register
-            Register = 16,
-            // Support addressing move d0, (a0)
-            Addressing = 32,        // Is this not just 'register'??
+        class InstructionSetV1Def : public InstructionSetDefBase {
+        public:
 
-            // FIXME: This is not branching, this defines how the instruction is to treat reading a label value
-            //        IF present, the instruction will USE the memory address and perform the operation (branch, load-of-address, etc)
-            //        if NOT present, the CPU will fetch the memory of the address and the value stored at the address...
-            //        consider:
-            //              move.l d0, variable         ; D0 will have the value of the variable (stored at some address - i.e. the CPU will READ from the address)
-            //        whereby:
-            //              call variable               ; the CPU will USE the address directly
-            //              lea.l d0, variable          ; D0 will contain the ADDRESS (and not the value of the variable)
             //
-            // Maybe we should rename this as 'Absolute'?
+            // This feature description and table should be made visible across all CPU tools..
+            // Put it in a a separate place so it can be reused...
             //
-            Branching = 64,
-            // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
-            Control = 128,
-            // FIXME: Perhaps need absolute as well..
+            typedef enum : uint32_t {
+                // Has operand size distinction
+                OperandSize = 1,
+                // Two operand bits, allows for 0..3 operands
+                OneOperand = 2,
+                TwoOperands = 4,
+                // Support immediate values; move d0, #<value>
+                Immediate = 8,
+                // Support register
+                Register = 16,
+                // Support addressing move d0, (a0)
+                Addressing = 32,        // Is this not just 'register'??
 
-            Extension = 256,    // Extension prefix
+                // FIXME: This is not branching, this defines how the instruction is to treat reading a label value
+                //        IF present, the instruction will USE the memory address and perform the operation (branch, load-of-address, etc)
+                //        if NOT present, the CPU will fetch the memory of the address and the value stored at the address...
+                //        consider:
+                //              move.l d0, variable         ; D0 will have the value of the variable (stored at some address - i.e. the CPU will READ from the address)
+                //        whereby:
+                //              call variable               ; the CPU will USE the address directly
+                //              lea.l d0, variable          ; D0 will contain the ADDRESS (and not the value of the variable)
+                //
+                // Maybe we should rename this as 'Absolute'?
+                //
+                Branching = 64,
+                // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
+                Control = 128,
+                // FIXME: Perhaps need absolute as well..
+                Extension = 256,    // Extension prefix
+
+            } OperandDescriptionFlags;
+/*
+            inline constexpr OperandDescriptionFlags
+            operator|(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
+                using T = std::underlying_type_t<OperandDescriptionFlags>;
+                return static_cast<OperandDescriptionFlags>(static_cast<T>(lhs) | static_cast<T>(rhs));
+            }
+
+            inline constexpr bool operator&(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
+                using T = std::underlying_type_t<OperandDescriptionFlags>;
+                return (static_cast<T>(lhs) & static_cast<T>(rhs));
+            }
+*/
+            struct OperandDescription {
+                std::string name;
+                OperandDescriptionFlags features;
+            };
+
+            const std::unordered_map<OperandCodeBase, OperandDescriptionBase> &GetInstructionSet() override;
+            std::optional<OperandDescriptionBase> GetOpDescFromClass(OperandCodeBase opClass) override;
+            std::optional<OperandCodeBase> GetOperandFromStr(const std::string &str) override;
+
         };
-
-        inline constexpr OperandDescriptionFlags operator |(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
-            using T = std::underlying_type_t<OperandDescriptionFlags>;
-            return static_cast<OperandDescriptionFlags>(static_cast<T>(lhs) | static_cast<T>(rhs));
-        }
-
-        inline constexpr bool operator &(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
-            using T = std::underlying_type_t<OperandDescriptionFlags>;
-            return (static_cast<T>(lhs) & static_cast<T>(rhs));
-        }
-
-        struct OperandDescription {
-            std::string name;
-            OperandDescriptionFlags features;
-        };
-
-        const std::unordered_map<OperandCode, OperandDescription> &GetInstructionSet();
-        std::optional<OperandDescription> GetOpDescFromClass(OperandCode opClass);
-        std::optional<OperandCode> GetOperandFromStr(const std::string &str);
-
-
 
     }
 }

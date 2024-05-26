@@ -6,7 +6,7 @@
 #define VCPU_INSTRUCTIONSETV1IMPL_H
 
 #include "CPUBase.h"
-#include "InstructionSetV1/InstructionDecoder.h"
+#include "InstructionSetV1/InstructionSetV1Decoder.h"
 #include "InstructionSetImplBase.h"
 
 namespace gnilk {
@@ -32,31 +32,31 @@ namespace gnilk {
 
         protected:
             // one operand instr.
-            void ExecutePushInstr(CPUBase &cpu,InstructionDecoder& instrDecoder);
-            void ExecutePopInstr(CPUBase &cpu,InstructionDecoder& instrDecoder);
-            void ExecuteSysCallInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
+            void ExecutePushInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecutePopInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteSysCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
 
             // two operand instr.
-            void ExecuteMoveInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteAddInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteSubInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteMulInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteDivInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteCallInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteRetInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteRtiInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteRteInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteLeaInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteLsrInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteLslInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteAslInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteAsrInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteCmpInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteBeqInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
-            void ExecuteBneInstr(CPUBase &cpu, InstructionDecoder& instrDecoder);
+            void ExecuteMoveInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteMulInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteDivInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteRetInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteRtiInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteRteInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteLeaInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
 
             void ExecuteSIMDInstr(CPUBase &cpu, InstructionDecoderBase &baseDecoder);
-            void WriteToDst(CPUBase &cpu, InstructionDecoder& instrDecoder, const RegisterValue &v);
+            void WriteToDst(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder, const RegisterValue &v);
 
         };
     }

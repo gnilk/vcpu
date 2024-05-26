@@ -6,7 +6,7 @@
 #define INSTRUCTIONS_H
 
 #include "astbase.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 
 namespace gnilk {
     namespace ast {

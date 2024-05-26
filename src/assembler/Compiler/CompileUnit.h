@@ -11,7 +11,7 @@
 
 #include "ast/ast.h"
 #include "StmtEmitter.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "Linker/Segment.h"
 #include "Identifiers.h"
 

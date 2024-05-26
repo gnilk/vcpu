@@ -140,7 +140,7 @@ x- linker
     ! Support for static (within a compile-unit) and exported functions and variables
     - Dummy linker don't compute segment start-addresses properly when multiple segments and chunks
 - VCPU
-    - Refactor the InstructionSet/InstructionImpl/InstructionDecoder so that it works with InstructionExtensions      
+    - Refactor the InstructionSet/InstructionImpl/InstructionSetV1Decoder so that it works with InstructionExtensions      
     ! Separate the instruction handler from the CPUBase, instead make that happen through composition
       Not sure how though - as it requires a much more well defined interface to avoid refactoring-hell..
     - Try to remove arithmetic flags

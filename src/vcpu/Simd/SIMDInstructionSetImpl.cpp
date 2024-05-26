@@ -4,7 +4,7 @@
 
 #include "SIMDInstructionSetImpl.h"
 #include "SIMDInstructionDecoder.h"
-#include "SIMDInstructionSet.h"
+#include "SIMDInstructionSetDef.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;

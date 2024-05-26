@@ -30,6 +30,7 @@ endif()
 # Virtual CPU sources
 #
 list(APPEND vcpusrc src/vcpu/CPUBase.cpp src/vcpu/CPUBase.h)
+list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetImplBase.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetDefBase.h)
 list(APPEND vcpusrc src/vcpu/InstructionDecoderBase.cpp src/vcpu/InstructionDecoderBase.h)
@@ -55,14 +56,15 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/RamBus.cpp src/vcpu/MemorySubSys/RamBu
 list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSys/PageAllocator.h)
 
 # Base/Core Instruction Set
-list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionDecoder.cpp src/vcpu/InstructionSetV1/InstructionDecoder.h)
-list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetDefV1.cpp src/vcpu/InstructionSetV1/InstructionSetDefV1.h)
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Decoder.cpp src/vcpu/InstructionSetV1/InstructionSetV1Decoder.h)
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Def.cpp src/vcpu/InstructionSetV1/InstructionSetV1Def.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1.cpp src/vcpu/InstructionSetV1/InstructionSetV1.cpp)
 
 
 # SIMD extensions
 list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSet.cpp src/vcpu/Simd/SIMDInstructionSet.h)
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSetDef.cpp src/vcpu/Simd/SIMDInstructionSetDef.h)
 list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSetImpl.cpp src/vcpu/Simd/SIMDInstructionSetImpl.h)
 list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionDecoder.cpp src/vcpu/Simd/SIMDInstructionDecoder.h)
 

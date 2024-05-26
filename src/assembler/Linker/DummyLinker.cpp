@@ -7,7 +7,7 @@
 #include "fmt/core.h"
 #include "Segment.h"
 #include "DummyLinker.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 
 using namespace gnilk;
 using namespace gnilk::assembler;

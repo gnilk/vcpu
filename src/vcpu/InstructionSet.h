@@ -17,6 +17,8 @@ namespace gnilk {
             InstructionSetDefBase &&definition;
             InstructionSetImplBase &&implementation;
         };
+
+        InstructionSet &GetInstructionSet();
     }
 }
 

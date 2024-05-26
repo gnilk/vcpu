@@ -7,8 +7,8 @@
 
 #include "CPUBase.h"
 #include "InstructionSetV1/InstructionSetV1Impl.h"
-#include "InstructionSetV1/InstructionDecoder.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Decoder.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "Timer.h"
 #include <array>

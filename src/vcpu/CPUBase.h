@@ -13,7 +13,7 @@
 #include <mutex>
 
 #include "fmt/format.h"
-#include "InstructionSetV1/InstructionSetDefV1.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "Peripheral.h"
 #include "Interrupt.h"
@@ -277,11 +277,11 @@ namespace gnilk {
 
 
         class InstructionSetV1Impl;
-        class InstructionDecoder;
+        class InstructionSetV1Decoder;
         class InstructionDecoderBase;
         // FIXME: the ISR controller should be part of the SOC
         class CPUBase : public InterruptController {
-            friend InstructionDecoder;          // FIXME: Is this needed now?
+            friend InstructionSetV1Decoder;          // FIXME: Is this needed now?
             friend InstructionDecoderBase;
             friend InstructionSetV1Impl;
         public:
