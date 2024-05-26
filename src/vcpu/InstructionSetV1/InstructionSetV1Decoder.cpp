@@ -77,12 +77,12 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
         return false;
     }
 
-    auto &instructionSet = glb_InstructionSetV1.definition;
+    auto &instrSetDefinition = GetInstructionSet().GetDefinition();
 
     // Decode the op-code
     code.opCode =  static_cast<OperandCode>(code.opCodeByte);
     // check if we have this instruction defined
-    if (!instructionSet.GetInstructionSet().contains(code.opCode)) {
+    if (!instrSetDefinition.GetInstructionSet().contains(code.opCode)) {
         return false;
     }
 
@@ -96,7 +96,7 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     }
 
 
-    code.description = instructionSet.GetInstructionSet().at(code.opCode);
+    code.description = instrSetDefinition.GetInstructionSet().at(code.opCode);
 
     //
     // Decode addressing
@@ -313,15 +313,15 @@ uint64_t InstructionSetV1Decoder::ComputeRelativeAddress(CPUBase &cpuBase, const
 
 
 std::string InstructionSetV1Decoder::ToString() const {
-    auto &instructionSet = glb_InstructionSetV1.definition;
+    auto &instrSetDefinition = GetInstructionSet().GetDefinition(); //glb_InstructionSetV1.definition;
 
-    if (!instructionSet.GetInstructionSet().contains(code.opCode)) {
+    if (!instrSetDefinition.GetInstructionSet().contains(code.opCode)) {
         // Note, we don't raise an exception - this is a helper for SW - not an actual HW type of function
         std::string invalid;
         fmt::format_to(std::back_inserter(invalid), "invalid instr. {:#x} @ {:#x}", (int)code.opCode, ofsStartInstr);
         return invalid;
     }
-    auto desc = instructionSet.GetOpDescFromClass(code.opCode);
+    auto desc = instrSetDefinition.GetOpDescFromClass(code.opCode);
     std::string opString;
 
     opString = desc->name;

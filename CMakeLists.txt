@@ -56,10 +56,10 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/RamBus.cpp src/vcpu/MemorySubSys/RamBu
 list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSys/PageAllocator.h)
 
 # Base/Core Instruction Set
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1.cpp src/vcpu/InstructionSetV1/InstructionSetV1.cpp)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Decoder.cpp src/vcpu/InstructionSetV1/InstructionSetV1Decoder.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Def.cpp src/vcpu/InstructionSetV1/InstructionSetV1Def.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp)
-list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1.cpp src/vcpu/InstructionSetV1/InstructionSetV1.cpp)
 
 
 # SIMD extensions

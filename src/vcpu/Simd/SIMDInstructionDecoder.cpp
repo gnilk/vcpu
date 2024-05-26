@@ -51,7 +51,7 @@ bool SIMDInstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     ofsStartInstr = memoryOffset;
     ofsEndInstr = memoryOffset;
 
-    auto &instructionSet = glb_InstructionSetSIMD.definition;
+    auto &instructionSet = glb_InstructionSetSIMD.GetDefinition();
 
     auto opCodeByte = NextByte(cpu);
     if (!instructionSet.GetInstructionSet().contains(static_cast<SimdOpCode>(opCodeByte))) {

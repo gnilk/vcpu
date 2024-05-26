@@ -12,10 +12,8 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
-InstructionSet gnilk::vcpu::glb_InstructionSetV1 = {
-        .extByte = 0,
-        .decoder = InstructionSetV1Decoder(),
-        .definition = InstructionSetV1Def(),
-        .implementation = InstructionSetV1Impl(),
 
-};
+
+InstructionDecoderBase::Ref InstructionSetV1::CreateDecoder() {
+    return std::make_shared<InstructionSetV1Decoder>();
+}

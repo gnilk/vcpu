@@ -7,12 +7,10 @@
 
 #include <stdint.h>
 #include <memory>
-#include "InstructionDecoderBase.h"
-#include "InstructionSetV1Def.h"
 #include "CPUBase.h"
+#include "InstructionDecoderBase.h"
 
-#include "InstructionSet.h"
-#include "InstructionSetV1/InstructionSetV1.h"
+#include "InstructionSetV1Def.h"
 
 namespace gnilk {
     namespace vcpu {
@@ -48,7 +46,9 @@ namespace gnilk {
             static const std::string &StateToString(State s);
 
         public:
-            InstructionSetV1Decoder()  = default;
+            InstructionSetV1Decoder()  {
+                printf("InstructionSetV1Decoder::CTOR, this=%p\n", (void *)this);
+            }
             virtual ~InstructionSetV1Decoder() = default;
             static InstructionSetV1Decoder::Ref Create();
 

@@ -313,8 +313,8 @@ ast::Statement::Ref Parser::ParseArrayDeclaration(vcpu::OperandSize opSize) {
 
 ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
     // Check if this is a proper instruction
-    auto &instructionSet = vcpu::GetInstructionSet();
-    if (instructionSet.definition.GetOperandFromStr(At().value).has_value()) {
+    auto &definition = vcpu::GetInstructionSet().GetDefinition();
+    if (definition.GetOperandFromStr(At().value).has_value()) {
         return ParseInstruction();
     }
     // This is just an identifier - deal with it...
@@ -331,7 +331,7 @@ ast::Statement::Ref Parser::ParseInstruction() {
     auto &instructionSet = vcpu::GetInstructionSet();
 
     auto operand = At().value;
-    auto opClass = instructionSet.definition.GetOperandFromStr(operand);
+    auto opClass = instructionSet.GetDefinition().GetOperandFromStr(operand);
 
     if (!opClass.has_value()) {
         fmt::println(stderr, "Unsupported instruction '{}'", At().value);
@@ -341,8 +341,7 @@ ast::Statement::Ref Parser::ParseInstruction() {
     //
     // FIXME: handle extensions!
     //
-
-    auto optionalDesc = instructionSet.definition.GetOpDescFromClass(*opClass);
+    auto optionalDesc = instructionSet.GetDefinition().GetOpDescFromClass(*opClass);
 
     if (!optionalDesc.has_value()) {
         fmt::println(stderr, "unsupported instruction {}", At().value);

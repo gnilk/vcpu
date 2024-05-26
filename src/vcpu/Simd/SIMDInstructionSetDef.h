@@ -276,6 +276,7 @@ namespace gnilk {
         } SimdOpCodeFlags;
 
         // this is the 'OperandDescriptionFlags'
+        // FIXME: Consolidate with OperandDescriptionBase <- or figure out a way to make the assembler work!
         typedef enum : uint32_t {
             kFeature_Size = 0x01,           // supports size  => OperandSize
             kFeature_AddressReg = 0x02,     // Can have address register    => Register

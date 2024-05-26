@@ -109,15 +109,14 @@ bool VirtualCPU::Step() {
         return true;
     }
 
-    auto &instrDecoder = glb_InstructionSetV1.decoder;
-
-
+    auto &instructionSet = GetInstructionSet();
+    auto &instructionDecoder = instructionSet.GetDecoder();
 
     //InstructionDecoderBase::Ref instrDecoder = InstructionDecoder::Create();
-    instrDecoder.Decode(*this);
+    instructionDecoder.Decode(*this);
 
-    auto &instrImpl = glb_InstructionSetV1.implementation;
-    if (!instrImpl.ExecuteInstruction(*this, instrDecoder)) {
+    auto &instrImpl = instructionSet.GetImplementation();
+    if (!instrImpl.ExecuteInstruction(*this, instructionDecoder)) {
         return false;
     }
 
@@ -127,7 +126,7 @@ bool VirtualCPU::Step() {
     }
     lastDecodedInstruction.cpuRegistersAfter = registers;
     // FIXME: Understand directly why I need this - I think it is for 'ToString' of the last decoded instr.
-    lastDecodedInstruction.instrDecoder = dynamic_cast<InstructionSetV1Decoder&>(instrDecoder);
+    lastDecodedInstruction.instrDecoder = dynamic_cast<InstructionSetV1Decoder&>(instructionDecoder);
     return true;
 }
 

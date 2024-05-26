@@ -37,7 +37,7 @@ namespace gnilk {
                 size_t id = {};
                 int tickCount = 0;
                 RegisterValue ip;
-                InstructionDecoderBase::Ref decoder;
+                InstructionDecoderBase::Ref decoder = nullptr;
 
                 bool IsIdle() {
                     assert(decoder);
@@ -53,9 +53,14 @@ namespace gnilk {
                 }
 
                 bool Tick(CPUBase &cpu) {
+                    if (decoder == nullptr) {
+                        decoder = GetInstructionSet().CreateDecoder();
+                    }
+
                     tickCount++;
                     // FIXME: DO NOT reference the V1 instr.set like this
-                    return glb_InstructionSetV1.decoder.Tick(cpu);
+                    return decoder->Tick(cpu);
+                    return false;
                 }
             };
         public:

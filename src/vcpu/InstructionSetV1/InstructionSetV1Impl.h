@@ -6,7 +6,7 @@
 #define VCPU_INSTRUCTIONSETV1IMPL_H
 
 #include "CPUBase.h"
-#include "InstructionSetV1/InstructionSetV1Decoder.h"
+#include "InstructionDecoderBase.h"
 #include "InstructionSetImplBase.h"
 
 namespace gnilk {

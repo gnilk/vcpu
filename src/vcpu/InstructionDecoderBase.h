@@ -8,10 +8,12 @@
 #include <memory>
 #include <stdint.h>
 
-#include "CPUBase.h"
 
 namespace gnilk {
     namespace vcpu {
+
+        class CPUBase;
+
         class InstructionSetV1Decoder;       // This is the main instruction decoder, it must be able to check the extensions
 
         class InstructionDecoderBase {
@@ -21,6 +23,10 @@ namespace gnilk {
         public:
             InstructionDecoderBase()  = default;
             virtual ~InstructionDecoderBase() = default;
+
+            // We need this for case where we have multiple decoders per instr. set
+            // like multiple cores, or super-scalar pipelines..
+
             virtual void Reset() { }
             virtual bool Decode(CPUBase &cpu);
             virtual bool Tick(CPUBase &cpu) { return false; }

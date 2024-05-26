@@ -13,11 +13,12 @@
 #include <mutex>
 
 #include "fmt/format.h"
-#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "Peripheral.h"
 #include "Interrupt.h"
 #include "RegisterValue.h"
+
+#include "InstructionSet.h"
 
 // Bring in some Peripherals
 #include "Timer.h"
@@ -276,14 +277,10 @@ namespace gnilk {
         // SOC holds the DataBus and so forth...
 
 
-        class InstructionSetV1Impl;
-        class InstructionSetV1Decoder;
         class InstructionDecoderBase;
         // FIXME: the ISR controller should be part of the SOC
         class CPUBase : public InterruptController {
-            friend InstructionSetV1Decoder;          // FIXME: Is this needed now?
             friend InstructionDecoderBase;
-            friend InstructionSetV1Impl;
         public:
             using Ref = std::shared_ptr<CPUBase>;
         public:
@@ -469,7 +466,8 @@ namespace gnilk {
             virtual bool RaiseException(CPUExceptionId exceptionId);
             bool InvokeExceptionHandlers(CPUExceptionId exceptionId);
 
-        protected:
+            // FIXME: Solve this - these are public since instruction set's inherits and friend's can't follow inheritance
+        public:
             void DoEnd();
             ISRControlBlock *GetActiveISRControlBlock();
             void ResetActiveISR();
@@ -555,13 +553,15 @@ namespace gnilk {
                 return FetchFromInstrPtr<uint64_t>();
             }
             void UpdateMMU();
-        protected:
+       // FIXME: Solve this - these are public since instruction set's inherits and friend's can't follow inheritance
+        public:
             struct ISRPeripheralInstance {
                 CPUIntFlag intMask;
                 CPUInterruptId interruptId;
                 Peripheral::Ref peripheral;
             };
-        protected:
+        // FIXME: Solve this - these are public since instruction set's inherits and friend's can't follow inheritance
+        public:
             uint8_t *ram = nullptr;
             size_t szRam = 0;
             Registers registers = {};
@@ -587,8 +587,6 @@ namespace gnilk {
 
             std::unordered_map<CPUInterruptId , CPUIntFlag> interruptMapping;
             std::unordered_map<uint32_t, SysCall::Ref> syscalls;
-
-
         };
     }
 }

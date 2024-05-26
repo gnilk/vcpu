@@ -7,9 +7,19 @@
 
 #include "InstructionSet.h"
 
+#include "SIMDInstructionSetDef.h"
+#include "SIMDInstructionSetImpl.h"
+#include "SIMDInstructionDecoder.h"
+
 namespace gnilk {
     namespace vcpu {
-        extern InstructionSet glb_InstructionSetSIMD;
+        class InstructionSetSIMD : public
+                InstructionSetInst<SIMDInstructionDecoder, SIMDInstructionSetDef, SIMDInstructionSetImpl> {
+        public:
+            InstructionDecoderBase::Ref CreateDecoder() override;
+        };
+
+        extern InstructionSetSIMD glb_InstructionSetSIMD;
     }
 }
 

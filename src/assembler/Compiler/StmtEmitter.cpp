@@ -625,8 +625,8 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpIn
     auto opSizeWritePoint = data.size(); // Save where we are
 
     auto &instrSet = vcpu::GetInstructionSet();
-    auto opClass = *instrSet.definition.GetOperandFromStr(stmt->Symbol());
-    auto opDesc = *instrSet.definition.GetOpDescFromClass(opClass);
+    auto opClass = *instrSet.GetDefinition().GetOperandFromStr(stmt->Symbol());
+    auto opDesc = *instrSet.GetDefinition().GetOpDescFromClass(opClass);
 
 
     if (!EmitInstrOperand(context, opDesc, opSize, stmt->Operand())) {
@@ -662,8 +662,8 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
 
     auto &instrSet = vcpu::GetInstructionSet();
 
-    auto opClass = *instrSet.definition.GetOperandFromStr(twoOpInstr->Symbol());
-    auto opDesc = *instrSet.definition.GetOpDescFromClass(opClass);
+    auto opClass = *instrSet.GetDefinition().GetOperandFromStr(twoOpInstr->Symbol());
+    auto opDesc = *instrSet.GetDefinition().GetOpDescFromClass(opClass);
 
     EmitOpSize(opSizeAndFamilyCode);
 
@@ -692,7 +692,7 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
 bool EmitCodeStatement::EmitOpCodeForSymbol(const std::string &symbol) {
 
     auto &instrSet = vcpu::GetInstructionSet();
-    auto opcode = instrSet.definition.GetOperandFromStr(symbol);
+    auto opcode = instrSet.GetDefinition().GetOperandFromStr(symbol);
     if (!opcode.has_value()) {
         fmt::println(stderr, "Unknown/Unsupported symbol: {}", symbol);
         return false;
