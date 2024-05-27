@@ -129,17 +129,3 @@ std::optional<OperandCodeBase> InstructionSetV1Def::GetOperandFromStr(const std:
 //    return opSizeAndFamilyCode;
 //}
 
-
-
-
-InstructionDecoderBase::Ref gnilk::vcpu::GetDecoderForExtension(uint8_t extCode) {
-    if (extCode == OperandCode::SIMD) {
-        // FIXME: THIS SHOULD NOT BE HERE123!@#$
-        static SIMDInstructionDecoder::Ref glbSimdDecoder  = nullptr;
-        if (glbSimdDecoder == nullptr) {
-            glbSimdDecoder = SIMDInstructionDecoder::Create();
-        }
-        return glbSimdDecoder;
-    }
-    return nullptr;
-}

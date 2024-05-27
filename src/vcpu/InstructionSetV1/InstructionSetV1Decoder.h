@@ -15,11 +15,9 @@
 namespace gnilk {
     namespace vcpu {
 
-        // FIXME: MOVE THIS - impl is in 'InstructionSet'
-        InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t extCode);
-
-
+        class InstructionSetV1Impl;
         class InstructionSetV1Decoder : public InstructionDecoderBase {
+            friend InstructionSetV1Impl;
         public:
             using Ref = std::shared_ptr<InstructionSetV1Decoder>;
 
@@ -138,12 +136,14 @@ namespace gnilk {
                 state = newState;
             }
 
-            InstructionDecoderBase::Ref GetDecoderForInstrExt(uint8_t ext);
+            InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t ext);
         public:
             // Used during by decoder...
             Operand code;
             OperandArg opArgDst;
             OperandArg opArgSrc;
+
+            std::unordered_map<uint8_t, InstructionDecoderBase::Ref> extDecoders = {};
 
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand

@@ -38,11 +38,6 @@ namespace gnilk {
             //  false - some kind of error occurred
             virtual bool Tick(CPUBase &cpu) { return false; }
 
-            // FIXME: TEMP TEMP
-            InstructionDecoderBase& GetCurrentExtDecoder() {
-                return *extDecoder;
-            }
-
             virtual std::string ToString() const {
                 static std::string dummy = "nothing";
                 return dummy;
@@ -69,10 +64,6 @@ namespace gnilk {
             uint64_t memoryOffset = {};
             uint64_t ofsStartInstr = {};
             uint64_t ofsEndInstr = {};
-
-            InstructionDecoderBase::Ref extDecoder = nullptr;
-
-
         };
     }
 }

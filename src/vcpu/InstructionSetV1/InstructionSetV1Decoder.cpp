@@ -77,8 +77,15 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     if (IsExtension(code.opCodeByte)) {
         // We will break here - just move one instruction forward..
         cpu.AdvanceInstrPtr(1);
-        extDecoder = GetDecoderForInstrExt(code.opCodeByte);
-        extDecoder->Reset();
+        if (extDecoders.find(code.opCodeByte) == extDecoders.end()) {
+            // Don't have extension - exit
+            if (!InstructionSetManager::Instance().HaveExtension(code.opCodeByte)) {
+                fmt::println(stderr, "ERR: Invalid extension {:#X} no extension instr.set registered", code.opCodeByte);
+                exit(1);
+            }
+            extDecoders[code.opCodeByte] = InstructionSetManager::Instance().GetExtension(code.opCodeByte).CreateDecoder();
+        }
+        extDecoders[code.opCodeByte]->Reset();
         ChangeState(State::kStateDecodeExtension);
         return true;
     }
@@ -135,11 +142,11 @@ bool InstructionSetV1Decoder::IsExtension(uint8_t opCodeByte) const {
     return true;
 }
 
-//
-// FIXME: Need to define WHERE extensions are registered
-//
-InstructionDecoderBase::Ref InstructionSetV1Decoder::GetDecoderForInstrExt(uint8_t ext) {
-    return gnilk::vcpu::GetDecoderForExtension(ext);
+InstructionDecoderBase::Ref InstructionSetV1Decoder::GetDecoderForExtension(uint8_t ext) {
+    if (extDecoders.find(ext) == extDecoders.end()) {
+        return nullptr;
+    }
+    return extDecoders[ext];
 }
 
 
@@ -175,7 +182,11 @@ bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
 // Decode an extension
 //
 bool InstructionSetV1Decoder::ExecuteTickDecodeExt(CPUBase &cpu) {
-    // FIXME: need better semantics...
+    auto extDecoder = GetDecoderForExtension(code.opCodeByte);
+    if (extDecoder == nullptr) {
+        fmt::println(stderr, "ERR: No extension decoder!");
+        return false;
+    }
     bool result = extDecoder->Tick(cpu);
     if (extDecoder->IsFinished()) {
         ChangeState(State::kStateFinished);

@@ -55,7 +55,7 @@ namespace gnilk {
             void ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
             void ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
 
-            void ExecuteSIMDInstr(CPUBase &cpu, InstructionDecoderBase &baseDecoder);
+            void ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &baseDecoder);
             void WriteToDst(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder, const RegisterValue &v);
 
         };

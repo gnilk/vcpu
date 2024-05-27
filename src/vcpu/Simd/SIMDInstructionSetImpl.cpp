@@ -9,8 +9,7 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 bool SIMDInstructionSetImpl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &decoder) {
-    auto &baseDecoder = decoder.GetCurrentExtDecoder();
-    auto &simdDecoder = dynamic_cast<SIMDInstructionDecoder &>(baseDecoder);
+    auto &simdDecoder = dynamic_cast<SIMDInstructionDecoder &>(decoder);
 
     switch(simdDecoder.operand.opCode) {
         case SimdOpCode::LOAD :

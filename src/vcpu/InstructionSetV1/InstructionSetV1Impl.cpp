@@ -77,7 +77,7 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBa
             ExecuteBneInstr(cpu, decoder);
             break;
         case SIMD:
-            ExecuteSIMDInstr(cpu, baseDecoder);
+            ExecuteSIMDInstr(cpu, decoder);
             break;
         default:
             fmt::println(stderr, "Invalid operand: {} - raising exception handler (if available)", decoder.code.opCodeByte);
@@ -91,11 +91,22 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBa
 }
 
 
-// TEST TEST
-#include "Simd/SIMDInstructionSetImpl.h"
-void InstructionSetV1Impl::ExecuteSIMDInstr(CPUBase &cpu, InstructionDecoderBase &instrDecoder) {
-    SIMDInstructionSetImpl impl;
-    impl.ExecuteInstruction(cpu, instrDecoder);
+void InstructionSetV1Impl::ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &instrDecoder) {
+    // FIXME: This DOES not support multi-core!
+    //        IF the SIMD core is tied to the same as the regular 'CPU' core - we set the root instr.decoder to hold a specific decoder instance per extension
+    //        BUT if the extension cores differ (like; 1 FPU multiple INT or 1 SIMD, 2 FPU, 4 INT) - we need to schedule the decoding on the free core
+    //        which we CAN'T do at this point - would require a different architecture...
+
+
+    auto simdDecoder = instrDecoder.GetDecoderForExtension(SIMD);
+    // Note: This should not happen
+    if (simdDecoder == nullptr) {
+        fmt::println(stderr,"ERR: Decoder for SIMD extension missing");
+        exit(1);
+    }
+
+    auto &simdInstructionSet = InstructionSetManager::Instance().GetExtension(SIMD);
+    simdInstructionSet.GetImplementation().ExecuteInstruction(cpu, *simdDecoder);
 }
 
 ////////////////////////////
@@ -149,8 +160,7 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
 
 void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     // zero must not be set in order to jump
@@ -183,8 +193,7 @@ void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder
 void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     // zero must be in order to jump
@@ -214,8 +223,7 @@ void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder
 void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode == AddressMode::Immediate) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
@@ -250,8 +258,7 @@ void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder
 void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
 
@@ -308,8 +315,7 @@ void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder
 void InstructionSetV1Impl::ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     auto &dstReg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
@@ -411,8 +417,7 @@ void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
 void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -440,8 +445,7 @@ void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder
 void InstructionSetV1Impl::ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
