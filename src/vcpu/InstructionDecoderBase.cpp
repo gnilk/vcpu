@@ -13,7 +13,7 @@ bool InstructionDecoderBase::Decode(CPUBase &cpu) {
 
     // Decode using the tick functions - this will track number of ticks for the operand
     Reset();
-    while(!IsComplete()) {
+    while(!IsFinished()) {
         if (!Tick(cpu)) {
             return false;
         }

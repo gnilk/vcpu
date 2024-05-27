@@ -15,6 +15,8 @@
 
 namespace gnilk {
     namespace vcpu {
+
+        // See 'InstructionDecoderBase' for details
         class SIMDInstructionDecoder : public InstructionDecoderBase {
             friend SIMDInstructionSetImpl;
         public:
@@ -24,10 +26,14 @@ namespace gnilk {
 
             static SIMDInstructionDecoder::Ref Create();
 
-            bool Decode(CPUBase &cpu);
-            bool Tick(CPUBase &cpu);
+            bool Tick(CPUBase &cpu) override;
+
+            bool IsFinished() override;
+            bool IsIdle() override;
+            void Reset() override;
+
+
         protected:
-            bool IsComplete() override;
 
             bool ExecuteTickFromIdle(CPUBase &cpu);
             bool ExecuteTickReadWriteMem(CPUBase &cpu);

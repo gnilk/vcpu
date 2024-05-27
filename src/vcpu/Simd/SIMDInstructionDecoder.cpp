@@ -19,14 +19,14 @@ InstructionDecoderBase::Ref SIMDInstructionDecoder::Create() {
     return inst;
 }
 
-bool SIMDInstructionDecoder::Decode(CPUBase &cpu) {
-    state = State::kStateIdle;
-    while(state != State::kStateFinished) {
-        if (!Tick(cpu)) {
-            return false;
-        }
-    }
-    return true;
+bool SIMDInstructionDecoder::IsFinished() {
+    return (state == State::kStateFinished);
+}
+bool SIMDInstructionDecoder::IsIdle() {
+    return (state == State::kStateIdle);
+}
+void SIMDInstructionDecoder::Reset() {
+    ChangeState(State::kStateIdle);
 }
 
 bool SIMDInstructionDecoder::Tick(CPUBase &cpu) {
@@ -39,10 +39,6 @@ bool SIMDInstructionDecoder::Tick(CPUBase &cpu) {
             return true;
     }
     return false;
-}
-
-bool SIMDInstructionDecoder::IsComplete() {
-    return state == State::kStateFinished;
 }
 
 bool SIMDInstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {

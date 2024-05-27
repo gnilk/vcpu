@@ -53,23 +53,22 @@ namespace gnilk {
             static InstructionSetV1Decoder::Ref Create();
 
             void Reset() override;
-            bool Decode(CPUBase &cpu) override;          // Single pass decoding - executes all ticks
             bool Tick(CPUBase &cpu) override;
+
             // Make this private when it works
             bool ExecuteTickFromIdle(CPUBase &cpu);
             bool ExecuteTickDecodeAddrMode(CPUBase &cpu);
             bool ExecuteTickReadMem(CPUBase &cpu);
             bool ExecuteTickDecodeExt(CPUBase &cpu);
-            // Converts a decoded instruction back to it's mnemonic form
 
+
+            bool IsIdle() override { return (state == State::kStateIdle); }
+            bool IsFinished() override { return (state == State::kStateFinished); }
+
+
+            // Converts a decoded instruction back to it's mnemonic form
             std::string ToString() const override;
 
-            // const RegisterValue &GetDstValue() {
-            //     return dstValue;
-            // }
-            // const RegisterValue &GetSrcValue() {
-            //     return srcValue;
-            // }
             const RegisterValue &GetValue() {
                 return value;
             }

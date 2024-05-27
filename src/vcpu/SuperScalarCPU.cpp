@@ -36,7 +36,7 @@ void InstructionPipeline::Flush(CPUBase &cpu) {
         }
         // FIXME: Internal decoder state
         //fmt::println("  id={}, state={} (forcing to idle)", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder->state));
-        pipelineDecoder.ForceIdle();
+        pipelineDecoder.Reset();
     }
 }
 

@@ -30,18 +30,6 @@ InstructionSetV1Decoder::Ref InstructionSetV1Decoder::Create() {
     return inst;
 }
 
-bool InstructionSetV1Decoder::Decode(CPUBase &cpu) {
-
-    // Decode using the tick functions - this will track number of ticks for the operand
-    Reset();
-    while(state != State::kStateFinished) {
-        if (!Tick(cpu)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void InstructionSetV1Decoder::Reset() {
     ChangeState(State::kStateIdle);
 }
@@ -189,7 +177,7 @@ bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
 bool InstructionSetV1Decoder::ExecuteTickDecodeExt(CPUBase &cpu) {
     // FIXME: need better semantics...
     bool result = extDecoder->Tick(cpu);
-    if (extDecoder->IsComplete()) {
+    if (extDecoder->IsFinished()) {
         ChangeState(State::kStateFinished);
     }
     return result;

@@ -43,13 +43,13 @@ namespace gnilk {
                     assert(decoder);
                     return decoder->IsIdle();
                 }
-                void ForceIdle() {
+                void Reset() {
                     assert(decoder);
-                    decoder->ForceIdle();
+                    decoder->Reset();
                 }
                 bool IsFinished() {
                     assert(decoder);
-                    return decoder->IsComplete();
+                    return decoder->IsFinished();
                 }
 
                 bool Tick(CPUBase &cpu) {

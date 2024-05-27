@@ -18,7 +18,7 @@
 #include "Interrupt.h"
 #include "RegisterValue.h"
 
-#include "InstructionSet.h"
+#include "InstructionSet.h" // This brings in Decoder, Def, Impl
 
 // Bring in some Peripherals
 #include "Timer.h"
