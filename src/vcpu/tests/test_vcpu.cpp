@@ -50,15 +50,6 @@ extern "C" {
 }
 
 DLL_EXPORT int test_vcpu(ITesting *t) {
-
-    // Make sure we register the instruction sets properly.
-    if (!InstructionSetManager::Instance().HaveInstructionSet()) {
-        InstructionSetManager::Instance().SetInstructionSet<InstructionSetV1>();
-    }
-    if (!InstructionSetManager::Instance().HaveExtension(OperandCode::SIMD)) {
-        InstructionSetManager::Instance().RegisterExtension<InstructionSetSIMD>(OperandCode::SIMD);
-    }
-
     t->CaseDepends("instr_add_immediate", "instr_move_immediate");
     t->CaseDepends("instr_add_reg2reg", "instr_move_reg2reg");
     t->CaseDepends("instr_pop","instr_push");
