@@ -3,6 +3,7 @@
 //
 #include <unordered_map>
 #include <optional>
+#include "InstructionSetDefBase.h"
 #include "InstructionSetV1Def.h"
 #include "Simd/SIMDInstructionDecoder.h"
 #include "InstructionSetV1/InstructionSetV1Decoder.h"
@@ -23,71 +24,71 @@ static std::unordered_map<OperandCodeBase, OperandDescriptionBase> instructionSe
     {OperandCode::RET,{.name="ret", .features = {} }},
     {OperandCode::RTI,{.name="rti", .features = {} }},
     {OperandCode::RTE,{.name="rte", .features = {} }},
-{OperandCode::BEQ,{.name="beq", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize | InstructionSetV1Def::OperandDescriptionFlags::OneOperand |  InstructionSetV1Def::OperandDescriptionFlags::Immediate | InstructionSetV1Def::OperandDescriptionFlags::Branching}},
-{OperandCode::BNE,{.name="bne", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize | InstructionSetV1Def::OperandDescriptionFlags::OneOperand |  InstructionSetV1Def::OperandDescriptionFlags::Immediate | InstructionSetV1Def::OperandDescriptionFlags::Branching}},
+{OperandCode::BEQ,{.name="beq", .features = OperandFeatureFlags::kFeature_OperandSize | OperandFeatureFlags::kFeature_OneOperand | OperandFeatureFlags::kFeature_Immediate | OperandFeatureFlags::kFeature_Branching}},
+{OperandCode::BNE,{.name="bne", .features = OperandFeatureFlags::kFeature_OperandSize | OperandFeatureFlags::kFeature_OneOperand | OperandFeatureFlags::kFeature_Immediate | OperandFeatureFlags::kFeature_Branching}},
 
-{OperandCode::LSL, {.name="lsl", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                        InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Register }},
-{OperandCode::LSR, {.name="lsr", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                        InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Register }},
-{OperandCode::ASL, {.name="asl", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                        InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Register }},
-{OperandCode::ASR, {.name="asr", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                        InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                        InstructionSetV1Def::OperandDescriptionFlags::Register }},
-{OperandCode::LEA,{.name="lea", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                            InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                            InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                            InstructionSetV1Def::OperandDescriptionFlags::Register |
-                                            InstructionSetV1Def::OperandDescriptionFlags::Addressing |
-                                            InstructionSetV1Def::OperandDescriptionFlags::Branching}},       // <- FIXME: Rename this
-{OperandCode::MOV,{.name="move", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                                InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                                InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                                InstructionSetV1Def::OperandDescriptionFlags::Control |
-                                                InstructionSetV1Def::OperandDescriptionFlags::Register |
-                                                InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
-    {OperandCode::CMP, {.name="cmp", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                                        InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                                        InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                                        InstructionSetV1Def::OperandDescriptionFlags::Register |
-                                                        InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
-    {OperandCode::ADD,{.name="add", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                              InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Register |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
-{OperandCode::SUB,{.name="sub", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                              InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Register |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
-{OperandCode::MUL,{.name="mul", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                              InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Register |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
-{OperandCode::DIV,{.name="div", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize |
-                                              InstructionSetV1Def::OperandDescriptionFlags::TwoOperands |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Immediate |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Register |
-                                              InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
+{OperandCode::LSL, {.name="lsl", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                             OperandFeatureFlags::kFeature_TwoOperands |
+                                             OperandFeatureFlags::kFeature_Immediate |
+                                             OperandFeatureFlags::kFeature_AnyRegister }},
+{OperandCode::LSR, {.name="lsr", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                             OperandFeatureFlags::kFeature_TwoOperands |
+                                             OperandFeatureFlags::kFeature_Immediate |
+                                             OperandFeatureFlags::kFeature_AnyRegister }},
+{OperandCode::ASL, {.name="asl", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                             OperandFeatureFlags::kFeature_TwoOperands |
+                                             OperandFeatureFlags::kFeature_Immediate |
+                                             OperandFeatureFlags::kFeature_AnyRegister }},
+{OperandCode::ASR, {.name="asr", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                             OperandFeatureFlags::kFeature_TwoOperands |
+                                             OperandFeatureFlags::kFeature_Immediate |
+                                             OperandFeatureFlags::kFeature_AnyRegister }},
+{OperandCode::LEA,{.name="lea", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                            OperandFeatureFlags::kFeature_TwoOperands |
+                                            OperandFeatureFlags::kFeature_Immediate |
+                                            OperandFeatureFlags::kFeature_AnyRegister |
+                                            OperandFeatureFlags::kFeature_Addressing |
+                                            OperandFeatureFlags::kFeature_Branching}},       // <- FIXME: Rename this
+{OperandCode::MOV,{.name="move", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                             OperandFeatureFlags::kFeature_TwoOperands |
+                                             OperandFeatureFlags::kFeature_Immediate |
+                                             OperandFeatureFlags::kFeature_Control |
+                                             OperandFeatureFlags::kFeature_AnyRegister |
+                                             OperandFeatureFlags::kFeature_Addressing}},
+    {OperandCode::CMP, {.name="cmp", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                                 OperandFeatureFlags::kFeature_TwoOperands |
+                                                 OperandFeatureFlags::kFeature_Immediate |
+                                                 OperandFeatureFlags::kFeature_AnyRegister |
+                                                 OperandFeatureFlags::kFeature_Addressing}},
+    {OperandCode::ADD,{.name="add", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                                OperandFeatureFlags::kFeature_TwoOperands |
+                                                OperandFeatureFlags::kFeature_Immediate |
+                                                OperandFeatureFlags::kFeature_AnyRegister |
+                                                OperandFeatureFlags::kFeature_Addressing}},
+{OperandCode::SUB,{.name="sub", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                            OperandFeatureFlags::kFeature_TwoOperands |
+                                            OperandFeatureFlags::kFeature_Immediate |
+                                            OperandFeatureFlags::kFeature_AnyRegister |
+                                            OperandFeatureFlags::kFeature_Addressing}},
+{OperandCode::MUL,{.name="mul", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                            OperandFeatureFlags::kFeature_TwoOperands |
+                                            OperandFeatureFlags::kFeature_Immediate |
+                                            OperandFeatureFlags::kFeature_AnyRegister |
+                                            OperandFeatureFlags::kFeature_Addressing}},
+{OperandCode::DIV,{.name="div", .features = OperandFeatureFlags::kFeature_OperandSize |
+                                            OperandFeatureFlags::kFeature_TwoOperands |
+                                            OperandFeatureFlags::kFeature_Immediate |
+                                            OperandFeatureFlags::kFeature_AnyRegister |
+                                            OperandFeatureFlags::kFeature_Addressing}},
 
     // Push can be from many sources
-  {OperandCode::PUSH,{.name="push", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize | InstructionSetV1Def::OperandDescriptionFlags::OneOperand | InstructionSetV1Def::OperandDescriptionFlags::Register | InstructionSetV1Def::OperandDescriptionFlags::Immediate | InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
+  {OperandCode::PUSH,{.name="push", .features = OperandFeatureFlags::kFeature_OperandSize | OperandFeatureFlags::kFeature_OneOperand | OperandFeatureFlags::kFeature_AnyRegister | OperandFeatureFlags::kFeature_Immediate | OperandFeatureFlags::kFeature_Addressing}},
     // Pop can only be to register...
-  {OperandCode::POP,{.name="pop", .features = InstructionSetV1Def::OperandDescriptionFlags::OperandSize  | InstructionSetV1Def::OperandDescriptionFlags::OneOperand | InstructionSetV1Def::OperandDescriptionFlags::Register}},
+  {OperandCode::POP,{.name="pop", .features = OperandFeatureFlags::kFeature_OperandSize | OperandFeatureFlags::kFeature_OneOperand | OperandFeatureFlags::kFeature_AnyRegister}},
 
-    {OperandCode::CALL, {.name="call", .features = InstructionSetV1Def::OperandDescriptionFlags::Branching | InstructionSetV1Def::OperandDescriptionFlags::OperandSize | InstructionSetV1Def::OperandDescriptionFlags::OneOperand | InstructionSetV1Def::OperandDescriptionFlags::Immediate | InstructionSetV1Def::OperandDescriptionFlags::Register  | InstructionSetV1Def::OperandDescriptionFlags::Addressing}},
+    {OperandCode::CALL, {.name="call", .features = OperandFeatureFlags::kFeature_Branching | OperandFeatureFlags::kFeature_OperandSize | OperandFeatureFlags::kFeature_OneOperand | OperandFeatureFlags::kFeature_Immediate | OperandFeatureFlags::kFeature_AnyRegister | OperandFeatureFlags::kFeature_Addressing}},
     // Extension byte - nothing, no name - not available to the assembler
-    {OperandCode::SIMD, {.name="", .features = InstructionSetV1Def::OperandDescriptionFlags::Extension }},
+    {OperandCode::SIMD, {.name="", .features = OperandFeatureFlags::kFeature_Extension }},
 };
 
 const std::unordered_map<OperandCodeBase, OperandDescriptionBase> &InstructionSetV1Def::GetInstructionSet() {
@@ -120,6 +121,16 @@ std::optional<OperandCodeBase> InstructionSetV1Def::GetOperandFromStr(const std:
     }
     return strToOpClassMap.at(str);
 }
+
+// Helper to encode this according to spec - called from assembler StateEmitter when generating binary code..
+//uint8_t InstructionSetV1Def::EncodeOpSizeAndFamily(OperandSize opSize, OperandFamily opFamily) {
+//    uint8_t opSizeAndFamilyCode = opSize;
+//    opSizeAndFamilyCode |= static_cast<uint8_t>(opFamily) << 4;
+//    return opSizeAndFamilyCode;
+//}
+
+
+
 
 InstructionDecoderBase::Ref gnilk::vcpu::GetDecoderForExtension(uint8_t extCode) {
     if (extCode == OperandCode::SIMD) {

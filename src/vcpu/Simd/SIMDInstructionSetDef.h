@@ -277,6 +277,7 @@ namespace gnilk {
 
         // this is the 'OperandDescriptionFlags'
         // FIXME: Consolidate with OperandDescriptionBase <- or figure out a way to make the assembler work!
+/*
         typedef enum : uint32_t {
             kFeature_Size = 0x01,           // supports size  => OperandSize
             kFeature_AddressReg = 0x02,     // Can have address register    => Register
@@ -294,13 +295,13 @@ namespace gnilk {
 //            kFeature_Def_Signed = 0x40,
             kFeature_Def_Unsigned = 0x80,
         } SimdOpCodeFeatureFlags;
-
-
+*/
+/*
         template<>
         struct EnableBitmaskOperators<SimdOpCodeFeatureFlags> {
             static const bool enable = true;
         };
-
+*/
 
         class SIMDInstructionSetDef : public InstructionSetDefBase {
         public:
@@ -310,7 +311,7 @@ namespace gnilk {
             std::optional<OperandCodeBase> GetOperandFromStr(const std::string &str) override;
 
         private:
-            static std::unordered_map<OperandCodeBase , OperandDescriptionBase> instructionSet;
+            static std::unordered_map<OperandCodeBase, OperandDescriptionBase> instructionSet;
         };
 
 

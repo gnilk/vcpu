@@ -17,6 +17,9 @@ DLL_EXPORT int test_main(ITesting *t);
 DLL_EXPORT int test_exit(ITesting *t);
 }
 
+//
+// Make sure we populate the Instruction manager...
+//
 DLL_EXPORT int test_main(ITesting *t) {
     // Make sure we register the instruction sets properly.
     if (!InstructionSetManager::Instance().HaveInstructionSet()) {

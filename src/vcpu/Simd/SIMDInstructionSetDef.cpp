@@ -11,61 +11,61 @@ std::unordered_map<OperandCodeBase , OperandDescriptionBase> SIMDInstructionSetD
         {SimdOpCode::LOAD,
             {
                  .name = "ve_load",
-                 .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_AddressReg \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask \
-                             | SimdOpCodeFeatureFlags::kFeature_Advance,
+                 .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_AddressRegister \
+                             | OperandFeatureFlags::kFeature_Mask \
+                             | OperandFeatureFlags::kFeature_Advance,
             },
         },
         {SimdOpCode::STORE,
                 {
                         .name = "ve_store",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_AddressReg \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask \
-                             | SimdOpCodeFeatureFlags::kFeature_Advance,
+                        .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_AddressRegister \
+                             | OperandFeatureFlags::kFeature_Mask \
+                             | OperandFeatureFlags::kFeature_Advance,
                 },
         },
         {SimdOpCode::VMUL,
                 {
                         .name = "ve_mul",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                        .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_Mask,
                 },
         },
         {SimdOpCode::HADD,
                 {
                         .name = "ve_hadd",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                        .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_Mask,
                 },
         },
         {SimdOpCode::UNPCKFP8,
                 {
                         .name = "ve_unpckfp8",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                        .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_Mask,
                 },
         },
         {SimdOpCode::UNPCKFP16,
                 {
                         .name = "ve_unpckfp16",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                        .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_Mask,
                 },
         },
         {SimdOpCode::PACKFP16,
                 {
                         .name = "ve_packfp16",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                        .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_Mask,
                 },
         },
         {SimdOpCode::PACKFP32,
                 {
                         .name = "ve_packfp32",
-                        .features = SimdOpCodeFeatureFlags::kFeature_Size \
-                             | SimdOpCodeFeatureFlags::kFeature_Mask,
+                        .features = OperandFeatureFlags::kFeature_OperandSize \
+                             | OperandFeatureFlags::kFeature_Mask,
                 },
         },
 

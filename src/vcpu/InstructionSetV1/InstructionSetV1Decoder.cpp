@@ -89,7 +89,7 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     //
     // Decode addressing
     //
-    if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::OperandSize) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OperandSize) {
         code.opSizeAndFamilyCode = NextByte(cpu);
         code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
@@ -102,9 +102,9 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     opArgSrc = {};
 
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
-    if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::OneOperand) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
         DecodeOperandArg(cpu, opArgDst);
-    } else if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::TwoOperands) {
+    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         DecodeOperandArg(cpu, opArgDst);
         DecodeOperandArg(cpu, opArgSrc);
     } else {
@@ -118,7 +118,7 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     // and the Pipeline to grab a new instruction..
     cpu.AdvanceInstrPtr(szComputed);
 
-    if ((code.description.features & InstructionSetV1Def::OperandDescriptionFlags::OneOperand) || (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::TwoOperands)) {
+    if ((code.description.features & OperandFeatureFlags::kFeature_OneOperand) || (code.description.features & OperandFeatureFlags::kFeature_TwoOperands)) {
         state = State::kStateDecodeAddrMode;
         return true;
     }
@@ -150,7 +150,7 @@ InstructionDecoderBase::Ref InstructionSetV1Decoder::GetDecoderForInstrExt(uint8
 //
 bool InstructionSetV1Decoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
     DecodeOperandArgAddrMode(cpu, opArgDst);
-    if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::TwoOperands) {
+    if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         DecodeOperandArgAddrMode(cpu, opArgSrc);
     }
     // FIXME: Is this required?
@@ -162,9 +162,9 @@ bool InstructionSetV1Decoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
 // This is the third tick, here we fetch any data from from RAM - not following the instr. pointer
 //
 bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
-    if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::OneOperand) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
         value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
-    } else if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::TwoOperands) {
+    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
     }
     state = State::kStateFinished;
@@ -186,9 +186,9 @@ bool InstructionSetV1Decoder::ExecuteTickDecodeExt(CPUBase &cpu) {
 size_t InstructionSetV1Decoder::ComputeInstrSize() const {
     size_t opSize = ofsEndInstr - ofsStartInstr;    // Start here - as operands have different sizes..
 
-    if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::OneOperand) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
         opSize += ComputeOpArgSize(opArgDst);
-    } else if (code.description.features & InstructionSetV1Def::OperandDescriptionFlags::TwoOperands) {
+    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         opSize += ComputeOpArgSize(opArgDst);
         opSize += ComputeOpArgSize(opArgSrc);
     }
@@ -313,7 +313,7 @@ std::string InstructionSetV1Decoder::ToString() const {
     std::string opString;
 
     opString = desc->name;
-    if (desc->features & InstructionSetV1Def::OperandDescriptionFlags::OperandSize) {
+    if (desc->features & OperandFeatureFlags::kFeature_OperandSize) {
         switch(code.opSize) {
             case OperandSize::Byte :
                 opString += ".b";
@@ -330,12 +330,12 @@ std::string InstructionSetV1Decoder::ToString() const {
         }
     }
 
-    if (desc->features & InstructionSetV1Def::OperandDescriptionFlags::OneOperand) {
+    if (desc->features & OperandFeatureFlags::kFeature_OneOperand) {
         opString += "\t";
         opString += DisasmOperand(opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.regIndex, opArgDst.relAddrMode);
     }
 
-    if (desc->features & InstructionSetV1Def::OperandDescriptionFlags::TwoOperands) {
+    if (desc->features & OperandFeatureFlags::kFeature_TwoOperands) {
         opString += "\t";
         opString += DisasmOperand(opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.regIndex, opArgDst.relAddrMode);
 

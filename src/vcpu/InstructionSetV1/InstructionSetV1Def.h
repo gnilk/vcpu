@@ -92,20 +92,7 @@ namespace gnilk {
         //
         //
         //
-        typedef enum : uint8_t {
-            Indirect = 0,       // move.b d0, (a0)
-            Immediate = 1,      // move.b d0, 0x44        <- move a byte to register d0, or: 'd0 = 0x44'
-            Absolute = 2,       // move.b d0, [0x7ff001]  <- move a byte from absolute to register, 'd0 = *ptr'
-            Register = 3,       // move.b d0, d1
-        } AddressMode;
 
-        // high two bits of 'mode'
-        typedef enum : uint8_t {
-            None = 0,
-            RegRelative = 1,        // move.b d0, (a0 + d0)
-            AbsRelative = 2,        // move.b d0, (a0 + <const>)
-            Unused = 3,             // ?? move.b d0, (a0 + d0<<1) ??
-        } RelativeAddressMode;
 
         // Operand Size has 1 byte and the following layout
         //  OpSize: rrFF | rrSS
@@ -123,19 +110,6 @@ namespace gnilk {
         // So best would be to reserve a range:
 
 
-        static constexpr size_t ByteSizeOfOperandSize(OperandSize opSize) {
-            switch(opSize) {
-                case OperandSize::Byte :
-                    return sizeof(uint8_t);
-                case OperandSize::Word :
-                    return sizeof(uint16_t);
-                case OperandSize::DWord :
-                    return sizeof(uint32_t);
-                case OperandSize::Long :
-                default:
-                    return sizeof(uint64_t);
-            }
-        }
 
 
         //
@@ -227,63 +201,10 @@ namespace gnilk {
 
         class InstructionSetV1Def : public InstructionSetDefBase {
         public:
-
-            //
-            // This feature description and table should be made visible across all CPU tools..
-            // Put it in a a separate place so it can be reused...
-            //
-            typedef enum : uint32_t {
-                // Has operand size distinction
-                OperandSize = 1,
-                // Two operand bits, allows for 0..3 operands
-                OneOperand = 2,
-                TwoOperands = 4,
-                // Support immediate values; move d0, #<value>
-                Immediate = 8,
-                // Support register
-                Register = 16,
-                // Support addressing move d0, (a0)
-                Addressing = 32,        // Is this not just 'register'??
-
-                // FIXME: This is not branching, this defines how the instruction is to treat reading a label value
-                //        IF present, the instruction will USE the memory address and perform the operation (branch, load-of-address, etc)
-                //        if NOT present, the CPU will fetch the memory of the address and the value stored at the address...
-                //        consider:
-                //              move.l d0, variable         ; D0 will have the value of the variable (stored at some address - i.e. the CPU will READ from the address)
-                //        whereby:
-                //              call variable               ; the CPU will USE the address directly
-                //              lea.l d0, variable          ; D0 will contain the ADDRESS (and not the value of the variable)
-                //
-                // Maybe we should rename this as 'Absolute'?
-                //
-                Branching = 64,
-                // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
-                Control = 128,
-                // FIXME: Perhaps need absolute as well..
-                Extension = 256,    // Extension prefix
-
-            } OperandDescriptionFlags;
-/*
-            inline constexpr OperandDescriptionFlags
-            operator|(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
-                using T = std::underlying_type_t<OperandDescriptionFlags>;
-                return static_cast<OperandDescriptionFlags>(static_cast<T>(lhs) | static_cast<T>(rhs));
-            }
-
-            inline constexpr bool operator&(OperandDescriptionFlags lhs, OperandDescriptionFlags rhs) {
-                using T = std::underlying_type_t<OperandDescriptionFlags>;
-                return (static_cast<T>(lhs) & static_cast<T>(rhs));
-            }
-*/
-            struct OperandDescription {
-                std::string name;
-                OperandDescriptionFlags features;
-            };
-
             const std::unordered_map<OperandCodeBase, OperandDescriptionBase> &GetInstructionSet() override;
             std::optional<OperandDescriptionBase> GetOpDescFromClass(OperandCodeBase opClass) override;
             std::optional<OperandCodeBase> GetOperandFromStr(const std::string &str) override;
-
+            // uint8_t EncodeOpSizeAndFamily(OperandSize opSize, OperandFamily opFamily) override;
         };
 
     }

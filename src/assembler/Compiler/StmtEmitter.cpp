@@ -654,17 +654,27 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
         return false;
     }
 
-    auto opSizeWritePoint = data.size();
+    // Fetch the instruction set..
+    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
 
+
+    // FIXME: This can't be correct in case we have to recalibrate the opsize [will we ever need that for a two-op instr?]
     auto opSize = twoOpInstr->OpSize();
     uint8_t opSizeAndFamilyCode = static_cast<uint8_t>(opSize);
+    //
+    //  We should have the instr.set encode this...
+    //
     opSizeAndFamilyCode |= static_cast<uint8_t>(twoOpInstr->OpFamily()) << 4;
 
-    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
+//    auto opSizeAndFamilyCode = instrSet.GetDefinition().EncodeOpSizeAndFamily(twoOpInstr->OpSize(), twoOpInstr->OpFamily());
 
     auto opClass = *instrSet.GetDefinition().GetOperandFromStr(twoOpInstr->Symbol());
     auto opDesc = *instrSet.GetDefinition().GetOpDescFromClass(opClass);
 
+    // Save the write point..
+    auto opSizeWritePoint = data.size();
+    // This is temporary (might be changed)
+    // FIXME: Verify this - not sure this is correct..
     EmitOpSize(opSizeAndFamilyCode);
 
     // This can't output opSize..
@@ -682,6 +692,7 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
 
     // If we didn't write the operand size and family, let's do it now...
     if (!(emitFlags & kEmitFlags::kEmitOpSize)) {
+        // FIXME: This branch is never hit - need unit test to specifically stress this (if even possible)
         data.insert(data.begin() + opSizeWritePoint, opSize);
     }
 
@@ -726,27 +737,27 @@ bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, const vcpu::Opera
 
     switch(operandExp->Kind()) {
         case ast::NodeType::kNumericLiteral :
-            if (desc.features & vcpu::InstructionSetV1Def::OperandDescriptionFlags::Immediate) {
+            if (desc.features & vcpu::OperandFeatureFlags::kFeature_Immediate) {
                 return EmitNumericLiteralForInstr(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(operandExp));
             }
             fmt::println(stderr, "Instruction Operand does not support immediate");
             break;
         case ast::NodeType::kRegisterLiteral :
-            if (desc.features & vcpu::InstructionSetV1Def::OperandDescriptionFlags::Register) {
+            if (desc.features & vcpu::OperandFeatureFlags::kFeature_AnyRegister) {
                 return EmitRegisterLiteral(std::dynamic_pointer_cast<ast::RegisterLiteral>(operandExp));
             }
             fmt::println(stderr, "Instruction Operand does not support register");
             break;
         case ast::NodeType::kIdentifier :
             // After statement parsing is complete we will change all place-holders
-            if ((desc.features & vcpu::InstructionSetV1Def::OperandDescriptionFlags::Addressing) && (opSize == vcpu::OperandSize::Long)) {
+            if ((desc.features & vcpu::OperandFeatureFlags::kFeature_Addressing) && (opSize == vcpu::OperandSize::Long)) {
                 return EmitLabelAddress(context, desc, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             } else {
                 return EmitRelativeLabelAddress(context, desc, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             }
             break;
         case ast::NodeType::kDeRefExpression :
-            if (desc.features & vcpu::InstructionSetV1Def::OperandDescriptionFlags::Addressing) {
+            if (desc.features & vcpu::OperandFeatureFlags::kFeature_Addressing) {
                 return EmitDereference(context, std::dynamic_pointer_cast<ast::DeReferenceExpression>(operandExp));
             }
             break;
@@ -964,7 +975,7 @@ bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, const vcpu::Opera
 
     // FIXME: need pointer/ref to current instr. set
     //        -> Replace 'IsFeatureSupported()'
-    if (desc.features & vcpu::InstructionSetV1Def::OperandDescriptionFlags::Branching) {
+    if (desc.features & vcpu::OperandFeatureFlags::kFeature_Branching) {
         regMode |= vcpu::AddressMode::Immediate;
     } else {
         regMode |= vcpu::AddressMode::Absolute;

@@ -349,9 +349,9 @@ ast::Statement::Ref Parser::ParseInstruction() {
     }
     auto opDesc = *optionalDesc;
     // FIXME: consolidate the op-desc-flags
-    if (opDesc.features & vcpu::InstructionSetV1Def::OperandDescriptionFlags::TwoOperands) {
+    if (opDesc.features & vcpu::OperandFeatureFlags::kFeature_TwoOperands) {
         return ParseTwoOpInstruction(operand);
-    } else if (opDesc.features & vcpu::InstructionSetV1Def::OperandDescriptionFlags::OneOperand) {
+    } else if (opDesc.features & vcpu::OperandFeatureFlags::kFeature_OneOperand) {
         return ParseOneOpInstruction(operand);
     }
 
