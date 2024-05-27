@@ -624,7 +624,7 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpIn
     //
     auto opSizeWritePoint = data.size(); // Save where we are
 
-    auto &instrSet = vcpu::GetInstructionSet();
+    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
     auto opClass = *instrSet.GetDefinition().GetOperandFromStr(stmt->Symbol());
     auto opDesc = *instrSet.GetDefinition().GetOpDescFromClass(opClass);
 
@@ -660,7 +660,7 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
     uint8_t opSizeAndFamilyCode = static_cast<uint8_t>(opSize);
     opSizeAndFamilyCode |= static_cast<uint8_t>(twoOpInstr->OpFamily()) << 4;
 
-    auto &instrSet = vcpu::GetInstructionSet();
+    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
 
     auto opClass = *instrSet.GetDefinition().GetOperandFromStr(twoOpInstr->Symbol());
     auto opDesc = *instrSet.GetDefinition().GetOpDescFromClass(opClass);
@@ -691,7 +691,7 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
 // FIXME: Instruction set dependent
 bool EmitCodeStatement::EmitOpCodeForSymbol(const std::string &symbol) {
 
-    auto &instrSet = vcpu::GetInstructionSet();
+    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
     auto opcode = instrSet.GetDefinition().GetOperandFromStr(symbol);
     if (!opcode.has_value()) {
         fmt::println(stderr, "Unknown/Unsupported symbol: {}", symbol);

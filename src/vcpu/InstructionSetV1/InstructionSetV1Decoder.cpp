@@ -65,7 +65,7 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
         return false;
     }
 
-    auto &instrSetDefinition = GetInstructionSet().GetDefinition();
+    auto &instrSetDefinition = InstructionSetManager::Instance().GetInstructionSet().GetDefinition();
 
     // Decode the op-code
     code.opCode =  static_cast<OperandCode>(code.opCodeByte);
@@ -301,7 +301,7 @@ uint64_t InstructionSetV1Decoder::ComputeRelativeAddress(CPUBase &cpuBase, const
 
 
 std::string InstructionSetV1Decoder::ToString() const {
-    auto &instrSetDefinition = GetInstructionSet().GetDefinition(); //glb_InstructionSetV1.definition;
+    auto &instrSetDefinition = InstructionSetManager::Instance().GetInstructionSet().GetDefinition(); //glb_InstructionSetV1.definition;
 
     if (!instrSetDefinition.GetInstructionSet().contains(code.opCode)) {
         // Note, we don't raise an exception - this is a helper for SW - not an actual HW type of function

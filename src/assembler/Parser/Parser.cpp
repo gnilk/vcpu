@@ -313,7 +313,7 @@ ast::Statement::Ref Parser::ParseArrayDeclaration(vcpu::OperandSize opSize) {
 
 ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
     // Check if this is a proper instruction
-    auto &definition = vcpu::GetInstructionSet().GetDefinition();
+    auto &definition = vcpu::InstructionSetManager::Instance().GetInstructionSet().GetDefinition();
     if (definition.GetOperandFromStr(At().value).has_value()) {
         return ParseInstruction();
     }
@@ -328,7 +328,7 @@ ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
 }
 
 ast::Statement::Ref Parser::ParseInstruction() {
-    auto &instructionSet = vcpu::GetInstructionSet();
+    auto &instructionSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
 
     auto operand = At().value;
     auto opClass = instructionSet.GetDefinition().GetOperandFromStr(operand);

@@ -109,7 +109,8 @@ bool VirtualCPU::Step() {
         return true;
     }
 
-    auto &instructionSet = GetInstructionSet();
+
+    auto &instructionSet = InstructionSetManager::Instance().GetInstructionSet();
     auto &instructionDecoder = instructionSet.GetDecoder();
 
     //InstructionDecoderBase::Ref instrDecoder = InstructionDecoder::Create();
