@@ -22,11 +22,7 @@ const std::string &InstructionSetV1Decoder::StateToString(InstructionSetV1Decode
 }
 
 InstructionSetV1Decoder::Ref InstructionSetV1Decoder::Create() {
-
     auto inst = std::make_shared<InstructionSetV1Decoder>();
-//    inst->memoryOffset = memoryOffset;
-//    inst->ofsStartInstr = 0;
-//    inst->ofsEndInstr = 0;
     return inst;
 }
 
@@ -34,6 +30,14 @@ void InstructionSetV1Decoder::Reset() {
     ChangeState(State::kStateIdle);
 }
 
+//
+// FIXME: Some instructions (like cmp - see 'InstructionSetV1Impl' need an additional 'ReadMem' tick for the destination value
+//        We should implement that and add it as a 'Feature' flag for the op-code...
+//        This way the decoding is complete before handing over to the Impl.
+//        Which allows decoding to be 100% separated from execution => many execution units and longer decoding-pipelines possible..
+//
+//        See (for a simplified picture): https://upload.wikimedia.org/wikipedia/commons/b/b0/AMD_Bulldozer_block_diagram_%28CPU_core_block%29.png
+//
 bool InstructionSetV1Decoder::Tick(CPUBase &cpu) {
     switch(state) {
         case State::kStateIdle :

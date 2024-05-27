@@ -138,15 +138,18 @@ namespace gnilk {
 
             InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t ext);
         public:
-            // Used during by decoder...
+            // FIXME: This is the result of the decoding
+            //        Move this to a very specific place so we can 'queue' it up - this makes the decoder separate from the instr.impl..
             Operand code;
             OperandArg opArgDst;
             OperandArg opArgSrc;
 
-            std::unordered_map<uint8_t, InstructionDecoderBase::Ref> extDecoders = {};
-
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand
+            // End of result
+
+
+            std::unordered_map<uint8_t, InstructionDecoderBase::Ref> extDecoders = {};
         };
 
         // This is more or less a wrapper around the InstructionDecoder

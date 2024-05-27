@@ -226,6 +226,8 @@ void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
+
+    // FIXME: We shouldn't read the dst value here - should be part of the decoding step...
     RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
 /*
     if (instrDecoder.dstAddrMode == AddressMode::Register) {
