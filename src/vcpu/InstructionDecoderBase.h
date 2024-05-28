@@ -66,11 +66,6 @@ namespace gnilk {
             //   false - the decoder is not done
             virtual bool IsFinished() { return false; }
 
-            virtual bool PushToDispatch(DispatchBase &dispatcher) {
-                return false;
-            }
-
-
         protected:
             // Proxy into CPU base
             uint8_t NextByte(CPUBase &cpu);

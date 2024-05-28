@@ -309,7 +309,29 @@ namespace gnilk {
             const std::unordered_map<OperandCodeBase, OperandDescriptionBase> &GetInstructionSet() override;
             std::optional<OperandDescriptionBase> GetOpDescFromClass(OperandCodeBase opClass) override;
             std::optional<OperandCodeBase> GetOperandFromStr(const std::string &str) override;
+        public:
+            struct Operand {
+                uint8_t opCodeByte;
+                SimdOpCode opCode;
+                //OperandDescriptionBase description;
+                uint32_t features;
 
+                uint8_t opFlagsHighByte;
+                kSimdOpSize opSize;
+                kSimdAddrMode opAddrMode;
+
+                uint8_t opFlagsLowBitsAndDst;
+                uint8_t opFlagsLowBits;
+                uint8_t opDstRegIndex;
+
+                uint8_t opSrcAAndMaskOrSrcB;
+                uint8_t opSrcAIndex;
+                union {
+                    uint8_t opSrcBIndex;
+                    uint8_t opMask;
+                };
+
+            };
         private:
             static std::unordered_map<OperandCodeBase, OperandDescriptionBase> instructionSet;
         };

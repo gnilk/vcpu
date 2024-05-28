@@ -577,7 +577,7 @@ namespace gnilk {
             MemoryLayout *systemBlock = nullptr;
 
             // FIXME: This is perhaps a 'SOC' instead of CPU thing - or it is a CPU thing - not sure yet..
-            Dispatch<256> dispatcher;
+            Dispatch<4096> dispatcher;
 
 
             // Short cut pointers into the systemBlock...

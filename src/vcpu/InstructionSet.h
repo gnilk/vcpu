@@ -21,8 +21,7 @@ namespace gnilk {
             virtual InstructionDecoderBase &GetDecoder() = 0;
             virtual InstructionSetDefBase &GetDefinition() = 0;
             virtual InstructionSetImplBase &GetImplementation() = 0;
-
-            virtual InstructionDecoderBase::Ref CreateDecoder() = 0;
+            virtual InstructionDecoderBase::Ref CreateDecoder(uint8_t instrTypeId) = 0;
         };
         template<typename TDec, typename TDef, typename TImpl>
         class InstructionSetInst : public InstructionSet {

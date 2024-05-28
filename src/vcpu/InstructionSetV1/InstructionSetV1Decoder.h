@@ -16,11 +16,8 @@
 namespace gnilk {
     namespace vcpu {
 
-
-
-        class InstructionSetV1Impl;
+        // FIXME: Could do with some cleanup...
         class InstructionSetV1Decoder : public InstructionDecoderBase {
-            friend InstructionSetV1Impl;        // FIXME: Should be removed!
         public:
             using Ref = std::shared_ptr<InstructionSetV1Decoder>;
 
@@ -37,15 +34,14 @@ namespace gnilk {
             static const std::string &StateToString(State s);
 
         public:
-            InstructionSetV1Decoder()  {
-                printf("InstructionSetV1Decoder::CTOR, this=%p\n", (void *)this);
-            }
+            InstructionSetV1Decoder()  = default;
             virtual ~InstructionSetV1Decoder() = default;
             static InstructionSetV1Decoder::Ref Create();
 
             void Reset() override;
             bool Tick(CPUBase &cpu) override;
-            bool PushToDispatch(DispatchBase &dispatcher) override;
+            bool Finalize(CPUBase &cpu);
+            bool PushToDispatch(CPUBase &cpu);
 
 
             // Make this private when it works
@@ -105,6 +101,7 @@ namespace gnilk {
 
             size_t ComputeInstrSize() const;
             size_t ComputeOpArgSize(const InstructionSetV1Def::DecodedOperandArg &opArg) const;
+            uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddr) const;
             bool IsExtension(uint8_t opCodeByte) const;
 
             const State &GetState() {
@@ -113,9 +110,10 @@ namespace gnilk {
             void ChangeState(State newState);
 
             InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t ext);
+
         public:
-            // FIXME: This is the result of the decoding
-            //        Move this to a very specific place so we can 'queue' it up - this makes the decoder separate from the instr.impl..
+            // This is moved into 'InstructionSetV1Def::DecoderOperand' structure during PushToDispatch
+            // FIXME: Could be moved to 'DecoderOperand' directly - public because of unit-testing..
             InstructionSetV1Def::DecodedOperand code;
             InstructionSetV1Def::DecodedOperandArg opArgDst;
             InstructionSetV1Def::DecodedOperandArg opArgSrc;
@@ -128,17 +126,19 @@ namespace gnilk {
             // Note: This is _ALWAYS_ the destination
             RegisterValue secondaryValue;
 
-
-            std::unordered_map<uint8_t, InstructionDecoderBase::Ref> extDecoders = {};
+            InstructionDecoderBase::Ref currentExtDecoder = nullptr;
         };
 
         // This is more or less a wrapper around the InstructionDecoder
         // Because we need to hold more information
+        // FIXME: Reconsider how this should work...
         struct LastInstruction {
             Registers cpuRegistersBefore;
             Registers cpuRegistersAfter;
             CPUISRState isrStateBefore;
             CPUISRState isrStateAfter;
+
+            // This actually holds the instruction decoder instance - this is not needed - we should be able to use any
             InstructionSetV1Decoder instrDecoder = {};       // FIXME: Try to make this 'InstructionDecoderBase::Ref'
 
             CPUISRState GetISRStateBefore() const {
@@ -146,7 +146,7 @@ namespace gnilk {
             }
 
             std::string ToString() const {
-                return instrDecoder.ToString();
+                return instrDecoder.ToString();     // FIXME: Not sure this belongs here (after refactoring) -> move to InstructionSetDef
             }
 
             size_t GetInstrSizeInBytes() const {

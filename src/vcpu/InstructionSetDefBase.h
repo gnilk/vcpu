@@ -18,8 +18,8 @@ namespace gnilk {
         // These are shared by all types of instructions..
         //
         struct OperandDescriptionBase {
-            std::string name;
-            uint32_t features;
+            std::string name = {};
+            uint32_t features = {};
         };
         typedef uint8_t OperandCodeBase;
 

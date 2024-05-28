@@ -54,7 +54,7 @@ namespace gnilk {
 
                 bool Tick(CPUBase &cpu) {
                     if (decoder == nullptr) {
-                        decoder = InstructionSetManager::Instance().GetInstructionSet().CreateDecoder();
+                        decoder = InstructionSetManager::Instance().GetInstructionSet().CreateDecoder(0);
                     }
 
                     tickCount++;

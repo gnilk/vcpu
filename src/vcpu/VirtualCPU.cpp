@@ -113,16 +113,15 @@ bool VirtualCPU::Step() {
     auto &instructionSet = InstructionSetManager::Instance().GetInstructionSet();
     auto &instructionDecoder = instructionSet.GetDecoder();
 
+    // Perform full decoding of one instruction and push to dispatcher when done...
     if (!instructionDecoder.Decode(*this)) {
         return false;
     }
 
-    if (!instructionDecoder.PushToDispatch(dispatcher)) {
-        return false;
-    }
-
+    // Process dispatcher
     ProcessDispatch();
 
+    // Update
     UpdateMMU();
     if (GetActiveISRControlBlock() != nullptr) {
         lastDecodedInstruction.isrStateAfter = GetActiveISRControlBlock()->isrState;

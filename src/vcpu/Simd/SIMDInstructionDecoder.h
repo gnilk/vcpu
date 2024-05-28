@@ -21,6 +21,11 @@ namespace gnilk {
             friend SIMDInstructionSetImpl;
         public:
             SIMDInstructionDecoder() = default;
+
+            // Create the decoder but use this as the instruction type id when pushing to the dispatcher...
+            SIMDInstructionDecoder(uint8_t useInstrTypeId) : instrTypeId(useInstrTypeId) {
+
+            }
             virtual ~SIMDInstructionDecoder() = default;
 
 
@@ -31,6 +36,9 @@ namespace gnilk {
             bool IsFinished() override;
             bool IsIdle() override;
             void Reset() override;
+
+            bool Finalize(CPUBase &cpu);
+            bool PushToDispatch(CPUBase &cpu);
 
 
         protected:
@@ -56,29 +64,8 @@ namespace gnilk {
                 state = newState;
             }
         protected:
-            struct Operand {
-                uint8_t opCodeByte;
-                SimdOpCode opCode;
-                OperandDescriptionBase description;
-
-                uint8_t opFlagsHighByte;
-                kSimdOpSize opSize;
-                kSimdAddrMode opAddrMode;
-
-                uint8_t opFlagsLowBitsAndDst;
-                uint8_t opFlagsLowBits;
-                uint8_t opDstRegIndex;
-
-                uint8_t opSrcAAndMaskOrSrcB;
-                uint8_t opSrcAIndex;
-                union {
-                    uint8_t opSrcBIndex;
-                    uint8_t opMask;
-                };
-
-            };
-
-            Operand operand = {};
+            uint8_t instrTypeId = 0;        // 0 is for root instructions, i.e. when running on it's own..
+            SIMDInstructionSetDef::Operand operand = {};
 
         };
     }

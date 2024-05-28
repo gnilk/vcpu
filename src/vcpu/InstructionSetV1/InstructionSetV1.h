@@ -17,7 +17,7 @@ namespace gnilk {
         class InstructionSetV1 : public
                 InstructionSetInst<InstructionSetV1Decoder, InstructionSetV1Def, InstructionSetV1Impl> {
         public:
-            InstructionDecoderBase::Ref CreateDecoder() override;
+            InstructionDecoderBase::Ref CreateDecoder(uint8_t instrTypeId) override;
         };
 
         //extern InstructionSetV1 glb_InstructionSetV1;

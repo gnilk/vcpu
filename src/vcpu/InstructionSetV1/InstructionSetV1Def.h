@@ -265,8 +265,6 @@ namespace gnilk {
             std::optional<OperandDescriptionBase> GetOpDescFromClass(OperandCodeBase opClass) override;
             std::optional<OperandCodeBase> GetOperandFromStr(const std::string &str) override;
 
-            static uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddr);
-
             // uint8_t EncodeOpSizeAndFamily(OperandSize opSize, OperandFamily opFamily) override;
         };
 

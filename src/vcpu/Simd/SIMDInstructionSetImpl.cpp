@@ -9,11 +9,16 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 bool SIMDInstructionSetImpl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &decoder) {
-    auto &simdDecoder = dynamic_cast<SIMDInstructionDecoder &>(decoder);
 
-    switch(simdDecoder.operand.opCode) {
+    SIMDInstructionSetDef::Operand decoderOutput;
+    if (!cpu.GetDispatch().Pop(&decoderOutput, sizeof(decoderOutput))) {
+        fmt::println(stderr, "[SIMDInstructionSetImpl::ExecuteInstruction] Unable to fetch decoder output from dispatcher!");
+        return false;
+    }
+
+    switch(decoderOutput.opCode) {
         case SimdOpCode::LOAD :
-            ExecuteLoad(cpu, simdDecoder);
+            ExecuteLoad(cpu, decoderOutput);
             break;
         default:
             return false;
@@ -22,6 +27,6 @@ bool SIMDInstructionSetImpl::ExecuteInstruction(CPUBase &cpu, InstructionDecoder
     return true;
 }
 
-void SIMDInstructionSetImpl::ExecuteLoad(CPUBase &cpu, SIMDInstructionDecoder &decoder) {
+void SIMDInstructionSetImpl::ExecuteLoad(CPUBase &cpu, SIMDInstructionSetDef::Operand &operand) {
     printf("Execute Load\n");
 }

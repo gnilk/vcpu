@@ -214,12 +214,24 @@ DLL_EXPORT int test_vcpu_instr_move_relative(ITesting *t) {
     auto &regs = vcpu.GetRegisters();
     // preload reg d0 with 0x477
     regs.dataRegisters[0].data.word = 0x4711;
+    regs.dataRegisters[3].data.longword = 1;
+    regs.dataRegisters[4].data.longword = 1;
     regs.addressRegisters[0].data.longword = 0x05;  // read from address 5...
+
+    int expectedRelSrcOfs[]={1,4,8,128,0x47,2,0,0};
+    int expectedRelDstOfs[]={0,0,0,0,0,8,0,0};
 
     int instrCounter = 0;
     while(!vcpu.IsHalted()) {
         vcpu.Step();
-        fmt::println("{}", vcpu.GetLastDecodedInstr()->ToString());
+        fmt::println("{} - {}", instrCounter, vcpu.GetLastDecodedInstr()->ToString());
+        int srcRelativeOfs = vcpu.GetLastDecodedInstr()->instrDecoder.opArgSrc.relativeAddressOfs;
+        int dstRelativeOfs = vcpu.GetLastDecodedInstr()->instrDecoder.opArgDst.relativeAddressOfs;
+        if (!vcpu.IsHalted()) {
+            fmt::println("  srcRel: {} (exp: {}),  dstRel: {} (exp: {})", srcRelativeOfs, expectedRelSrcOfs[instrCounter], dstRelativeOfs, expectedRelDstOfs[instrCounter]);
+            TR_ASSERT(t, srcRelativeOfs == expectedRelSrcOfs[instrCounter]);
+            TR_ASSERT(t, dstRelativeOfs == expectedRelDstOfs[instrCounter]);
+        }
         instrCounter++;
     }
 

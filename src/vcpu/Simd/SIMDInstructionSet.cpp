@@ -11,6 +11,6 @@ using namespace gnilk::vcpu;
 
 InstructionSetSIMD gnilk::vcpu::glb_InstructionSetSIMD;
 
-InstructionDecoderBase::Ref InstructionSetSIMD::CreateDecoder() {
-    return std::make_shared<SIMDInstructionDecoder>();
+InstructionDecoderBase::Ref InstructionSetSIMD::CreateDecoder(uint8_t instrTypeId) {
+    return std::make_shared<SIMDInstructionDecoder>(instrTypeId);
 }

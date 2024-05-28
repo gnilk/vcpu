@@ -22,24 +22,46 @@ InstructionDecoderBase::Ref SIMDInstructionDecoder::Create() {
 bool SIMDInstructionDecoder::IsFinished() {
     return (state == State::kStateFinished);
 }
+
 bool SIMDInstructionDecoder::IsIdle() {
     return (state == State::kStateIdle);
 }
+
 void SIMDInstructionDecoder::Reset() {
     ChangeState(State::kStateIdle);
 }
 
 bool SIMDInstructionDecoder::Tick(CPUBase &cpu) {
+    bool res = false;
     switch(state) {
         case State::kStateIdle :
-            return ExecuteTickFromIdle(cpu);
+            res = ExecuteTickFromIdle(cpu);
+            break;
         case State::kStateReadWriteMem :
-            return ExecuteTickReadWriteMem(cpu);
+            res = ExecuteTickReadWriteMem(cpu);
+            break;
         case State::kStateFinished :
             return true;
     }
-    return false;
+    if (state == State::kStateFinished) {
+        res = Finalize(cpu);
+    }
+    return res;
 }
+
+bool SIMDInstructionDecoder::Finalize(CPUBase &cpu) {
+    return PushToDispatch(cpu);
+}
+
+bool SIMDInstructionDecoder::PushToDispatch(gnilk::vcpu::CPUBase &cpu) {
+    auto &dispatcher = cpu.GetDispatch();
+    if (!dispatcher.CanInsert(sizeof(operand))) {
+        return false;
+    }
+
+    return dispatcher.Push(instrTypeId, &operand, sizeof(operand));
+}
+
 
 bool SIMDInstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
 
@@ -59,7 +81,7 @@ bool SIMDInstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     // this is valid - so begin
     operand.opCodeByte = opCodeByte;
     operand.opCode = static_cast<SimdOpCode>(opCodeByte);
-    operand.description = instructionSet.GetInstructionSet().at(operand.opCode);
+    operand.features = instructionSet.GetInstructionSet().at(operand.opCode).features;
 
     operand.opFlagsHighByte = NextByte(cpu);
     operand.opSize = static_cast<kSimdOpSize>(operand.opFlagsHighByte &  kSimdFlagOpSizeBitMask);

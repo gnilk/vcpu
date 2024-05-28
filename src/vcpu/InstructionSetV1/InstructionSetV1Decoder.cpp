@@ -2,6 +2,15 @@
 // Created by gnilk on 16.12.23.
 //
 
+//
+// This defines the Instruction Decoder for the base instruction-set v1.
+// The decoder can hold a single instruction. It will push it to the dispatcher when done.
+// Beside actual instruction decoding the decoder also reads any data from memory.
+//
+// This loosely follows the https://upload.wikimedia.org/wikipedia/commons/b/b0/AMD_Bulldozer_block_diagram_%28CPU_core_block%29.png
+//
+//
+
 #include "InstructionSetV1Def.h"
 #include "InstructionSetV1Decoder.h"
 #include <utility>
@@ -28,45 +37,68 @@ InstructionSetV1Decoder::Ref InstructionSetV1Decoder::Create() {
 }
 
 void InstructionSetV1Decoder::Reset() {
+    // Make sure to nullify this - otherwise we will call it during finalize...
+    currentExtDecoder = nullptr;
+
+    // Reset all parsing states
+    code = {};
+    opArgDst = {};
+    opArgSrc = {};
+    primaryValue = {};
+    secondaryValue = {};
+
     ChangeState(State::kStateIdle);
 }
 
 //
-// FIXME: Some instructions (like cmp - see 'InstructionSetV1Impl' need an additional 'ReadMem' tick for the destination value
-//        We should implement that and add it as a 'Feature' flag for the op-code...
-//        This way the decoding is complete before handing over to the Impl.
-//        Which allows decoding to be 100% separated from execution => many execution units and longer decoding-pipelines possible..
-//
 //        See (for a simplified picture): https://upload.wikimedia.org/wikipedia/commons/b/b0/AMD_Bulldozer_block_diagram_%28CPU_core_block%29.png
 //
 bool InstructionSetV1Decoder::Tick(CPUBase &cpu) {
+    bool res = false;
     switch(state) {
         case State::kStateIdle :
-            return ExecuteTickFromIdle(cpu);
+            res = ExecuteTickFromIdle(cpu);
+            break;
         case State::kStateDecodeAddrMode :
-            return ExecuteTickDecodeAddrMode(cpu);
+            res = ExecuteTickDecodeAddrMode(cpu);
+            break;
         case State::kStateReadMem :
-            return ExecuteTickReadMem(cpu);
+            res =  ExecuteTickReadMem(cpu);
+            break;
         case State::kStateTwoOpDstReadMem :
-            return ExecuteTickReadDstMem(cpu);
+            res = ExecuteTickReadDstMem(cpu);
+            break;
+        case State::kStateDecodeExtension :
+            res = ExecuteTickDecodeExt(cpu);
+            break;
         case State::kStateFinished :
             return true;
-        case State::kStateDecodeExtension :
-            return ExecuteTickDecodeExt(cpu);
-            break;
     }
-    return false;
+    if (state == State::kStateFinished) {
+        res = Finalize(cpu);
+    }
+    return res;
 }
 
 
 void InstructionSetV1Decoder::ChangeState(State newState) {
     state = newState;
 }
+bool InstructionSetV1Decoder::Finalize(gnilk::vcpu::CPUBase &cpu) {
+    if (IsExtension(code.opCodeByte) && (currentExtDecoder != nullptr)) {
+        // Note: The extension has already automatically on changing to finished - we just check if we had a valid extension...
+        return true;
+    }
+    return PushToDispatch(cpu);
+}
 
-bool InstructionSetV1Decoder::PushToDispatch(DispatchBase &dispatcher) {
+// This will push the operand to the dispatcher
+bool InstructionSetV1Decoder::PushToDispatch(CPUBase &cpu) {
     if (state != State::kStateFinished) {
         return false;
     }
+
+    auto &dispatcher = cpu.GetDispatch();
     if (!dispatcher.CanInsert(sizeof(InstructionSetV1Def::DecoderOutput))) {
         return false;
     }
@@ -108,15 +140,18 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     if (IsExtension(code.opCodeByte)) {
         // We will break here - just move one instruction forward..
         cpu.AdvanceInstrPtr(1);
-        if (extDecoders.find(code.opCodeByte) == extDecoders.end()) {
-            // Don't have extension - exit
-            if (!InstructionSetManager::Instance().HaveExtension(code.opCodeByte)) {
-                fmt::println(stderr, "ERR: Invalid extension {:#X} no extension instr.set registered", code.opCodeByte);
-                exit(1);
-            }
-            extDecoders[code.opCodeByte] = InstructionSetManager::Instance().GetExtension(code.opCodeByte).CreateDecoder();
+        // Don't have extension - exit
+        if (!InstructionSetManager::Instance().HaveExtension(code.opCodeByte)) {
+            fmt::println(stderr, "ERR: Invalid extension {:#X} no extension instr.set registered", code.opCodeByte);
+            exit(1);
         }
-        extDecoders[code.opCodeByte]->Reset();
+
+        // Let's create the specific decoder for this extension - and tell it which instruction set it is assigned to
+        // We must have a specific instance - in case of pipelining..
+        // This allows for moving instruction set's around. In a HW specification this won't be the case but for SW emulation we can
+        // swap instructions in/out and make the like  plugins if we want..
+        currentExtDecoder = InstructionSetManager::Instance().GetExtension(code.opCodeByte).CreateDecoder(code.opCodeByte);
+        currentExtDecoder->Reset();
         ChangeState(State::kStateDecodeExtension);
         return true;
     }
@@ -173,13 +208,6 @@ bool InstructionSetV1Decoder::IsExtension(uint8_t opCodeByte) const {
     return true;
 }
 
-InstructionDecoderBase::Ref InstructionSetV1Decoder::GetDecoderForExtension(uint8_t ext) {
-    if (extDecoders.find(ext) == extDecoders.end()) {
-        return nullptr;
-    }
-    return extDecoders[ext];
-}
-
 
 //
 // this is the second tick - here we decode the Operands
@@ -225,13 +253,12 @@ bool InstructionSetV1Decoder::ExecuteTickReadDstMem(CPUBase &cpu) {
 // Decode an extension
 //
 bool InstructionSetV1Decoder::ExecuteTickDecodeExt(CPUBase &cpu) {
-    auto extDecoder = GetDecoderForExtension(code.opCodeByte);
-    if (extDecoder == nullptr) {
+    if (currentExtDecoder == nullptr) {
         fmt::println(stderr, "ERR: No extension decoder!");
         return false;
     }
-    bool result = extDecoder->Tick(cpu);
-    if (extDecoder->IsFinished()) {
+    bool result = currentExtDecoder->Tick(cpu);
+    if (currentExtDecoder->IsFinished()) {
         ChangeState(State::kStateFinished);
     }
     return result;
@@ -298,9 +325,28 @@ void InstructionSetV1Decoder::DecodeOperandArgAddrMode(CPUBase &cpu, Instruction
             inOutOpArg.relAddrMode.relativeAddress.reg.index = (relative & 0xf0) >> 4;
             inOutOpArg.relAddrMode.relativeAddress.reg.shift = (relative & 0x0f);
         }
+        auto relAddress = ComputeRelativeAddress(cpu, inOutOpArg.relAddrMode);
+        inOutOpArg.relativeAddressOfs = relAddress;
     }
 
 }
+
+uint64_t InstructionSetV1Decoder::ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddrMode) const {
+    uint64_t relativeAddrOfs = 0;
+    // Break out to own function - this is also used elsewhere..
+    if ((relAddrMode.mode == RelativeAddressMode::AbsRelative) || (relAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        if (relAddrMode.mode == RelativeAddressMode::AbsRelative) {
+            relativeAddrOfs = relAddrMode.relativeAddress.absoulte;
+        } else {
+            // Relative handling can only come from Integer operand family!
+            auto regRel = cpuBase.GetRegisterValue(relAddrMode.relativeAddress.reg.index, OperandFamily::Integer);
+            relativeAddrOfs = regRel.data.byte;
+            relativeAddrOfs = relativeAddrOfs << relAddrMode.relativeAddress.reg.shift;
+        }
+    }
+    return relativeAddrOfs;
+}
+
 
 
 // Returns a value based on src op decoding
@@ -329,8 +375,7 @@ RegisterValue InstructionSetV1Decoder::ReadFrom(CPUBase &cpuBase, OperandSize sz
         v = cpuBase.ReadFromMemoryUnit(szOperand, absAddress);
         //memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
-        // FIXME: Move this function here!
-        auto relativeAddrOfs = InstructionSetV1Def::ComputeRelativeAddress(cpuBase, relAddrMode);
+        auto relativeAddrOfs = ComputeRelativeAddress(cpuBase, relAddrMode);
         auto &reg = cpuBase.GetRegisterValue(idxRegister, code.opFamily);
         v = cpuBase.ReadFromMemoryUnit(szOperand, reg.data.longword + relativeAddrOfs);
     }

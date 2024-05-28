@@ -16,7 +16,7 @@ namespace gnilk {
         class InstructionSetSIMD : public
                 InstructionSetInst<SIMDInstructionDecoder, SIMDInstructionSetDef, SIMDInstructionSetImpl> {
         public:
-            InstructionDecoderBase::Ref CreateDecoder() override;
+            InstructionDecoderBase::Ref CreateDecoder(uint8_t instrTypeId) override;
         };
 
         extern InstructionSetSIMD glb_InstructionSetSIMD;

@@ -14,6 +14,7 @@ using namespace gnilk::vcpu;
 
 
 
-InstructionDecoderBase::Ref InstructionSetV1::CreateDecoder() {
+// We don't use this here - it is simply 0 - as we are the root, can easily modify later if needed...
+InstructionDecoderBase::Ref InstructionSetV1::CreateDecoder(uint8_t instrTypeId) {
     return std::make_shared<InstructionSetV1Decoder>();
 }

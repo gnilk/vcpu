@@ -1,7 +1,7 @@
 //
 // Created by gnilk on 27.03.24.
 //
-// FIX-THIS: Remove inheritence to CPUBase and supply CPUBase as an argument
+// This implements the instruction execution for instruction-set v1
 //
 
 #include "InstructionSetV1Impl.h"
@@ -723,8 +723,9 @@ void InstructionSetV1Impl::WriteToDst(CPUBase &cpu, InstructionSetV1Def::Decoder
         auto &reg = cpu.GetRegisterValue(decoderOutput.opArgDst.regIndex, decoderOutput.operand.opFamily);
 
         // FIXME: This has to be solved in the decoding step...
-        auto relativeAddrOfs = InstructionSetV1Def::ComputeRelativeAddress(cpu, decoderOutput.opArgDst.relAddrMode);
-        cpu.WriteToMemoryUnit(decoderOutput.operand.opSize, reg.data.longword + relativeAddrOfs, v);
+        //auto relativeAddrOfs = InstructionSetV1Def::ComputeRelativeAddress(cpu, decoderOutput.opArgDst.relAddrMode);
+        //cpu.WriteToMemoryUnit(decoderOutput.operand.opSize, reg.data.longword + relativeAddrOfs, v);
+        cpu.WriteToMemoryUnit(decoderOutput.operand.opSize, reg.data.longword + decoderOutput.opArgDst.relativeAddressOfs, v);
 
 //        auto v = ReadFromMemoryUnit(instrDecoder.opSize, reg.data.longword + relativeAddrOfs);
 //        reg.data = v.data;
