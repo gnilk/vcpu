@@ -167,7 +167,7 @@ void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder
 
     // FIXME: This is same as for BEQ - we could keep these..
 
-    auto v = instrDecoder.GetValue();
+    auto v = instrDecoder.GetPrimaryValue();
     int64_t relativeOffset = 0;
 
     switch(instrDecoder.code.opSize) {
@@ -188,7 +188,7 @@ void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder
 
 }
 void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetValue();
+    auto v = instrDecoder.GetPrimaryValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
@@ -218,7 +218,7 @@ void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder
 }
 
 void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetValue();
+    auto v = instrDecoder.GetPrimaryValue();
     if (instrDecoder.opArgDst.addrMode == AddressMode::Immediate) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
@@ -226,7 +226,7 @@ void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder
 
     // FIXME: We shouldn't read the dst value here - should be part of the decoding step...
     //RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue dstReg = instrDecoder.GetDstValue();
+    RegisterValue dstReg = instrDecoder.GetSecondaryValue();
 /*
     if (instrDecoder.dstAddrMode == AddressMode::Register) {
         dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -256,7 +256,7 @@ void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder
 }
 
 void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetValue();
+    auto v = instrDecoder.GetPrimaryValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
@@ -313,7 +313,7 @@ void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder
 // This can be simplified...
 // See: MoiraALU_cpp.h - could take a few impl. ideas from there..
 void InstructionSetV1Impl::ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetValue();
+    auto v = instrDecoder.GetPrimaryValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
@@ -415,13 +415,13 @@ void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
 
 // FIXME: Verify and update CPU Status Flags
 void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetValue();
+    auto v = instrDecoder.GetPrimaryValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
 
-    auto dstReg = instrDecoder.GetDstValue();
+    auto dstReg = instrDecoder.GetSecondaryValue();
 
     // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder.code.opSize) {
@@ -443,14 +443,14 @@ void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder
 
 // FIXME: Verify and CPU Status flags
 void InstructionSetV1Impl::ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetValue();
+    auto v = instrDecoder.GetPrimaryValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
     //RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue dstReg = instrDecoder.GetDstValue();
+    RegisterValue dstReg = instrDecoder.GetSecondaryValue();
 
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
@@ -481,7 +481,7 @@ void InstructionSetV1Impl::ExecuteSysCallInstr(CPUBase &cpu, InstructionSetV1Dec
 }
 
 void InstructionSetV1Impl::ExecutePushInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetValue();
+    auto &v = instrDecoder.GetPrimaryValue();
     // FIXME: this should write to register sp using MMU handling
     cpu.stack.push(v);
 }
@@ -493,13 +493,13 @@ void InstructionSetV1Impl::ExecutePopInstr(CPUBase &cpu, InstructionSetV1Decoder
 }
 
 void InstructionSetV1Impl::ExecuteLeaInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetValue();
+    auto &v = instrDecoder.GetPrimaryValue();
     WriteToDst(cpu, instrDecoder, v);
 }
 
 
 void InstructionSetV1Impl::ExecuteMoveInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetValue();
+    auto &v = instrDecoder.GetPrimaryValue();
     WriteToDst(cpu, instrDecoder, v);
 }
 
@@ -568,10 +568,10 @@ static void SubtractValues(CPUStatusReg &statusReg, RegisterValue &dst, const Re
 
 
 void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetValue();
+    auto &v = instrDecoder.GetPrimaryValue();
 
     //RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue tmpReg = instrDecoder.GetDstValue();
+    RegisterValue tmpReg = instrDecoder.GetSecondaryValue();
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
             AddValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);
@@ -590,10 +590,10 @@ void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder
 }
 
 void InstructionSetV1Impl::ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetValue();
+    auto &v = instrDecoder.GetPrimaryValue();
 
     //RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue tmpReg = instrDecoder.GetDstValue();
+    RegisterValue tmpReg = instrDecoder.GetSecondaryValue();
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
             SubtractValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);
@@ -619,7 +619,7 @@ void InstructionSetV1Impl::ExecuteDivInstr(CPUBase &cpu, InstructionSetV1Decoder
 }
 
 void InstructionSetV1Impl::ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetValue();
+    auto &v = instrDecoder.GetPrimaryValue();
     auto retAddr = cpu.registers.instrPointer;
     // push on stack...
     cpu.stack.push(retAddr);

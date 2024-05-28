@@ -175,9 +175,9 @@ bool InstructionSetV1Decoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
 //
 bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
     if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
-        value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
+        primaryValue = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
     } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
-        value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+        primaryValue = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
         if (code.description.features & OperandFeatureFlags::kFeature_TwoOpReadSecondary) {
             ChangeState(State::kStateTwoOpDstReadMem);
             return true;
@@ -191,7 +191,7 @@ bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
 // Some two operand instr. requires two read-mem ticks to fetch all values
 //
 bool InstructionSetV1Decoder::ExecuteTickReadDstMem(CPUBase &cpu) {
-    dstValue = ReadDstValue(cpu);
+    secondaryValue = ReadDstValue(cpu);
     ChangeState(State::kStateFinished);
     return true;
 }
@@ -391,16 +391,16 @@ std::string InstructionSetV1Decoder::DisasmOperand(AddressMode addrMode, uint64_
     } else if (addrMode == AddressMode::Immediate) {
         switch(code.opSize) {
             case OperandSize::Byte :
-                opString += fmt::format("{:#x}",value.data.byte);
+                opString += fmt::format("{:#x}", primaryValue.data.byte);
                 break;
             case OperandSize::Word :
-                opString += fmt::format("{:#x}",value.data.word);
+                opString += fmt::format("{:#x}", primaryValue.data.word);
                 break;
             case OperandSize::DWord :
-                opString += fmt::format("{:#x}",value.data.dword);
+                opString += fmt::format("{:#x}", primaryValue.data.dword);
                 break;
             case OperandSize::Long :
-                opString += fmt::format("{:#x}",value.data.longword);
+                opString += fmt::format("{:#x}", primaryValue.data.longword);
                 break;
         }
     } else if (addrMode == AddressMode::Absolute) {

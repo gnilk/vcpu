@@ -69,11 +69,11 @@ namespace gnilk {
             // Converts a decoded instruction back to it's mnemonic form
             std::string ToString() const override;
 
-            const RegisterValue &GetValue() {
-                return value;
+            RegisterValue &GetPrimaryValue() {
+                return primaryValue;
             }
-            const RegisterValue &GetDstValue() {
-                return dstValue;
+            RegisterValue &GetSecondaryValue() {
+                return secondaryValue;
             }
 
             // Remove these
@@ -149,10 +149,13 @@ namespace gnilk {
             OperandArg opArgDst;
             OperandArg opArgSrc;
 
-            // There can only be ONE immediate value associated with an instruction
-            RegisterValue value; // this can be an immediate or something else, essentially result from operand
-            // End of result
-            RegisterValue dstValue;   // Ok, not sure what to name this...
+            // This is the primary value - result of the first memory read, used by most instructions.
+            // Note: This can be either the destination or source
+            RegisterValue primaryValue; // this can be an immediate or something else, essentially result from operand
+
+            // This is the secondary value - result of second memory - if required by instruction (see InstructionSetV1Def)
+            // Note: This is _ALWAYS_ the destination
+            RegisterValue secondaryValue;
 
 
             std::unordered_map<uint8_t, InstructionDecoderBase::Ref> extDecoders = {};
