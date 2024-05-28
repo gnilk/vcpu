@@ -9,11 +9,14 @@
 #include <memory>
 #include "CPUBase.h"
 #include "InstructionDecoderBase.h"
+#include "Dispatch.h"
 
 #include "InstructionSetV1Def.h"
 
 namespace gnilk {
     namespace vcpu {
+
+
 
         class InstructionSetV1Impl;
         class InstructionSetV1Decoder : public InstructionDecoderBase {
@@ -21,17 +24,33 @@ namespace gnilk {
         public:
             using Ref = std::shared_ptr<InstructionSetV1Decoder>;
 
-            struct RelativeAddressing {
-                RelativeAddressMode mode;
-                // not sure this is a good idea
-                union {
-                    uint8_t absoulte;
-                    struct {
-                        uint8_t shift : 4;      // LSB
-                        uint8_t index : 4;      // MSB
-                    } reg;
-                } relativeAddress;
+            struct DecodedOperand : DecodedOperandBase {
+                // Used during by decoder...
+                uint8_t opCodeByte = 0;     // raw opCodeByte
+                OperandCodeBase opCode = 0;
+                OperandDescriptionBase description = {};
+
+                uint8_t opSizeAndFamilyCode = 0;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
+                OperandSize opSize = {}; // Only if 'description.features & OperandSize' == true
+                OperandFamily opFamily = {};
             };
+            struct DecodedOperandArg : DecodedOperandArgBase {
+                uint8_t regAndFlags = 0;
+                uint8_t regIndex = 0;
+                AddressMode addrMode = {}; //AddressMode::Absolute;
+                uint64_t absoluteAddr = 0;
+                InstructionSetV1Def::RelativeAddressing relAddrMode = {};
+            };
+
+            struct DecodeOutput : DispatchItemBase {
+                DecodedOperand operand;
+                DecodedOperandArg opArgDst;
+                DecodedOperandArg opArgSrc;
+            };
+
+
+
+
             enum class State : uint8_t {
                 kStateIdle,
                 kStateDecodeAddrMode,
@@ -99,39 +118,22 @@ namespace gnilk {
             RegisterValue ReadSrcValue(CPUBase &cpu);
             RegisterValue ReadDstValue(CPUBase &cpu);
 
-            uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddr);
+            uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddr);
 
 
 
-            struct Operand {
-                // Used during by decoder...
-                uint8_t opCodeByte;     // raw opCodeByte
-                OperandCode opCode;
-                OperandDescriptionBase description;
-
-                uint8_t opSizeAndFamilyCode;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
-                OperandSize opSize; // Only if 'description.features & OperandSize' == true
-                OperandFamily opFamily;
-            };
-            struct OperandArg {
-                uint8_t regAndFlags = 0;
-                uint8_t regIndex = 0;
-                AddressMode addrMode = {}; //AddressMode::Absolute;
-                uint64_t absoluteAddr = 0;
-                RelativeAddressing relAddrMode = {};
-            };
 
         protected:
             // Helper for 'ToString'
-            std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionSetV1Decoder::RelativeAddressing relAddr) const;
+            std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionSetV1Def::RelativeAddressing relAddr) const;
             // Perhaps move to base class
-            RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddr, int idxRegister);
+            RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, InstructionSetV1Def::RelativeAddressing relAddr, int idxRegister);
 
-            void DecodeOperandArg(CPUBase &cpu, OperandArg &inOutOpArg);
-            void DecodeOperandArgAddrMode(CPUBase &cpu, OperandArg &inOutOpArg);
+            void DecodeOperandArg(CPUBase &cpu, DecodedOperandArg &inOutOpArg);
+            void DecodeOperandArgAddrMode(CPUBase &cpu, DecodedOperandArg &inOutOpArg);
 
             size_t ComputeInstrSize() const;
-            size_t ComputeOpArgSize(const OperandArg &opArg) const;
+            size_t ComputeOpArgSize(const DecodedOperandArg &opArg) const;
             bool IsExtension(uint8_t opCodeByte) const;
 
             const State &GetState() {
@@ -145,9 +147,9 @@ namespace gnilk {
         public:
             // FIXME: This is the result of the decoding
             //        Move this to a very specific place so we can 'queue' it up - this makes the decoder separate from the instr.impl..
-            Operand code;
-            OperandArg opArgDst;
-            OperandArg opArgSrc;
+            DecodedOperand code;
+            DecodedOperandArg opArgDst;
+            DecodedOperandArg opArgSrc;
 
             // This is the primary value - result of the first memory read, used by most instructions.
             // Note: This can be either the destination or source

@@ -704,6 +704,7 @@ void InstructionSetV1Impl::WriteToDst(CPUBase &cpu, InstructionSetV1Decoder& ins
         cpu.WriteToMemoryUnit(instrDecoder.code.opSize, instrDecoder.opArgDst.absoluteAddr, v);
     } else if (instrDecoder.opArgDst.addrMode == AddressMode::Indirect) {
         auto &reg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+
         auto relativeAddrOfs = instrDecoder.ComputeRelativeAddress(cpu, instrDecoder.opArgDst.relAddrMode);
         cpu.WriteToMemoryUnit(instrDecoder.code.opSize, reg.data.longword + relativeAddrOfs, v);
 

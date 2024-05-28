@@ -55,7 +55,11 @@ namespace gnilk {
         } RelativeAddressMode;
 
 
-        //
+        struct RelativeAddressingBase {
+            RelativeAddressMode mode;
+        };
+
+            //
         // This feature description and table should be made visible across all CPU tools..
         // Put it in a a separate place so it can be reused...
         //

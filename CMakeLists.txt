@@ -30,6 +30,7 @@ endif()
 # Virtual CPU sources
 #
 list(APPEND vcpusrc src/vcpu/CPUBase.cpp src/vcpu/CPUBase.h)
+list(APPEND vcpusrc src/vcpu/Dispatch.cpp src/vcpu/Dispatch.h)
 list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetImplBase.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetDefBase.h)
@@ -75,6 +76,7 @@ list(APPEND vcputestsrc src/vcpu/Simd/tests/test_simd_decoder.cpp)
 #
 # Virtual CPU unit test sources
 #
+list(APPEND vcputestsrc src/vcpu/tests/test_dispatch.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_exceptions.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_integration.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_interrupt.cpp)

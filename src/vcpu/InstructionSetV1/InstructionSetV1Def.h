@@ -16,6 +16,8 @@
 namespace gnilk {
     namespace vcpu {
 
+
+
         //
         // It is actually faster by some 10% to have more complicated instr. set...
         // However, I want the instruction set to be flexible and easier to handle
@@ -200,6 +202,19 @@ namespace gnilk {
         static const uint8_t OperandCodeExtensionMask = 0xf0;
 
         class InstructionSetV1Def : public InstructionSetDefBase {
+        public:
+            struct RelativeAddressing {
+                RelativeAddressMode mode;
+                // not sure this is a good idea
+                union {
+                    uint8_t absoulte;
+                    struct {
+                        uint8_t shift : 4;      // LSB
+                        uint8_t index : 4;      // MSB
+                    } reg;
+                } relativeAddress;
+            };
+
         public:
             const std::unordered_map<OperandCodeBase, OperandDescriptionBase> &GetInstructionSet() override;
             std::optional<OperandDescriptionBase> GetOpDescFromClass(OperandCodeBase opClass) override;

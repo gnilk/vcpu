@@ -44,7 +44,7 @@ This is to support `.org <offset>` type of statements..
 * Any kind of meta-statements for the compiler is not documented
 * The following sections are recognized; `.code` / `.text`, `.data`, `.bss` (not used)
 * Declaration of data is like: `dc.b 0x44, 0x11` (can also handle strings)
-* Operand sizes supported
+* DecodedOperand sizes supported
   * `.b` - byte (uint8_t), example: `move.b d0, #43`
   * `.w` - word (uint16_t), example: `move.w d0, #43`
   * `.d` - dword (uint32_t), example: `move.d d0, #43`

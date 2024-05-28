@@ -224,7 +224,7 @@ size_t InstructionSetV1Decoder::ComputeInstrSize() const {
     return opSize;
 }
 
-size_t InstructionSetV1Decoder::ComputeOpArgSize(const InstructionSetV1Decoder::OperandArg &opArg) const {
+size_t InstructionSetV1Decoder::ComputeOpArgSize(const DecodedOperandArg &opArg) const {
     size_t szOpArg = 0;
     if (opArg.addrMode == AddressMode::Absolute) {
         szOpArg += sizeof(uint64_t);
@@ -239,7 +239,7 @@ size_t InstructionSetV1Decoder::ComputeOpArgSize(const InstructionSetV1Decoder::
     return szOpArg;
 }
 
-void InstructionSetV1Decoder::DecodeOperandArg(CPUBase &cpu, InstructionSetV1Decoder::OperandArg &inOutOpArg) {
+void InstructionSetV1Decoder::DecodeOperandArg(CPUBase &cpu, DecodedOperandArg &inOutOpArg) {
     inOutOpArg.regAndFlags = NextByte(cpu);
     inOutOpArg.addrMode = static_cast<AddressMode>(inOutOpArg.regAndFlags & 0x03);
     inOutOpArg.relAddrMode.mode  = static_cast<RelativeAddressMode>((inOutOpArg.regAndFlags & 0x0c)>>2);
@@ -248,7 +248,7 @@ void InstructionSetV1Decoder::DecodeOperandArg(CPUBase &cpu, InstructionSetV1Dec
     inOutOpArg.regIndex = (inOutOpArg.regAndFlags>>4) & 15;
 }
 
-void InstructionSetV1Decoder::DecodeOperandArgAddrMode(CPUBase &cpu, InstructionSetV1Decoder::OperandArg &inOutOpArg) {
+void InstructionSetV1Decoder::DecodeOperandArgAddrMode(CPUBase &cpu, DecodedOperandArg &inOutOpArg) {
     if (inOutOpArg.addrMode == AddressMode::Indirect) {
         // Do nothing - this is decoded from the data about - details will be decoded further down...
     } else if (inOutOpArg.addrMode == AddressMode::Absolute) {
@@ -290,7 +290,7 @@ RegisterValue InstructionSetV1Decoder::ReadDstValue(CPUBase &cpu) {
 }
 
 
-RegisterValue InstructionSetV1Decoder::ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddrMode, int idxRegister) {
+RegisterValue InstructionSetV1Decoder::ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, InstructionSetV1Def::RelativeAddressing relAddrMode, int idxRegister) {
     RegisterValue v = {};
 
     // This should be performed by instr. decoder...
@@ -311,7 +311,7 @@ RegisterValue InstructionSetV1Decoder::ReadFrom(CPUBase &cpuBase, OperandSize sz
     return v;
 }
 
-uint64_t InstructionSetV1Decoder::ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddrMode) {
+uint64_t InstructionSetV1Decoder::ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddrMode) {
     uint64_t relativeAddrOfs = 0;
     // Break out to own function - this is also used elsewhere..
     if ((relAddrMode.mode == RelativeAddressMode::AbsRelative) || (relAddrMode.mode == RelativeAddressMode::RegRelative)) {
@@ -376,7 +376,7 @@ std::string InstructionSetV1Decoder::ToString() const {
     return opString;
 }
 
-std::string InstructionSetV1Decoder::DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionSetV1Decoder::RelativeAddressing relAddr) const {
+std::string InstructionSetV1Decoder::DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionSetV1Def::RelativeAddressing relAddr) const {
     std::string opString = "";
     if (addrMode == AddressMode::Register) {
         if (regIndex > 7) {

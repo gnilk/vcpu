@@ -8,12 +8,18 @@
 #include <memory>
 #include <stdint.h>
 
+#include "InstructionSetDefBase.h"
+
 namespace gnilk {
     namespace vcpu {
 
         class CPUBase;  // Need forward, can't include (circular) - but I just need a reference - so forward is fine
 
-        struct DecodedInstruction {
+
+        struct DecodedOperandBase {
+
+        };
+        struct DecodedOperandArgBase {
 
         };
 
