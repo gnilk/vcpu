@@ -6,59 +6,84 @@
 #define VCPU_DISPATCH_H
 
 #include <queue>
+#include <mutex>
+
 #include "InstructionDecoderBase.h"
+#include "Ringbuffer.h"
 
 namespace gnilk {
     namespace vcpu {
-        struct DispatchItemBase {
-        };
 
+        //
+        // Dispatcher queue with ring buffer
+        //
         template<size_t szRam>
         class Dispatch {
+        protected:
+            struct DispatchItemHeader {
+                uint16_t szItem;        // Way overkill, one byte is probably more than enough - will test this out
+            };
+
         public:
             Dispatch() = default;
             virtual ~Dispatch() = default;
 
+            bool IsEmpty() {
+                return (ringbuffer.BytesAvailable() == 0);
+            }
+
             template<typename T>
             bool CanInsert() {
-                if ((idxDataBuffer + sizeof(T)) > szRam) {
+                if (ringbuffer.BytesFree() <= sizeof(T)) {
                     return false;
                 }
                 return true;
             }
+
             template<typename T>
-            T &Next() {
-                T *ptrCurrent = nullptr;
-                if ((idxDataBuffer + sizeof(T)) > szRam) {
-                    std::terminate();
+            bool Push(const T &item) {
+                std::lock_guard guard(lock);
+
+                if (ringbuffer.BytesFree() < (sizeof(T) + sizeof(DispatchItemHeader))) {
+                    return false;
+                }
+                DispatchItemHeader header = { .szItem = sizeof(T) };
+                if (ringbuffer.Write(&header, sizeof(header)) < 0) {
+                    return false;
+                }
+                if (ringbuffer.Write(&item, sizeof(T)) < 0) {
+                    return false;
                 }
 
-                ptrCurrent = (T *)&dataBuffer[idxDataBuffer];
-                allocatedItems.push(ptrCurrent);
-                idxDataBuffer += sizeof(T);
-                return *ptrCurrent;
+                return true;
 
-            }
-            bool IsEmpty() {
-                return allocatedItems.empty();
             }
 
             template<typename T>
-            T &Pop() {
-                auto ptrSomething = allocatedItems.front();
-                allocatedItems.pop();
-                return static_cast<T &>(*ptrSomething);
+            bool Pop(T *ptrOut) {
+                std::lock_guard guard(lock);
+
+                if (ringbuffer.BytesAvailable() < (sizeof(T) + sizeof(DispatchItemHeader))) {
+                    return false;
+                }
+                DispatchItemHeader header;
+                if (ringbuffer.Read(&header, sizeof(header)) < 0) {
+                    return false;
+                }
+                if (header.szItem != sizeof(T)) {
+                    // We are corrupt!!!
+                    return false;
+                }
+                if (ringbuffer.Read(ptrOut, sizeof(T)) < 0) {
+                    return false;
+                }
+
+                return true;
             }
 
-
-
         protected:
-            std::queue<DispatchItemBase *> allocatedItems;
-
-
-            uint8_t dataBuffer[szRam] = {};
-            size_t idxDataBuffer = 0;
-
+            std::mutex lock;
+            Ringbuffer<szRam> ringbuffer;
         };
     }
 }
