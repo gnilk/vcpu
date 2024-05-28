@@ -140,7 +140,7 @@ x- linker
     ! Support for static (within a compile-unit) and exported functions and variables
     - Dummy linker don't compute segment start-addresses properly when multiple segments and chunks
 - VCPU
-    - Refactor the InstructionSet/InstructionImpl/InstructionSetV1Decoder so that it works with InstructionExtensions      
+    ! Refactor the InstructionSet/InstructionImpl/InstructionSetV1Decoder so that it works with InstructionExtensions      
     ! Separate the instruction handler from the CPUBase, instead make that happen through composition
       Not sure how though - as it requires a much more well defined interface to avoid refactoring-hell..
     - Try to remove arithmetic flags
@@ -150,7 +150,7 @@ x- linker
       All Interrupts should be disabled on reset...
     + Properly define the memory layout
       + ROM/RAM area, Int-Vector table, etc...
-    - Raise exceptions
+    + Raise exceptions
         - Within the CPU using the Int-Vector table
         - To the emulator
     - Try to remove FLAGS - they create problems when pipelining and doing out-of-order exec.
@@ -166,6 +166,8 @@ x- linker
     - add 'fence' (or similar) instructions
     - add 'flush_instr_cache' / 'flush_instr_pipeline'
     - move registers to it's own 'register_file' which is more throughly defined..
+    
+    - Pipelining requires synchronization of register usage and ability to 'stall' in order to wait for something to execute      
       
 - Interrupt drivers
   - Consider how this should be done, directly or via an 'external' chip
