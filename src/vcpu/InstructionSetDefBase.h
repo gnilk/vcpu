@@ -75,6 +75,10 @@ namespace gnilk {
             // Support addressing move d0, (a0)
             kFeature_Addressing = 0x80,        // Is this not just 'register'??
 
+            //  Hint the decoder that this instr. requires a secondary read
+            //  This applies to instructions such as 'cmp' which I allow like; 'cmp (a0),(a1)'
+            kFeature_TwoOpReadSecondary = 0x100,
+
             // FIXME: This is not branching, this defines how the instruction is to treat reading a label value
             //        IF present, the instruction will USE the memory address and perform the operation (branch, load-of-address, etc)
             //        if NOT present, the CPU will fetch the memory of the address and the value stored at the address...
@@ -86,11 +90,11 @@ namespace gnilk {
             //
             // Maybe we should rename this as 'Absolute'?
             //
-            kFeature_Branching = 0x100,
+            kFeature_Branching = 0x200,
             // Control instruction - can have the 'Control' bit of the Family in in the OpSize byte set
-            kFeature_Control = 0x200,
+            kFeature_Control = 0x400,
             // FIXME: Perhaps need absolute as well..
-            kFeature_Extension = 0x400,    // Extension prefix
+            kFeature_Extension = 0x800,    // Extension prefix
 
             // Various extension flags
             kFeature_Mask    = 0x1000,

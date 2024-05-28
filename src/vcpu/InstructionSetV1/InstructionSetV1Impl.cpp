@@ -225,7 +225,8 @@ void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder
     }
 
     // FIXME: We shouldn't read the dst value here - should be part of the decoding step...
-    RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
+    //RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
+    RegisterValue dstReg = instrDecoder.GetDstValue();
 /*
     if (instrDecoder.dstAddrMode == AddressMode::Register) {
         dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -419,8 +420,8 @@ void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
-    //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
-    auto dstReg = instrDecoder.ReadDstValue(cpu);
+
+    auto dstReg = instrDecoder.GetDstValue();
 
     // I would like to get rid of this switch, but I can't without having an encapsulation class
     switch(instrDecoder.code.opSize) {
@@ -448,7 +449,8 @@ void InstructionSetV1Impl::ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
-    RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
+    //RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
+    RegisterValue dstReg = instrDecoder.GetDstValue();
 
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
@@ -568,7 +570,8 @@ static void SubtractValues(CPUStatusReg &statusReg, RegisterValue &dst, const Re
 void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
 
-    RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
+    //RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
+    RegisterValue tmpReg = instrDecoder.GetDstValue();
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
             AddValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);
@@ -589,7 +592,8 @@ void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder
 void InstructionSetV1Impl::ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
 
-    RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
+    //RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
+    RegisterValue tmpReg = instrDecoder.GetDstValue();
     switch(instrDecoder.code.opSize) {
         case OperandSize::Byte :
             SubtractValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);

@@ -36,6 +36,7 @@ namespace gnilk {
                 kStateIdle,
                 kStateDecodeAddrMode,
                 kStateReadMem,
+                kStateTwoOpDstReadMem,
                 kStateFinished,
                 kStateDecodeExtension,      // Decoding is deferred to extension..
             };
@@ -57,6 +58,7 @@ namespace gnilk {
             bool ExecuteTickFromIdle(CPUBase &cpu);
             bool ExecuteTickDecodeAddrMode(CPUBase &cpu);
             bool ExecuteTickReadMem(CPUBase &cpu);
+            bool ExecuteTickReadDstMem(CPUBase &cpu);
             bool ExecuteTickDecodeExt(CPUBase &cpu);
 
 
@@ -69,6 +71,9 @@ namespace gnilk {
 
             const RegisterValue &GetValue() {
                 return value;
+            }
+            const RegisterValue &GetDstValue() {
+                return dstValue;
             }
 
             // Remove these
@@ -147,6 +152,7 @@ namespace gnilk {
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand
             // End of result
+            RegisterValue dstValue;   // Ok, not sure what to name this...
 
 
             std::unordered_map<uint8_t, InstructionDecoderBase::Ref> extDecoders = {};

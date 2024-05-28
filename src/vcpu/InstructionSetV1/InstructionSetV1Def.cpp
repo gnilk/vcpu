@@ -30,10 +30,12 @@ static std::unordered_map<OperandCodeBase, OperandDescriptionBase> instructionSe
 {OperandCode::LSL, {.name="lsl", .features = OperandFeatureFlags::kFeature_OperandSize |
                                              OperandFeatureFlags::kFeature_TwoOperands |
                                              OperandFeatureFlags::kFeature_Immediate |
+                                             OperandFeatureFlags::kFeature_TwoOpReadSecondary |
                                              OperandFeatureFlags::kFeature_AnyRegister }},
 {OperandCode::LSR, {.name="lsr", .features = OperandFeatureFlags::kFeature_OperandSize |
                                              OperandFeatureFlags::kFeature_TwoOperands |
                                              OperandFeatureFlags::kFeature_Immediate |
+                                             OperandFeatureFlags::kFeature_TwoOpReadSecondary |
                                              OperandFeatureFlags::kFeature_AnyRegister }},
 {OperandCode::ASL, {.name="asl", .features = OperandFeatureFlags::kFeature_OperandSize |
                                              OperandFeatureFlags::kFeature_TwoOperands |
@@ -59,15 +61,18 @@ static std::unordered_map<OperandCodeBase, OperandDescriptionBase> instructionSe
                                                  OperandFeatureFlags::kFeature_TwoOperands |
                                                  OperandFeatureFlags::kFeature_Immediate |
                                                  OperandFeatureFlags::kFeature_AnyRegister |
-                                                 OperandFeatureFlags::kFeature_Addressing}},
+                                                 OperandFeatureFlags::kFeature_Addressing |
+                                                 OperandFeatureFlags::kFeature_TwoOpReadSecondary }},
     {OperandCode::ADD,{.name="add", .features = OperandFeatureFlags::kFeature_OperandSize |
                                                 OperandFeatureFlags::kFeature_TwoOperands |
                                                 OperandFeatureFlags::kFeature_Immediate |
+                                                OperandFeatureFlags::kFeature_TwoOpReadSecondary |
                                                 OperandFeatureFlags::kFeature_AnyRegister |
                                                 OperandFeatureFlags::kFeature_Addressing}},
 {OperandCode::SUB,{.name="sub", .features = OperandFeatureFlags::kFeature_OperandSize |
                                             OperandFeatureFlags::kFeature_TwoOperands |
                                             OperandFeatureFlags::kFeature_Immediate |
+                                            OperandFeatureFlags::kFeature_TwoOpReadSecondary |
                                             OperandFeatureFlags::kFeature_AnyRegister |
                                             OperandFeatureFlags::kFeature_Addressing}},
 {OperandCode::MUL,{.name="mul", .features = OperandFeatureFlags::kFeature_OperandSize |

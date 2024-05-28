@@ -13,6 +13,11 @@ namespace gnilk {
 
         class CPUBase;  // Need forward, can't include (circular) - but I just need a reference - so forward is fine
 
+        struct DecodedInstruction {
+
+        };
+
+
         class InstructionDecoderBase {
         public:
             using Ref = std::shared_ptr<InstructionDecoderBase>;

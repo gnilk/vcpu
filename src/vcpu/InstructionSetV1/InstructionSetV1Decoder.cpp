@@ -46,6 +46,8 @@ bool InstructionSetV1Decoder::Tick(CPUBase &cpu) {
             return ExecuteTickDecodeAddrMode(cpu);
         case State::kStateReadMem :
             return ExecuteTickReadMem(cpu);
+        case State::kStateTwoOpDstReadMem :
+            return ExecuteTickReadDstMem(cpu);
         case State::kStateFinished :
             //fmt::println(stderr, "InstrDecoder - tick on state 'kStateFinished' we should never reach this - should auto-go to IDLE");
             return true;
@@ -164,8 +166,7 @@ bool InstructionSetV1Decoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
     if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         DecodeOperandArgAddrMode(cpu, opArgSrc);
     }
-    // FIXME: Is this required?
-    state = State::kStateReadMem;
+    ChangeState(State::kStateReadMem);
     return true;
 }
 
@@ -177,8 +178,21 @@ bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
         value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
     } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
+        if (code.description.features & OperandFeatureFlags::kFeature_TwoOpReadSecondary) {
+            ChangeState(State::kStateTwoOpDstReadMem);
+            return true;
+        }
     }
-    state = State::kStateFinished;
+    ChangeState(State::kStateFinished);
+    return true;
+}
+
+//
+// Some two operand instr. requires two read-mem ticks to fetch all values
+//
+bool InstructionSetV1Decoder::ExecuteTickReadDstMem(CPUBase &cpu) {
+    dstValue = ReadDstValue(cpu);
+    ChangeState(State::kStateFinished);
     return true;
 }
 
