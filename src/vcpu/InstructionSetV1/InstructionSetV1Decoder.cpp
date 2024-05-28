@@ -2,6 +2,7 @@
 // Created by gnilk on 16.12.23.
 //
 
+#include "InstructionSetV1Def.h"
 #include "InstructionSetV1Decoder.h"
 #include <utility>
 #include "fmt/core.h"
@@ -49,7 +50,6 @@ bool InstructionSetV1Decoder::Tick(CPUBase &cpu) {
         case State::kStateTwoOpDstReadMem :
             return ExecuteTickReadDstMem(cpu);
         case State::kStateFinished :
-            //fmt::println(stderr, "InstrDecoder - tick on state 'kStateFinished' we should never reach this - should auto-go to IDLE");
             return true;
         case State::kStateDecodeExtension :
             return ExecuteTickDecodeExt(cpu);
@@ -57,6 +57,31 @@ bool InstructionSetV1Decoder::Tick(CPUBase &cpu) {
     }
     return false;
 }
+
+
+void InstructionSetV1Decoder::ChangeState(State newState) {
+    state = newState;
+}
+
+bool InstructionSetV1Decoder::PushToDispatch(DispatchBase &dispatcher) {
+    if (state != State::kStateFinished) {
+        return false;
+    }
+    if (!dispatcher.CanInsert(sizeof(InstructionSetV1Def::DecoderOutput))) {
+        return false;
+    }
+
+    InstructionSetV1Def::DecoderOutput output {
+        .operand = code,
+        .opArgDst = opArgDst,
+        .opArgSrc = opArgSrc,
+        .primaryValue = primaryValue,
+        .secondaryValue = secondaryValue,
+    };
+
+    return dispatcher.Push(0, &output, sizeof(output));
+}
+
 
 //
 // This is the first TICK in an instruction - it will ALWAYS read 32bit of the Instr.Ptr...
@@ -97,12 +122,12 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     }
 
 
-    code.description = instrSetDefinition.GetInstructionSet().at(code.opCode);
+    code.features = instrSetDefinition.GetInstructionSet().at(code.opCode).features;
 
     //
     // Decode addressing
     //
-    if (code.description.features & OperandFeatureFlags::kFeature_OperandSize) {
+    if (code.features & OperandFeatureFlags::kFeature_OperandSize) {
         code.opSizeAndFamilyCode = NextByte(cpu);
         code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
@@ -115,9 +140,9 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     opArgSrc = {};
 
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
-    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
+    if (code.features & OperandFeatureFlags::kFeature_OneOperand) {
         DecodeOperandArg(cpu, opArgDst);
-    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
+    } else if (code.features & OperandFeatureFlags::kFeature_TwoOperands) {
         DecodeOperandArg(cpu, opArgDst);
         DecodeOperandArg(cpu, opArgSrc);
     } else {
@@ -131,12 +156,12 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     // and the Pipeline to grab a new instruction..
     cpu.AdvanceInstrPtr(szComputed);
 
-    if ((code.description.features & OperandFeatureFlags::kFeature_OneOperand) || (code.description.features & OperandFeatureFlags::kFeature_TwoOperands)) {
-        state = State::kStateDecodeAddrMode;
+    if ((code.features & OperandFeatureFlags::kFeature_OneOperand) || (code.features & OperandFeatureFlags::kFeature_TwoOperands)) {
+        ChangeState(State::kStateDecodeAddrMode);
         return true;
     }
 
-    state = State::kStateFinished;
+    ChangeState(State::kStateFinished);
     return true;
 }
 
@@ -163,7 +188,7 @@ InstructionDecoderBase::Ref InstructionSetV1Decoder::GetDecoderForExtension(uint
 //
 bool InstructionSetV1Decoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
     DecodeOperandArgAddrMode(cpu, opArgDst);
-    if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
+    if (code.features & OperandFeatureFlags::kFeature_TwoOperands) {
         DecodeOperandArgAddrMode(cpu, opArgSrc);
     }
     ChangeState(State::kStateReadMem);
@@ -174,11 +199,11 @@ bool InstructionSetV1Decoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
 // This is the third tick, here we fetch any data from from RAM - not following the instr. pointer
 //
 bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
-    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
+    if (code.features & OperandFeatureFlags::kFeature_OneOperand) {
         primaryValue = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
-    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
+    } else if (code.features & OperandFeatureFlags::kFeature_TwoOperands) {
         primaryValue = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
-        if (code.description.features & OperandFeatureFlags::kFeature_TwoOpReadSecondary) {
+        if (code.features & OperandFeatureFlags::kFeature_TwoOpReadSecondary) {
             ChangeState(State::kStateTwoOpDstReadMem);
             return true;
         }
@@ -215,16 +240,16 @@ bool InstructionSetV1Decoder::ExecuteTickDecodeExt(CPUBase &cpu) {
 size_t InstructionSetV1Decoder::ComputeInstrSize() const {
     size_t opSize = ofsEndInstr - ofsStartInstr;    // Start here - as operands have different sizes..
 
-    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
+    if (code.features & OperandFeatureFlags::kFeature_OneOperand) {
         opSize += ComputeOpArgSize(opArgDst);
-    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
+    } else if (code.features & OperandFeatureFlags::kFeature_TwoOperands) {
         opSize += ComputeOpArgSize(opArgDst);
         opSize += ComputeOpArgSize(opArgSrc);
     }
     return opSize;
 }
 
-size_t InstructionSetV1Decoder::ComputeOpArgSize(const DecodedOperandArg &opArg) const {
+size_t InstructionSetV1Decoder::ComputeOpArgSize(const InstructionSetV1Def::DecodedOperandArg &opArg) const {
     size_t szOpArg = 0;
     if (opArg.addrMode == AddressMode::Absolute) {
         szOpArg += sizeof(uint64_t);
@@ -239,7 +264,7 @@ size_t InstructionSetV1Decoder::ComputeOpArgSize(const DecodedOperandArg &opArg)
     return szOpArg;
 }
 
-void InstructionSetV1Decoder::DecodeOperandArg(CPUBase &cpu, DecodedOperandArg &inOutOpArg) {
+void InstructionSetV1Decoder::DecodeOperandArg(CPUBase &cpu, InstructionSetV1Def::DecodedOperandArg &inOutOpArg) {
     inOutOpArg.regAndFlags = NextByte(cpu);
     inOutOpArg.addrMode = static_cast<AddressMode>(inOutOpArg.regAndFlags & 0x03);
     inOutOpArg.relAddrMode.mode  = static_cast<RelativeAddressMode>((inOutOpArg.regAndFlags & 0x0c)>>2);
@@ -248,7 +273,7 @@ void InstructionSetV1Decoder::DecodeOperandArg(CPUBase &cpu, DecodedOperandArg &
     inOutOpArg.regIndex = (inOutOpArg.regAndFlags>>4) & 15;
 }
 
-void InstructionSetV1Decoder::DecodeOperandArgAddrMode(CPUBase &cpu, DecodedOperandArg &inOutOpArg) {
+void InstructionSetV1Decoder::DecodeOperandArgAddrMode(CPUBase &cpu, InstructionSetV1Def::DecodedOperandArg &inOutOpArg) {
     if (inOutOpArg.addrMode == AddressMode::Indirect) {
         // Do nothing - this is decoded from the data about - details will be decoded further down...
     } else if (inOutOpArg.addrMode == AddressMode::Absolute) {
@@ -304,28 +329,14 @@ RegisterValue InstructionSetV1Decoder::ReadFrom(CPUBase &cpuBase, OperandSize sz
         v = cpuBase.ReadFromMemoryUnit(szOperand, absAddress);
         //memoryOffset += ByteSizeOfOperandSize(szOperand);
     } else if (addrMode == AddressMode::Indirect) {
-        auto relativeAddrOfs = ComputeRelativeAddress(cpuBase, relAddrMode);
+        // FIXME: Move this function here!
+        auto relativeAddrOfs = InstructionSetV1Def::ComputeRelativeAddress(cpuBase, relAddrMode);
         auto &reg = cpuBase.GetRegisterValue(idxRegister, code.opFamily);
         v = cpuBase.ReadFromMemoryUnit(szOperand, reg.data.longword + relativeAddrOfs);
     }
     return v;
 }
 
-uint64_t InstructionSetV1Decoder::ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddrMode) {
-    uint64_t relativeAddrOfs = 0;
-    // Break out to own function - this is also used elsewhere..
-    if ((relAddrMode.mode == RelativeAddressMode::AbsRelative) || (relAddrMode.mode == RelativeAddressMode::RegRelative)) {
-        if (relAddrMode.mode == RelativeAddressMode::AbsRelative) {
-            relativeAddrOfs = relAddrMode.relativeAddress.absoulte;
-        } else {
-            // Relative handling can only come from Integer operand family!
-            auto regRel = cpuBase.GetRegisterValue(relAddrMode.relativeAddress.reg.index, OperandFamily::Integer);
-            relativeAddrOfs = regRel.data.byte;
-            relativeAddrOfs = relativeAddrOfs << relAddrMode.relativeAddress.reg.shift;
-        }
-    }
-    return relativeAddrOfs;
-}
 
 
 

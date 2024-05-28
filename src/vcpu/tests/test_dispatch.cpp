@@ -28,9 +28,9 @@ DLL_EXPORT int test_dispatch_push_pop_single(ITesting *t) {
     };
     Item inItem = {.value = 4711 };
     Item outItem;
-    TR_ASSERT(t, dispatch.Push<Item>(inItem));
+    TR_ASSERT(t, dispatch.Push(0,&inItem, sizeof(inItem)));
     TR_ASSERT(t, !dispatch.IsEmpty());
-    TR_ASSERT(t, dispatch.Pop<Item>(&outItem));
+    TR_ASSERT(t, dispatch.Pop(&outItem, sizeof(outItem)));
     TR_ASSERT(t, outItem.value == 4711);
     TR_ASSERT(t, dispatch.IsEmpty());
 
@@ -45,8 +45,8 @@ DLL_EXPORT int test_dispatch_push_pop_many(ITesting *t) {
     };
 
     Item inItem = {.value = 4711 };
-    while(dispatch.CanInsert<Item>()) {
-        TR_ASSERT(t, dispatch.Push<Item>(inItem));
+    while(dispatch.CanInsert(sizeof(Item))) {
+        TR_ASSERT(t, dispatch.Push(0,&inItem, sizeof(inItem)));
         inItem.value++;
     }
     TR_ASSERT(t, !dispatch.IsEmpty());
@@ -54,7 +54,7 @@ DLL_EXPORT int test_dispatch_push_pop_many(ITesting *t) {
     int32_t expected = 4711;
     Item outItem;
     while(!dispatch.IsEmpty()) {
-        TR_ASSERT(t, dispatch.Pop<Item>(&outItem));
+        TR_ASSERT(t, dispatch.Pop(&outItem, sizeof(outItem)));
         TR_ASSERT(t, outItem.value == expected);
         expected++;
     }

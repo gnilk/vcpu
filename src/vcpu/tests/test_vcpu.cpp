@@ -1,5 +1,6 @@
 //
 // Created by gnilk on 14.12.23.
+// Note: This serves as the 'InstructionSetV1Decoder' test bed - it was written before extensions were added
 //
 #include <stdint.h>
 #include <vector>
@@ -50,6 +51,12 @@ extern "C" {
 }
 
 DLL_EXPORT int test_vcpu(ITesting *t) {
+
+    printf("SzDecodeOutput: %zu\n",sizeof(InstructionSetV1Def::DecoderOutput));
+    printf("  Operand: %zu\n",sizeof(InstructionSetV1Def::DecodedOperand));
+    printf("  OperandArg: %zu\n",sizeof(InstructionSetV1Def::DecodedOperandArg));
+    printf(" InstructionSetV1Def::RelativeAddressing: %zu\n", sizeof(InstructionSetV1Def::RelativeAddressing));
+
     t->CaseDepends("instr_add_immediate", "instr_move_immediate");
     t->CaseDepends("instr_add_reg2reg", "instr_move_reg2reg");
     t->CaseDepends("instr_pop","instr_push");

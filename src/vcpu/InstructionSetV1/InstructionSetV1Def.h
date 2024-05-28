@@ -11,7 +11,9 @@
 #include <string>
 #include <optional>
 
+#include "CPUBase.h"
 #include "InstructionSetDefBase.h"
+#include "RegisterValue.h"
 
 namespace gnilk {
     namespace vcpu {
@@ -199,6 +201,7 @@ namespace gnilk {
             // End of code
         } OperandCode;
 
+
         static const uint8_t OperandCodeExtensionMask = 0xf0;
 
         class InstructionSetV1Def : public InstructionSetDefBase {
@@ -207,7 +210,7 @@ namespace gnilk {
                 RelativeAddressMode mode;
                 // not sure this is a good idea
                 union {
-                    uint8_t absoulte;
+                    uint8_t absoulte;       // FIXME: Rename - spelling
                     struct {
                         uint8_t shift : 4;      // LSB
                         uint8_t index : 4;      // MSB
@@ -215,10 +218,55 @@ namespace gnilk {
                 } relativeAddress;
             };
 
+            // 12 bytes
+            // FIXME: This can be optimized - no need to save both the RAW bits and the decoded bits (debugging makes it nice - not HW friendly)
+            struct DecodedOperand {
+                // FIXME: There is at least 1 byte too many causing an additional 3 bytes padding..
+                // Used during by decoder...
+                uint8_t opCodeByte = 0;         // raw opCodeByte
+                OperandCodeBase opCode = 0;     // enum - not needed, once we have verified the opCodeByte we can proceed using it directly...
+
+                // two bytes - which are a bit redundant
+                uint8_t opSizeAndFamilyCode = 0;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
+                OperandSize opSize = {};            // Only if 'description.features & OperandSize' == true
+
+                // One byte - this is derived from 'opSizeAndFamilyCode'
+                OperandFamily opFamily = {};
+
+                uint32_t features;              // features flags - they are used throughout decoding - and execution
+            };
+
+            // 16 bytes (we have two of these in the decoder output)
+            struct DecodedOperandArg {
+                uint8_t regAndFlags = 0;                                    // 1
+                uint8_t regIndex = 0;                                       // 1
+                AddressMode addrMode = {}; //AddressMode::Absolute;         // 1
+                InstructionSetV1Def::RelativeAddressing relAddrMode = {};   // 2 bytes
+
+                // Total above is 5 bytes - leaves 3 bytes for padding => or for other stuff..
+
+                uint64_t absoluteAddr = 0;                                  // 8
+                uint64_t relativeAddressOfs = 0;                            // FIXME: This can be consolidated with the absoluteAddr (can never be both of them)
+            };
+
+            //
+            struct DecoderOutput {
+                DecodedOperand operand;
+                DecodedOperandArg opArgDst;
+                DecodedOperandArg opArgSrc;
+
+                RegisterValue primaryValue; // this can be an immediate or something else, essentially result from operand
+                RegisterValue secondaryValue;
+            };
+
+
         public:
             const std::unordered_map<OperandCodeBase, OperandDescriptionBase> &GetInstructionSet() override;
             std::optional<OperandDescriptionBase> GetOpDescFromClass(OperandCodeBase opClass) override;
             std::optional<OperandCodeBase> GetOperandFromStr(const std::string &str) override;
+
+            static uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddr);
+
             // uint8_t EncodeOpSizeAndFamily(OperandSize opSize, OperandFamily opFamily) override;
         };
 

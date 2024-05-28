@@ -17,6 +17,7 @@
 #include "Peripheral.h"
 #include "Interrupt.h"
 #include "RegisterValue.h"
+#include "Dispatch.h"
 
 #include "InstructionSet.h" // This brings in Decoder, Def, Impl
 
@@ -302,6 +303,10 @@ namespace gnilk {
                 registers.statusReg.flags.halt = 1;
             }
 
+            DispatchBase &GetDispatch() {
+                return dispatcher;
+            }
+
             const Registers &GetRegisters() const {
                 return registers;
             }
@@ -570,6 +575,10 @@ namespace gnilk {
             //MemoryUnit memoryUnit;
             MMU memoryUnit;
             MemoryLayout *systemBlock = nullptr;
+
+            // FIXME: This is perhaps a 'SOC' instead of CPU thing - or it is a CPU thing - not sure yet..
+            Dispatch<256> dispatcher;
+
 
             // Short cut pointers into the systemBlock...
             ISR_VECTOR_TABLE *isrVectorTable = nullptr;

@@ -14,9 +14,19 @@ using namespace gnilk::vcpu;
 //
 bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &baseDecoder) {
 
+    InstructionSetV1Def::DecoderOutput decoderOutput;
+    if (!cpu.GetDispatch().Pop(&decoderOutput, sizeof(decoderOutput))) {
+        fmt::println(stderr, "[InstructionSetV1Impl::ExecuteInstruction] Unable to fetch decoder output from dispatcher!");
+        return false;
+    }
+
+
+
+
+    // FIXME: Remove the decoder
     auto &decoder = dynamic_cast<InstructionSetV1Decoder&>(baseDecoder);
 
-    switch(decoder.code.opCode) {
+    switch(decoderOutput.operand.opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
             cpu.Halt();
@@ -26,55 +36,55 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBa
         case NOP :
             break;
         case SYS :
-            ExecuteSysCallInstr(cpu, decoder);
+            ExecuteSysCallInstr(cpu, decoderOutput);
             break;
         case CALL :
-            ExecuteCallInstr(cpu, decoder);
+            ExecuteCallInstr(cpu, decoderOutput);
             break;
         case LEA :
-            ExecuteLeaInstr(cpu, decoder);
+            ExecuteLeaInstr(cpu, decoderOutput);
             break;
         case RET :
-            ExecuteRetInstr(cpu, decoder);
+            ExecuteRetInstr(cpu, decoderOutput);
             break;
         case RTI :
-            ExecuteRtiInstr(cpu, decoder);
+            ExecuteRtiInstr(cpu, decoderOutput);
             break;
         case RTE :
-            ExecuteRteInstr(cpu, decoder);
+            ExecuteRteInstr(cpu, decoderOutput);
             break;
         case MOV :
-            ExecuteMoveInstr(cpu, decoder);
+            ExecuteMoveInstr(cpu, decoderOutput);
             break;
         case ADD :
-            ExecuteAddInstr(cpu, decoder);
+            ExecuteAddInstr(cpu, decoderOutput);
             break;
         case PUSH :
-            ExecutePushInstr(cpu, decoder);
+            ExecutePushInstr(cpu, decoderOutput);
             break;
         case POP :
-            ExecutePopInstr(cpu, decoder);
+            ExecutePopInstr(cpu, decoderOutput);
             break;
         case LSR :
-            ExecuteLsrInstr(cpu, decoder);
+            ExecuteLsrInstr(cpu, decoderOutput);
             break;
         case LSL :
-            ExecuteLslInstr(cpu, decoder);
+            ExecuteLslInstr(cpu, decoderOutput);
             break;
         case ASR :
-            ExecuteAsrInstr(cpu, decoder);
+            ExecuteAsrInstr(cpu, decoderOutput);
             break;
         case ASL :
-            ExecuteAslInstr(cpu, decoder);
+            ExecuteAslInstr(cpu, decoderOutput);
             break;
         case CMP :
-            ExecuteCmpInstr(cpu, decoder);
+            ExecuteCmpInstr(cpu, decoderOutput);
             break;
         case BEQ :
-            ExecuteBeqInstr(cpu, decoder);
+            ExecuteBeqInstr(cpu, decoderOutput);
             break;
         case BNE :
-            ExecuteBneInstr(cpu, decoder);
+            ExecuteBneInstr(cpu, decoderOutput);
             break;
         case SIMD:
             ExecuteSIMDInstr(cpu, decoder);
@@ -91,19 +101,19 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBa
 }
 
 
-void InstructionSetV1Impl::ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &instrDecoder) {
+void InstructionSetV1Impl::ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &baseDecoder) {
     // FIXME: This doesn't support assymetric multi-core, i.e. different number of cores depending on the instr. set
     //        In essence there must be an equal amount of cores..
 
-    auto simdDecoder = instrDecoder.GetDecoderForExtension(SIMD);
-    // Note: This should not happen
-    if (simdDecoder == nullptr) {
-        fmt::println(stderr,"ERR: Decoder for SIMD extension missing");
-        exit(1);
-    }
-
-    auto &simdInstructionSet = InstructionSetManager::Instance().GetExtension(SIMD);
-    simdInstructionSet.GetImplementation().ExecuteInstruction(cpu, *simdDecoder);
+//    auto simdDecoder = instrDecoder.GetDecoderForExtension(SIMD);
+//    // Note: This should not happen
+//    if (simdDecoder == nullptr) {
+//        fmt::println(stderr,"ERR: Decoder for SIMD extension missing");
+//        exit(1);
+//    }
+//
+//    auto &simdInstructionSet = InstructionSetManager::Instance().GetExtension(SIMD);
+//    simdInstructionSet.GetImplementation().ExecuteInstruction(cpu, *simdDecoder);
 }
 
 ////////////////////////////
@@ -155,8 +165,8 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
     statusReg.flags.overflow = (ovflow >> (std::numeric_limits<T>::digits-1)) & 1;
 }
 
-void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
+void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    if (decoderOutput.opArgDst.addrMode != AddressMode::Immediate) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
@@ -167,10 +177,10 @@ void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder
 
     // FIXME: This is same as for BEQ - we could keep these..
 
-    auto v = instrDecoder.GetPrimaryValue();
+    auto &v = decoderOutput.primaryValue;
     int64_t relativeOffset = 0;
 
-    switch(instrDecoder.code.opSize) {
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             relativeOffset = (int8_t)(v.data.byte);
             break;
@@ -187,9 +197,9 @@ void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder
     cpu.registers.instrPointer.data.longword += relativeOffset;
 
 }
-void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetPrimaryValue();
-    if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
+void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+    if (decoderOutput.opArgDst.addrMode != AddressMode::Immediate) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
@@ -200,7 +210,7 @@ void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder
 
     int64_t relativeOffset = 0;
 
-    switch(instrDecoder.code.opSize) {
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             relativeOffset = (int8_t)(v.data.byte);
             break;
@@ -217,16 +227,16 @@ void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder
     cpu.registers.instrPointer.data.longword += relativeOffset;
 }
 
-void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetPrimaryValue();
-    if (instrDecoder.opArgDst.addrMode == AddressMode::Immediate) {
+void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+    if (decoderOutput.opArgDst.addrMode == AddressMode::Immediate) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
 
     // FIXME: We shouldn't read the dst value here - should be part of the decoding step...
     //RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue dstReg = instrDecoder.GetSecondaryValue();
+    RegisterValue &dstReg = decoderOutput.secondaryValue;
 /*
     if (instrDecoder.dstAddrMode == AddressMode::Register) {
         dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -239,7 +249,7 @@ void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder
     }
 */
 
-    switch(instrDecoder.code.opSize) {
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             UpdateCPUFlagsCMP<uint8_t>(cpu.registers.statusReg, dstReg.data.byte - v.data.byte, dstReg.data.byte, v.data.byte);
             break;
@@ -255,24 +265,25 @@ void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder
     }
 }
 
-void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetPrimaryValue();
-    if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
+void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+
+    if (decoderOutput.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
 
-    auto &dstReg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+    auto &dstReg = cpu.GetRegisterValue(decoderOutput.opArgDst.regIndex, decoderOutput.operand.opFamily);
 
-    auto signBefore = MSBForOpSize(instrDecoder.code.opSize, dstReg);
+    auto signBefore = MSBForOpSize(decoderOutput.operand.opSize, dstReg);
 
     uint64_t msb = 0;
     bool isZero = false;
     int nBits = v.data.byte;
     while(nBits > 0) {
         // Will we shift out something??
-        msb = MSBForOpSize(instrDecoder.code.opSize, dstReg);
-        switch(instrDecoder.code.opSize) {
+        msb = MSBForOpSize(decoderOutput.operand.opSize, dstReg);
+        switch(decoderOutput.operand.opSize) {
             case OperandSize::Byte :
                 dstReg.data.byte = dstReg.data.byte <<  1;
                 if (!dstReg.data.byte) isZero = true;
@@ -303,7 +314,7 @@ void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder
     cpu.registers.statusReg.flags.zero = isZero;
     cpu.registers.statusReg.flags.negative = (msb)?true:false;
     // Overflow - IF the MSB is toggled during anypoint...
-    if (signBefore != MSBForOpSize(instrDecoder.code.opSize, dstReg)) {
+    if (signBefore != MSBForOpSize(decoderOutput.operand.opSize, dstReg)) {
         cpu.registers.statusReg.flags.overflow = true;
     } else {
         cpu.registers.statusReg.flags.overflow = false;
@@ -312,16 +323,17 @@ void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder
 
 // This can be simplified...
 // See: MoiraALU_cpp.h - could take a few impl. ideas from there..
-void InstructionSetV1Impl::ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetPrimaryValue();
-    if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
+void InstructionSetV1Impl::ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+
+    if (decoderOutput.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
-    auto &dstReg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+    auto &dstReg = cpu.GetRegisterValue(decoderOutput.opArgDst.regIndex, decoderOutput.operand.opFamily);
 
     // Fetch the sign-bit..
-    uint64_t msb = MSBForOpSize(instrDecoder.code.opSize, dstReg);
+    uint64_t msb = MSBForOpSize(decoderOutput.operand.opSize, dstReg);
 
     bool carryExtFlag = false;
     bool isZero = false;
@@ -330,7 +342,7 @@ void InstructionSetV1Impl::ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Decoder
     int nBits = v.data.byte;
     while(nBits) {
         carryExtFlag = (dstReg.data.longword & 1)?true:false;
-        switch(instrDecoder.code.opSize) {
+        switch(decoderOutput.operand.opSize) {
             case OperandSize::Byte :
                 dstReg.data.byte = dstReg.data.byte >>  1;
                 if (!dstReg.data.byte) isZero = true;
@@ -414,17 +426,18 @@ void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
 
 
 // FIXME: Verify and update CPU Status Flags
-void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetPrimaryValue();
-    if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
+void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+
+    auto &v = decoderOutput.primaryValue;
+    if (decoderOutput.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
 
-    auto dstReg = instrDecoder.GetSecondaryValue();
+    auto &dstReg = decoderOutput.secondaryValue;
 
     // I would like to get rid of this switch, but I can't without having an encapsulation class
-    switch(instrDecoder.code.opSize) {
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             Shift<OperandSize::Byte, OperandCode::LSL>(cpu.registers.statusReg, v.data.byte, dstReg);
             break;
@@ -438,21 +451,22 @@ void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder
             Shift<OperandSize::Long, OperandCode::LSL>(cpu.registers.statusReg, v.data.byte, dstReg);
             break;
     }
-    WriteToDst(cpu, instrDecoder, dstReg);
+    WriteToDst(cpu, decoderOutput, dstReg);
 }
 
 // FIXME: Verify and CPU Status flags
-void InstructionSetV1Impl::ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto v = instrDecoder.GetPrimaryValue();
-    if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
+void InstructionSetV1Impl::ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+
+    if (decoderOutput.opArgDst.addrMode != AddressMode::Register) {
         cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
     //RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue dstReg = instrDecoder.GetSecondaryValue();
+    RegisterValue &dstReg = decoderOutput.secondaryValue;
 
-    switch(instrDecoder.code.opSize) {
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             // FIXME: Make sure this works as expected!
             dstReg.data.byte = dstReg.data.byte >>  v.data.byte;
@@ -467,40 +481,40 @@ void InstructionSetV1Impl::ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder
             dstReg.data.longword = dstReg.data.longword >> v.data.byte;
             break;
     }
-    WriteToDst(cpu, instrDecoder, dstReg);
+    WriteToDst(cpu, decoderOutput, dstReg);
 }
 
 //
 // Move of these will be small - consider supporting lambda in description code instead...
 //
-void InstructionSetV1Impl::ExecuteSysCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteSysCallInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
     auto id = cpu.registers.dataRegisters[0].data.word;
     if (cpu.syscalls.contains(id)) {
         cpu.syscalls.at(id)->Invoke(cpu.registers, &cpu);
     }
 }
 
-void InstructionSetV1Impl::ExecutePushInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetPrimaryValue();
+void InstructionSetV1Impl::ExecutePushInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
     // FIXME: this should write to register sp using MMU handling
     cpu.stack.push(v);
 }
 
-void InstructionSetV1Impl::ExecutePopInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
+void InstructionSetV1Impl::ExecutePopInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
     auto v = cpu.stack.top();
     cpu.stack.pop();
-    WriteToDst(cpu, instrDecoder, v);
+    WriteToDst(cpu, decoderOutput, v);
 }
 
-void InstructionSetV1Impl::ExecuteLeaInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetPrimaryValue();
-    WriteToDst(cpu, instrDecoder, v);
+void InstructionSetV1Impl::ExecuteLeaInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+    WriteToDst(cpu, decoderOutput, v);
 }
 
 
-void InstructionSetV1Impl::ExecuteMoveInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetPrimaryValue();
-    WriteToDst(cpu, instrDecoder, v);
+void InstructionSetV1Impl::ExecuteMoveInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+    WriteToDst(cpu, decoderOutput, v);
 }
 
 //
@@ -567,12 +581,13 @@ static void SubtractValues(CPUStatusReg &statusReg, RegisterValue &dst, const Re
 }
 
 
-void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetPrimaryValue();
+void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+
 
     //RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue tmpReg = instrDecoder.GetSecondaryValue();
-    switch(instrDecoder.code.opSize) {
+    RegisterValue tmpReg = decoderOutput.secondaryValue;        // Check if we really want a copy here or a reference
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             AddValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);
             break;
@@ -586,15 +601,16 @@ void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder
             AddValues<uint64_t>(cpu.registers.statusReg, tmpReg, v);
             break;
     }
-    WriteToDst(cpu, instrDecoder, tmpReg);
+    WriteToDst(cpu, decoderOutput, tmpReg);
 }
 
-void InstructionSetV1Impl::ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetPrimaryValue();
+void InstructionSetV1Impl::ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+
 
     //RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
-    RegisterValue tmpReg = instrDecoder.GetSecondaryValue();
-    switch(instrDecoder.code.opSize) {
+    RegisterValue tmpReg = decoderOutput.secondaryValue;
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             SubtractValues<uint8_t>(cpu.registers.statusReg, tmpReg, v);
             break;
@@ -608,23 +624,24 @@ void InstructionSetV1Impl::ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Decoder
             SubtractValues<uint64_t>(cpu.registers.statusReg, tmpReg, v);
             break;
     }
-    WriteToDst(cpu, instrDecoder, tmpReg);
+    WriteToDst(cpu, decoderOutput, tmpReg);
 }
 
-void InstructionSetV1Impl::ExecuteMulInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteMulInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
 
 }
-void InstructionSetV1Impl::ExecuteDivInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteDivInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
 
 }
 
-void InstructionSetV1Impl::ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
-    auto &v = instrDecoder.GetPrimaryValue();
+void InstructionSetV1Impl::ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
+    auto &v = decoderOutput.primaryValue;
+
     auto retAddr = cpu.registers.instrPointer;
     // push on stack...
     cpu.stack.push(retAddr);
 
-    switch(instrDecoder.code.opSize) {
+    switch(decoderOutput.operand.opSize) {
         case OperandSize::Byte :
             cpu.registers.instrPointer.data.longword += v.data.byte;
             break;
@@ -640,7 +657,7 @@ void InstructionSetV1Impl::ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Decode
     }
 }
 
-void InstructionSetV1Impl::ExecuteRetInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteRetInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
     if (cpu.stack.empty()) {
         // FIXME: Raise CPU exception!
         fmt::println(stderr, "RET - no return address - stack empty!!");
@@ -653,7 +670,7 @@ void InstructionSetV1Impl::ExecuteRetInstr(CPUBase &cpu, InstructionSetV1Decoder
     cpu.registers.instrPointer.data = newInstrAddr.data;
 }
 
-void InstructionSetV1Impl::ExecuteRtiInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteRtiInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
     // Check if the CPU is executing the ISR?
 
     if (!cpu.IsCPUISRActive()) {
@@ -676,7 +693,7 @@ void InstructionSetV1Impl::ExecuteRtiInstr(CPUBase &cpu, InstructionSetV1Decoder
     cpu.ResetActiveISR();
 }
 
-void InstructionSetV1Impl::ExecuteRteInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteRteInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput) {
     if (!cpu.IsCPUExpActive()) {
         // FIXME: Raise invalid CPU state exception
         cpu.RaiseException(CPUKnownExceptions::kHardFault);
@@ -695,18 +712,19 @@ void InstructionSetV1Impl::ExecuteRteInstr(CPUBase &cpu, InstructionSetV1Decoder
 //
 // Could be moved to base class
 //
-void InstructionSetV1Impl::WriteToDst(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder, const RegisterValue &v) {
-    // FIXME: Support more address mode
-    if (instrDecoder.opArgDst.addrMode == AddressMode::Register) {
-        auto &reg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
-        reg.data = v.data;
-    } else if (instrDecoder.opArgDst.addrMode == AddressMode::Absolute) {
-        cpu.WriteToMemoryUnit(instrDecoder.code.opSize, instrDecoder.opArgDst.absoluteAddr, v);
-    } else if (instrDecoder.opArgDst.addrMode == AddressMode::Indirect) {
-        auto &reg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
+void InstructionSetV1Impl::WriteToDst(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput, const RegisterValue &v) {
 
-        auto relativeAddrOfs = instrDecoder.ComputeRelativeAddress(cpu, instrDecoder.opArgDst.relAddrMode);
-        cpu.WriteToMemoryUnit(instrDecoder.code.opSize, reg.data.longword + relativeAddrOfs, v);
+    if (decoderOutput.opArgDst.addrMode == AddressMode::Register) {
+        auto &reg = cpu.GetRegisterValue(decoderOutput.opArgDst.regIndex, decoderOutput.operand.opFamily);
+        reg.data = v.data;
+    } else if (decoderOutput.opArgDst.addrMode == AddressMode::Absolute) {
+        cpu.WriteToMemoryUnit(decoderOutput.operand.opSize, decoderOutput.opArgDst.absoluteAddr, v);
+    } else if (decoderOutput.opArgDst.addrMode == AddressMode::Indirect) {
+        auto &reg = cpu.GetRegisterValue(decoderOutput.opArgDst.regIndex, decoderOutput.operand.opFamily);
+
+        // FIXME: This has to be solved in the decoding step...
+        auto relativeAddrOfs = InstructionSetV1Def::ComputeRelativeAddress(cpu, decoderOutput.opArgDst.relAddrMode);
+        cpu.WriteToMemoryUnit(decoderOutput.operand.opSize, reg.data.longword + relativeAddrOfs, v);
 
 //        auto v = ReadFromMemoryUnit(instrDecoder.opSize, reg.data.longword + relativeAddrOfs);
 //        reg.data = v.data;

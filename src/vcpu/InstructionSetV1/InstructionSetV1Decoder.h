@@ -20,36 +20,9 @@ namespace gnilk {
 
         class InstructionSetV1Impl;
         class InstructionSetV1Decoder : public InstructionDecoderBase {
-            friend InstructionSetV1Impl;
+            friend InstructionSetV1Impl;        // FIXME: Should be removed!
         public:
             using Ref = std::shared_ptr<InstructionSetV1Decoder>;
-
-            struct DecodedOperand : DecodedOperandBase {
-                // Used during by decoder...
-                uint8_t opCodeByte = 0;     // raw opCodeByte
-                OperandCodeBase opCode = 0;
-                OperandDescriptionBase description = {};
-
-                uint8_t opSizeAndFamilyCode = 0;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
-                OperandSize opSize = {}; // Only if 'description.features & OperandSize' == true
-                OperandFamily opFamily = {};
-            };
-            struct DecodedOperandArg : DecodedOperandArgBase {
-                uint8_t regAndFlags = 0;
-                uint8_t regIndex = 0;
-                AddressMode addrMode = {}; //AddressMode::Absolute;
-                uint64_t absoluteAddr = 0;
-                InstructionSetV1Def::RelativeAddressing relAddrMode = {};
-            };
-
-            struct DecodeOutput : DispatchItemBase {
-                DecodedOperand operand;
-                DecodedOperandArg opArgDst;
-                DecodedOperandArg opArgSrc;
-            };
-
-
-
 
             enum class State : uint8_t {
                 kStateIdle,
@@ -72,6 +45,8 @@ namespace gnilk {
 
             void Reset() override;
             bool Tick(CPUBase &cpu) override;
+            bool PushToDispatch(DispatchBase &dispatcher) override;
+
 
             // Make this private when it works
             bool ExecuteTickFromIdle(CPUBase &cpu);
@@ -118,10 +93,6 @@ namespace gnilk {
             RegisterValue ReadSrcValue(CPUBase &cpu);
             RegisterValue ReadDstValue(CPUBase &cpu);
 
-            uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddr);
-
-
-
 
         protected:
             // Helper for 'ToString'
@@ -129,27 +100,25 @@ namespace gnilk {
             // Perhaps move to base class
             RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, InstructionSetV1Def::RelativeAddressing relAddr, int idxRegister);
 
-            void DecodeOperandArg(CPUBase &cpu, DecodedOperandArg &inOutOpArg);
-            void DecodeOperandArgAddrMode(CPUBase &cpu, DecodedOperandArg &inOutOpArg);
+            void DecodeOperandArg(CPUBase &cpu, InstructionSetV1Def::DecodedOperandArg &inOutOpArg);
+            void DecodeOperandArgAddrMode(CPUBase &cpu, InstructionSetV1Def::DecodedOperandArg &inOutOpArg);
 
             size_t ComputeInstrSize() const;
-            size_t ComputeOpArgSize(const DecodedOperandArg &opArg) const;
+            size_t ComputeOpArgSize(const InstructionSetV1Def::DecodedOperandArg &opArg) const;
             bool IsExtension(uint8_t opCodeByte) const;
 
             const State &GetState() {
                 return state;
             }
-            void ChangeState(State newState) {
-                state = newState;
-            }
+            void ChangeState(State newState);
 
             InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t ext);
         public:
             // FIXME: This is the result of the decoding
             //        Move this to a very specific place so we can 'queue' it up - this makes the decoder separate from the instr.impl..
-            DecodedOperand code;
-            DecodedOperandArg opArgDst;
-            DecodedOperandArg opArgSrc;
+            InstructionSetV1Def::DecodedOperand code;
+            InstructionSetV1Def::DecodedOperandArg opArgDst;
+            InstructionSetV1Def::DecodedOperandArg opArgSrc;
 
             // This is the primary value - result of the first memory read, used by most instructions.
             // Note: This can be either the destination or source

@@ -8,50 +8,83 @@
 #include <queue>
 #include <mutex>
 
-#include "InstructionDecoderBase.h"
 #include "Ringbuffer.h"
 
 namespace gnilk {
     namespace vcpu {
 
+        class DispatchBase {
+        public:
+            struct DispatchItemHeader {
+                uint16_t szItem;        // Way overkill, one byte is probably more than enough - will test this out
+                uint8_t  instrTypeId;   // Instruction Type ID - this is literally the extension byte
+                uint8_t  reserved;      // alignment - and perhaps I need this anyway...
+            };
+        public:
+            virtual bool IsEmpty() = 0;
+            virtual bool CanInsert(size_t szItem) = 0;
+            virtual bool Peek(DispatchItemHeader *outHeader) = 0;
+            virtual bool Push(uint8_t instrTypeId, const void *item, size_t szItem) = 0;
+            virtual bool Pop(void *ptrOut, size_t szItem) = 0;
+
+        };
         //
         // Dispatcher queue with ring buffer
         //
         template<size_t szRam>
-        class Dispatch {
-        protected:
-            struct DispatchItemHeader {
-                uint16_t szItem;        // Way overkill, one byte is probably more than enough - will test this out
-            };
+        class Dispatch : public DispatchBase {
 
         public:
             Dispatch() = default;
             virtual ~Dispatch() = default;
 
-            bool IsEmpty() {
+            bool Peek(DispatchItemHeader *outHeader) override {
+                std::lock_guard guard(lock);
+                if (IsEmpty()) {
+                    return false;
+                }
+                // This should not be the case - but better safe than sorry..
+                if (ringbuffer.BytesAvailable() <= sizeof(DispatchItemHeader)) {
+                    return false;
+                }
+                if (ringbuffer.Peek(outHeader, sizeof(DispatchItemHeader)) < 0) {
+                    return false;
+                }
+                return true;
+            }
+
+
+            bool IsEmpty() override {
                 return (ringbuffer.BytesAvailable() == 0);
             }
 
-            template<typename T>
-            bool CanInsert() {
-                if (ringbuffer.BytesFree() <= sizeof(T)) {
+            bool CanInsert(size_t szItem) override {
+                if (ringbuffer.BytesFree() <= szItem) {
                     return false;
                 }
                 return true;
             }
 
-            template<typename T>
-            bool Push(const T &item) {
+
+            bool Push(uint8_t instrTypeId, const void *item, size_t szItem) override {
                 std::lock_guard guard(lock);
 
-                if (ringbuffer.BytesFree() < (sizeof(T) + sizeof(DispatchItemHeader))) {
+                if (ringbuffer.BytesFree() < (szItem + sizeof(DispatchItemHeader))) {
                     return false;
                 }
-                DispatchItemHeader header = { .szItem = sizeof(T) };
+                if (szItem > std::numeric_limits<uint16_t>::max()) {
+                    return false;
+                }
+                DispatchItemHeader header = {
+                        .szItem = static_cast<uint16_t>(szItem),
+                        .instrTypeId = instrTypeId,
+                        .reserved = 0,
+
+                };
                 if (ringbuffer.Write(&header, sizeof(header)) < 0) {
                     return false;
                 }
-                if (ringbuffer.Write(&item, sizeof(T)) < 0) {
+                if (ringbuffer.Write(item, szItem) < 0) {
                     return false;
                 }
 
@@ -59,28 +92,26 @@ namespace gnilk {
 
             }
 
-            template<typename T>
-            bool Pop(T *ptrOut) {
+            bool Pop(void *ptrOut, size_t szItem) override {
                 std::lock_guard guard(lock);
 
-                if (ringbuffer.BytesAvailable() < (sizeof(T) + sizeof(DispatchItemHeader))) {
+                if (ringbuffer.BytesAvailable() < (szItem + sizeof(DispatchItemHeader))) {
                     return false;
                 }
                 DispatchItemHeader header;
                 if (ringbuffer.Read(&header, sizeof(header)) < 0) {
                     return false;
                 }
-                if (header.szItem != sizeof(T)) {
+                if (header.szItem != szItem) {
                     // We are corrupt!!!
                     return false;
                 }
-                if (ringbuffer.Read(ptrOut, sizeof(T)) < 0) {
+                if (ringbuffer.Read(ptrOut, szItem) < 0) {
                     return false;
                 }
 
                 return true;
             }
-
         protected:
             std::mutex lock;
             Ringbuffer<szRam> ringbuffer;

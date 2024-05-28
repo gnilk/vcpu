@@ -16,6 +16,7 @@
 #include "MemorySubSys/MemoryUnit.h"
 #include "Timer.h"
 #include <array>
+#include "Dispatch.h"
 
 namespace gnilk {
 
@@ -35,6 +36,8 @@ namespace gnilk {
             const LastInstruction *GetLastDecodedInstr() const {
                 return &lastDecodedInstruction;
             }
+        private:
+            bool ProcessDispatch();
 
         private:
             Timer *timer0;

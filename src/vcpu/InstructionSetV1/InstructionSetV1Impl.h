@@ -32,31 +32,32 @@ namespace gnilk {
 
         protected:
             // one operand instr.
-            void ExecutePushInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecutePopInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteSysCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecutePushInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecutePopInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteSysCallInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
 
             // two operand instr.
-            void ExecuteMoveInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteMulInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteDivInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteRetInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteRtiInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteRteInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteLeaInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
-            void ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder);
+            void ExecuteMoveInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteMulInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteDivInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteRetInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteRtiInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteRteInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteLeaInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
+            void ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
 
+            // FIXME: Can (hopefully) be removed - Should no longer be needed - the dispatcher will take care of this - leaving as is for now
             void ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &baseDecoder);
-            void WriteToDst(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder, const RegisterValue &v);
+            void WriteToDst(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput, const RegisterValue &v);
 
         };
     }

@@ -113,22 +113,43 @@ bool VirtualCPU::Step() {
     auto &instructionSet = InstructionSetManager::Instance().GetInstructionSet();
     auto &instructionDecoder = instructionSet.GetDecoder();
 
-    //InstructionDecoderBase::Ref instrDecoder = InstructionDecoder::Create();
-    instructionDecoder.Decode(*this);
-
-    auto &instrImpl = instructionSet.GetImplementation();
-    if (!instrImpl.ExecuteInstruction(*this, instructionDecoder)) {
+    if (!instructionDecoder.Decode(*this)) {
         return false;
     }
+
+    if (!instructionDecoder.PushToDispatch(dispatcher)) {
+        return false;
+    }
+
+    ProcessDispatch();
 
     UpdateMMU();
     if (GetActiveISRControlBlock() != nullptr) {
         lastDecodedInstruction.isrStateAfter = GetActiveISRControlBlock()->isrState;
     }
     lastDecodedInstruction.cpuRegistersAfter = registers;
-    // FIXME: Understand directly why I need this - I think it is for 'ToString' of the last decoded instr.
+    // FIXME: Should not be here - debugging purposes - I want to disassemble and that code-path has not
+    //        been given enough attention...
     lastDecodedInstruction.instrDecoder = dynamic_cast<InstructionSetV1Decoder&>(instructionDecoder);
     return true;
+}
+
+bool VirtualCPU::ProcessDispatch() {
+    DispatchBase::DispatchItemHeader header;
+    if (!dispatcher.Peek(&header)) {
+        fmt::println(stderr, "[VCPU] ProcessDispatch failed while peeking");
+        return false;
+    }
+
+    if (!InstructionSetManager::Instance().HaveExtension(header.instrTypeId)) {
+        fmt::println(stderr, "[VCPU] Instruction set missing for type={:#X}", header.instrTypeId);
+        return false;
+    }
+
+    auto &instructionSet = InstructionSetManager::Instance().GetExtension(header.instrTypeId);
+    auto &instructionDecoder = instructionSet.GetDecoder();
+    return instructionSet.GetImplementation().ExecuteInstruction(*this, instructionDecoder);
+    return false;
 }
 
 

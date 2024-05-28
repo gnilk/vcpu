@@ -53,6 +53,21 @@ namespace gnilk {
             }
 
             //
+            // Peeks a number of bytes forward in the stream
+            // This is to allow the dispatcher to fetch meta data ahead of time
+            //
+            int32_t Peek(void *out, size_t num) {
+                std::lock_guard guard(lock);
+                // Save the read ptr
+                size_t idxReadSave = idxRead;
+                int32_t res = ReadNoLock(out, num);
+
+                // Restore the read ptr
+                idxRead = idxReadSave;
+                return res;
+            }
+
+            //
             // Read data from the circular buffer
             //
             // Returns
@@ -60,37 +75,8 @@ namespace gnilk {
             //   negative on return
             //
             int32_t Read(void *out, size_t num) {
-                if (num > szBuffer) {
-                    return -1;
-                }
-                if (BytesAvailableNoLock() < num) {
-                    return -1;
-                }
                 std::lock_guard guard(lock);
-                if (idxWrite >= idxRead) {
-                    // Is this safe?
-                    memcpy(out, data + idxRead, num);
-                    idxRead += num;
-                } else {
-                    size_t leftInBuffer = szBuffer - idxRead;
-                    if (num < leftInBuffer) {
-                        memcpy(out, data + idxRead, num);
-                        idxRead += num;
-                    } else {
-                        auto *outBytePtr = static_cast<uint8_t *>(out);
-                        size_t overrun = num - leftInBuffer;
-                        memcpy(outBytePtr, data + idxRead, leftInBuffer);
-                        memcpy(outBytePtr + leftInBuffer, data, overrun);
-                        idxRead = overrun;
-                    }
-                }
-                if ((num > 0) && (isFull == true)) {
-                    isFull = false;
-                }
-                if (idxRead >= szBuffer) {
-                    idxRead -= szBuffer;
-                }
-                return (int32_t)num;
+                return ReadNoLock(out, num);
             } // read
 
             //
@@ -140,6 +126,43 @@ namespace gnilk {
             } // write
 
         protected:
+            //
+            // Reads but assume the lock has been taken...
+            //
+            int32_t ReadNoLock(void *out, size_t num) {
+                if (num > szBuffer) {
+                    return -1;
+                }
+                if (BytesAvailableNoLock() < num) {
+                    return -1;
+                }
+                if (idxWrite >= idxRead) {
+                    // Is this safe?
+                    memcpy(out, data + idxRead, num);
+                    idxRead += num;
+                } else {
+                    size_t leftInBuffer = szBuffer - idxRead;
+                    if (num < leftInBuffer) {
+                        memcpy(out, data + idxRead, num);
+                        idxRead += num;
+                    } else {
+                        auto *outBytePtr = static_cast<uint8_t *>(out);
+                        size_t overrun = num - leftInBuffer;
+                        memcpy(outBytePtr, data + idxRead, leftInBuffer);
+                        memcpy(outBytePtr + leftInBuffer, data, overrun);
+                        idxRead = overrun;
+                    }
+                }
+                if ((num > 0) && (isFull == true)) {
+                    isFull = false;
+                }
+                if (idxRead >= szBuffer) {
+                    idxRead -= szBuffer;
+                }
+                return (int32_t)num;
+            } // read
+
+
             size_t BytesFreeNoLock() {
                 return (szBuffer - BytesAvailableNoLock());
             }

@@ -134,3 +134,24 @@ std::optional<OperandCodeBase> InstructionSetV1Def::GetOperandFromStr(const std:
 //    return opSizeAndFamilyCode;
 //}
 
+
+//
+// FIXME: Not sure this one should be here - since we are sometimes fetching from a register - this should be in the decoder
+//        Otherwise the value is at risk of being trashed
+//
+uint64_t InstructionSetV1Def::ComputeRelativeAddress(CPUBase &cpuBase, const InstructionSetV1Def::RelativeAddressing &relAddrMode) {
+    uint64_t relativeAddrOfs = 0;
+    // Break out to own function - this is also used elsewhere..
+    if ((relAddrMode.mode == RelativeAddressMode::AbsRelative) || (relAddrMode.mode == RelativeAddressMode::RegRelative)) {
+        if (relAddrMode.mode == RelativeAddressMode::AbsRelative) {
+            relativeAddrOfs = relAddrMode.relativeAddress.absoulte;
+        } else {
+            // Relative handling can only come from Integer operand family!
+            auto regRel = cpuBase.GetRegisterValue(relAddrMode.relativeAddress.reg.index, OperandFamily::Integer);
+            relativeAddrOfs = regRel.data.byte;
+            relativeAddrOfs = relativeAddrOfs << relAddrMode.relativeAddress.reg.shift;
+        }
+    }
+    return relativeAddrOfs;
+}
+

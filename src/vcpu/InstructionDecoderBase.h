@@ -10,6 +10,8 @@
 
 #include "InstructionSetDefBase.h"
 
+#include "Dispatch.h"
+
 namespace gnilk {
     namespace vcpu {
 
@@ -63,6 +65,10 @@ namespace gnilk {
             //   true - the decoder is done
             //   false - the decoder is not done
             virtual bool IsFinished() { return false; }
+
+            virtual bool PushToDispatch(DispatchBase &dispatcher) {
+                return false;
+            }
 
 
         protected:
