@@ -92,11 +92,8 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBa
 
 
 void InstructionSetV1Impl::ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &instrDecoder) {
-    // FIXME: This DOES not support multi-core!
-    //        IF the SIMD core is tied to the same as the regular 'CPU' core - we set the root instr.decoder to hold a specific decoder instance per extension
-    //        BUT if the extension cores differ (like; 1 FPU multiple INT or 1 SIMD, 2 FPU, 4 INT) - we need to schedule the decoding on the free core
-    //        which we CAN'T do at this point - would require a different architecture...
-
+    // FIXME: This doesn't support assymetric multi-core, i.e. different number of cores depending on the instr. set
+    //        In essence there must be an equal amount of cores..
 
     auto simdDecoder = instrDecoder.GetDecoderForExtension(SIMD);
     // Note: This should not happen
