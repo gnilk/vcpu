@@ -10,9 +10,9 @@
 #include <stack>
 #include "fmt/format.h"
 #include "CPUBase.h"
-#include "InstructionSetImpl.h"
-#include "InstructionDecoder.h"
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1Impl.h"
+#include "InstructionSetV1/InstructionSetV1Decoder.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "Timer.h"
 #include <array>

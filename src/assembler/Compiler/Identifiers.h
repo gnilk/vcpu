@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <memory>
 
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "Linker/Segment.h"
 
 namespace gnilk {

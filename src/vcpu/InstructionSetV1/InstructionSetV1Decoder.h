@@ -7,16 +7,20 @@
 
 #include <stdint.h>
 #include <memory>
-#include "InstructionSet.h"
 #include "CPUBase.h"
+#include "InstructionDecoderBase.h"
+
+#include "InstructionSetV1Def.h"
 
 namespace gnilk {
     namespace vcpu {
 
-
-        class InstructionDecoder {
+        class InstructionSetV1Impl;
+        class InstructionSetV1Decoder : public InstructionDecoderBase {
+            friend InstructionSetV1Impl;
         public:
-            using Ref = std::shared_ptr<InstructionDecoder>;
+            using Ref = std::shared_ptr<InstructionSetV1Decoder>;
+
             struct RelativeAddressing {
                 RelativeAddressMode mode;
                 // not sure this is a good idea
@@ -33,32 +37,36 @@ namespace gnilk {
                 kStateDecodeAddrMode,
                 kStateReadMem,
                 kStateFinished,
+                kStateDecodeExtension,      // Decoding is deferred to extension..
             };
             State state = {};
         public:
             static const std::string &StateToString(State s);
 
         public:
-            InstructionDecoder()  = default;
-            virtual ~InstructionDecoder() = default;
-            static InstructionDecoder::Ref Create(uint64_t memoryOffset);
+            InstructionSetV1Decoder()  {
+                printf("InstructionSetV1Decoder::CTOR, this=%p\n", (void *)this);
+            }
+            virtual ~InstructionSetV1Decoder() = default;
+            static InstructionSetV1Decoder::Ref Create();
 
-            bool Tick(CPUBase &cpu);
+            void Reset() override;
+            bool Tick(CPUBase &cpu) override;
+
             // Make this private when it works
             bool ExecuteTickFromIdle(CPUBase &cpu);
             bool ExecuteTickDecodeAddrMode(CPUBase &cpu);
             bool ExecuteTickReadMem(CPUBase &cpu);
+            bool ExecuteTickDecodeExt(CPUBase &cpu);
 
-            bool Decode(CPUBase &cpu);
+
+            bool IsIdle() override { return (state == State::kStateIdle); }
+            bool IsFinished() override { return (state == State::kStateFinished); }
+
+
             // Converts a decoded instruction back to it's mnemonic form
-            std::string ToString() const;
+            std::string ToString() const override;
 
-            // const RegisterValue &GetDstValue() {
-            //     return dstValue;
-            // }
-            // const RegisterValue &GetSrcValue() {
-            //     return srcValue;
-            // }
             const RegisterValue &GetValue() {
                 return value;
             }
@@ -88,11 +96,13 @@ namespace gnilk {
 
             uint64_t ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddr);
 
+
+
             struct Operand {
                 // Used during by decoder...
                 uint8_t opCodeByte;     // raw opCodeByte
                 OperandCode opCode;
-                OperandDescription description;
+                OperandDescriptionBase description;
 
                 uint8_t opSizeAndFamilyCode;    // raw 'OperandSize' byte - IF instruction feature declares this is valid
                 OperandSize opSize; // Only if 'description.features & OperandSize' == true
@@ -107,9 +117,8 @@ namespace gnilk {
             };
 
         protected:
-            uint8_t NextByte(CPUBase &cpu);
             // Helper for 'ToString'
-            std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const;
+            std::string DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionSetV1Decoder::RelativeAddressing relAddr) const;
             // Perhaps move to base class
             RegisterValue ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddr, int idxRegister);
 
@@ -118,20 +127,29 @@ namespace gnilk {
 
             size_t ComputeInstrSize() const;
             size_t ComputeOpArgSize(const OperandArg &opArg) const;
-        public:
-            // Used during by decoder...
+            bool IsExtension(uint8_t opCodeByte) const;
 
+            const State &GetState() {
+                return state;
+            }
+            void ChangeState(State newState) {
+                state = newState;
+            }
+
+            InstructionDecoderBase::Ref GetDecoderForExtension(uint8_t ext);
+        public:
+            // FIXME: This is the result of the decoding
+            //        Move this to a very specific place so we can 'queue' it up - this makes the decoder separate from the instr.impl..
             Operand code;
             OperandArg opArgDst;
             OperandArg opArgSrc;
 
             // There can only be ONE immediate value associated with an instruction
             RegisterValue value; // this can be an immediate or something else, essentially result from operand
+            // End of result
 
-        private:
-            uint64_t memoryOffset = {};
-            uint64_t ofsStartInstr = {};
-            uint64_t ofsEndInstr = {};
+
+            std::unordered_map<uint8_t, InstructionDecoderBase::Ref> extDecoders = {};
         };
 
         // This is more or less a wrapper around the InstructionDecoder
@@ -141,7 +159,7 @@ namespace gnilk {
             Registers cpuRegistersAfter;
             CPUISRState isrStateBefore;
             CPUISRState isrStateAfter;
-            InstructionDecoder instrDecoder;
+            InstructionSetV1Decoder instrDecoder = {};       // FIXME: Try to make this 'InstructionDecoderBase::Ref'
 
             CPUISRState GetISRStateBefore() const {
                 return isrStateBefore;

@@ -4,13 +4,18 @@
 // FIX-THIS: Remove inheritence to CPUBase and supply CPUBase as an argument
 //
 
-#include "InstructionSetImpl.h"
+#include "InstructionSetV1Impl.h"
+#include "InstructionSetV1Def.h"
+#include "InstructionSetV1Decoder.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
 //
-bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
+bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &baseDecoder) {
+
+    auto &decoder = dynamic_cast<InstructionSetV1Decoder&>(baseDecoder);
+
     switch(decoder.code.opCode) {
         case BRK :
             fmt::println(stderr, "BRK - CPU Halted!");
@@ -21,55 +26,58 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
         case NOP :
             break;
         case SYS :
-            ExecuteSysCallInstr(decoder);
+            ExecuteSysCallInstr(cpu, decoder);
             break;
         case CALL :
-            ExecuteCallInstr(decoder);
+            ExecuteCallInstr(cpu, decoder);
             break;
         case LEA :
-            ExecuteLeaInstr(decoder);
+            ExecuteLeaInstr(cpu, decoder);
             break;
         case RET :
-            ExecuteRetInstr(decoder);
+            ExecuteRetInstr(cpu, decoder);
             break;
         case RTI :
-            ExecuteRtiInstr(decoder);
+            ExecuteRtiInstr(cpu, decoder);
             break;
         case RTE :
-            ExecuteRteInstr(decoder);
+            ExecuteRteInstr(cpu, decoder);
             break;
         case MOV :
-            ExecuteMoveInstr(decoder);
+            ExecuteMoveInstr(cpu, decoder);
             break;
         case ADD :
-            ExecuteAddInstr(decoder);
+            ExecuteAddInstr(cpu, decoder);
             break;
         case PUSH :
-            ExecutePushInstr(decoder);
+            ExecutePushInstr(cpu, decoder);
             break;
         case POP :
-            ExecutePopInstr(decoder);
+            ExecutePopInstr(cpu, decoder);
             break;
         case LSR :
-            ExecuteLsrInstr(decoder);
+            ExecuteLsrInstr(cpu, decoder);
             break;
         case LSL :
-            ExecuteLslInstr(decoder);
+            ExecuteLslInstr(cpu, decoder);
             break;
         case ASR :
-            ExecuteAsrInstr(decoder);
+            ExecuteAsrInstr(cpu, decoder);
             break;
         case ASL :
-            ExecuteAslInstr(decoder);
+            ExecuteAslInstr(cpu, decoder);
             break;
         case CMP :
-            ExecuteCmpInstr(decoder);
+            ExecuteCmpInstr(cpu, decoder);
             break;
         case BEQ :
-            ExecuteBeqInstr(decoder);
+            ExecuteBeqInstr(cpu, decoder);
             break;
         case BNE :
-            ExecuteBneInstr(decoder);
+            ExecuteBneInstr(cpu, decoder);
+            break;
+        case SIMD:
+            ExecuteSIMDInstr(cpu, decoder);
             break;
         default:
             fmt::println(stderr, "Invalid operand: {} - raising exception handler (if available)", decoder.code.opCodeByte);
@@ -81,6 +89,23 @@ bool InstructionSetImpl::ExecuteInstruction(InstructionDecoder &decoder) {
     }
     return true;
 }
+
+
+void InstructionSetV1Impl::ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &instrDecoder) {
+    // FIXME: This doesn't support assymetric multi-core, i.e. different number of cores depending on the instr. set
+    //        In essence there must be an equal amount of cores..
+
+    auto simdDecoder = instrDecoder.GetDecoderForExtension(SIMD);
+    // Note: This should not happen
+    if (simdDecoder == nullptr) {
+        fmt::println(stderr,"ERR: Decoder for SIMD extension missing");
+        exit(1);
+    }
+
+    auto &simdInstructionSet = InstructionSetManager::Instance().GetExtension(SIMD);
+    simdInstructionSet.GetImplementation().ExecuteInstruction(cpu, *simdDecoder);
+}
+
 ////////////////////////////
 //
 // Instruction emulation begins here
@@ -130,10 +155,9 @@ static void UpdateCPUFlagsCMP(CPUStatusReg &statusReg, uint64_t numRes, uint64_t
     statusReg.flags.overflow = (ovflow >> (std::numeric_limits<T>::digits-1)) & 1;
 }
 
-void InstructionSetImpl::ExecuteBneInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     // zero must not be set in order to jump
@@ -163,11 +187,10 @@ void InstructionSetImpl::ExecuteBneInstr(InstructionDecoder& instrDecoder) {
     cpu.registers.instrPointer.data.longword += relativeOffset;
 
 }
-void InstructionSetImpl::ExecuteBeqInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Immediate) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     // zero must be in order to jump
@@ -194,13 +217,14 @@ void InstructionSetImpl::ExecuteBeqInstr(InstructionDecoder& instrDecoder) {
     cpu.registers.instrPointer.data.longword += relativeOffset;
 }
 
-void InstructionSetImpl::ExecuteCmpInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteCmpInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode == AddressMode::Immediate) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
+
+    // FIXME: We shouldn't read the dst value here - should be part of the decoding step...
     RegisterValue dstReg = instrDecoder.ReadDstValue(cpu);
 /*
     if (instrDecoder.dstAddrMode == AddressMode::Register) {
@@ -230,11 +254,10 @@ void InstructionSetImpl::ExecuteCmpInstr(InstructionDecoder& instrDecoder) {
     }
 }
 
-void InstructionSetImpl::ExecuteAslInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteAslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
 
@@ -288,11 +311,10 @@ void InstructionSetImpl::ExecuteAslInstr(InstructionDecoder& instrDecoder) {
 
 // This can be simplified...
 // See: MoiraALU_cpp.h - could take a few impl. ideas from there..
-void InstructionSetImpl::ExecuteAsrInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteAsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     auto &dstReg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);
@@ -391,11 +413,10 @@ void Shift(CPUStatusReg &status, int cnt, RegisterValue &regValue) {
 
 
 // FIXME: Verify and update CPU Status Flags
-void InstructionSetImpl::ExecuteLslInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteLslInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -416,15 +437,14 @@ void InstructionSetImpl::ExecuteLslInstr(InstructionDecoder& instrDecoder) {
             Shift<OperandSize::Long, OperandCode::LSL>(cpu.registers.statusReg, v.data.byte, dstReg);
             break;
     }
-    WriteToDst(instrDecoder, dstReg);
+    WriteToDst(cpu, instrDecoder, dstReg);
 }
 
 // FIXME: Verify and CPU Status flags
-void InstructionSetImpl::ExecuteLsrInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteLsrInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = instrDecoder.GetValue();
     if (instrDecoder.opArgDst.addrMode != AddressMode::Register) {
-        // FIXME: Invalid address mode
-        cpu.RaiseException(CPUKnownExceptions::kHardFault);
+        cpu.RaiseException(CPUKnownExceptions::kInvalidAddrMode);
         return;
     }
     //auto &dstReg = GetRegisterValue(instrDecoder.dstRegIndex, instrDecoder.opFamily);
@@ -445,40 +465,40 @@ void InstructionSetImpl::ExecuteLsrInstr(InstructionDecoder& instrDecoder) {
             dstReg.data.longword = dstReg.data.longword >> v.data.byte;
             break;
     }
-    WriteToDst(instrDecoder, dstReg);
+    WriteToDst(cpu, instrDecoder, dstReg);
 }
 
 //
 // Move of these will be small - consider supporting lambda in description code instead...
 //
-void InstructionSetImpl::ExecuteSysCallInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteSysCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto id = cpu.registers.dataRegisters[0].data.word;
     if (cpu.syscalls.contains(id)) {
         cpu.syscalls.at(id)->Invoke(cpu.registers, &cpu);
     }
 }
 
-void InstructionSetImpl::ExecutePushInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecutePushInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
     // FIXME: this should write to register sp using MMU handling
     cpu.stack.push(v);
 }
 
-void InstructionSetImpl::ExecutePopInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecutePopInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto v = cpu.stack.top();
     cpu.stack.pop();
-    WriteToDst(instrDecoder, v);
+    WriteToDst(cpu, instrDecoder, v);
 }
 
-void InstructionSetImpl::ExecuteLeaInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteLeaInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
-    WriteToDst(instrDecoder, v);
+    WriteToDst(cpu, instrDecoder, v);
 }
 
 
-void InstructionSetImpl::ExecuteMoveInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteMoveInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
-    WriteToDst(instrDecoder, v);
+    WriteToDst(cpu, instrDecoder, v);
 }
 
 //
@@ -545,7 +565,7 @@ static void SubtractValues(CPUStatusReg &statusReg, RegisterValue &dst, const Re
 }
 
 
-void InstructionSetImpl::ExecuteAddInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteAddInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
 
     RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
@@ -563,10 +583,10 @@ void InstructionSetImpl::ExecuteAddInstr(InstructionDecoder& instrDecoder) {
             AddValues<uint64_t>(cpu.registers.statusReg, tmpReg, v);
             break;
     }
-    WriteToDst(instrDecoder, tmpReg);
+    WriteToDst(cpu, instrDecoder, tmpReg);
 }
 
-void InstructionSetImpl::ExecuteSubInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteSubInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
 
     RegisterValue tmpReg = instrDecoder.ReadDstValue(cpu);
@@ -584,17 +604,17 @@ void InstructionSetImpl::ExecuteSubInstr(InstructionDecoder& instrDecoder) {
             SubtractValues<uint64_t>(cpu.registers.statusReg, tmpReg, v);
             break;
     }
-    WriteToDst(instrDecoder, tmpReg);
+    WriteToDst(cpu, instrDecoder, tmpReg);
 }
 
-void InstructionSetImpl::ExecuteMulInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteMulInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
 
 }
-void InstructionSetImpl::ExecuteDivInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteDivInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
 
 }
 
-void InstructionSetImpl::ExecuteCallInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteCallInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     auto &v = instrDecoder.GetValue();
     auto retAddr = cpu.registers.instrPointer;
     // push on stack...
@@ -616,7 +636,7 @@ void InstructionSetImpl::ExecuteCallInstr(InstructionDecoder& instrDecoder) {
     }
 }
 
-void InstructionSetImpl::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteRetInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     if (cpu.stack.empty()) {
         // FIXME: Raise CPU exception!
         fmt::println(stderr, "RET - no return address - stack empty!!");
@@ -629,7 +649,7 @@ void InstructionSetImpl::ExecuteRetInstr(InstructionDecoder& instrDecoder) {
     cpu.registers.instrPointer.data = newInstrAddr.data;
 }
 
-void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteRtiInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     // Check if the CPU is executing the ISR?
 
     if (!cpu.IsCPUISRActive()) {
@@ -652,7 +672,7 @@ void InstructionSetImpl::ExecuteRtiInstr(InstructionDecoder& instrDecoder) {
     cpu.ResetActiveISR();
 }
 
-void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
+void InstructionSetV1Impl::ExecuteRteInstr(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder) {
     if (!cpu.IsCPUExpActive()) {
         // FIXME: Raise invalid CPU state exception
         cpu.RaiseException(CPUKnownExceptions::kHardFault);
@@ -671,7 +691,7 @@ void InstructionSetImpl::ExecuteRteInstr(InstructionDecoder& instrDecoder) {
 //
 // Could be moved to base class
 //
-void InstructionSetImpl::WriteToDst(InstructionDecoder& instrDecoder, const RegisterValue &v) {
+void InstructionSetV1Impl::WriteToDst(CPUBase &cpu, InstructionSetV1Decoder& instrDecoder, const RegisterValue &v) {
     // FIXME: Support more address mode
     if (instrDecoder.opArgDst.addrMode == AddressMode::Register) {
         auto &reg = cpu.GetRegisterValue(instrDecoder.opArgDst.regIndex, instrDecoder.code.opFamily);

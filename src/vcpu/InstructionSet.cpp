@@ -1,117 +1,38 @@
 //
-// Created by gnilk on 16.12.23.
+// Created by gnilk on 26.05.24.
 //
-#include <unordered_map>
-#include <optional>
 #include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1.h"
+#include <memory>
 
-using namespace gnilk;
+
 using namespace gnilk::vcpu;
 
-
 //
-// This holds the full instruction set definition
-// I probably want the features to specifify valid SRC/DST combos
+// Return the one and only instr. set manager...
 //
-static std::unordered_map<OperandCode, OperandDescription> instructionSet = {
-    {OperandCode::SYS,{.name="syscall", .features = {} }},
-    {OperandCode::NOP,{.name="nop", .features = {} }},
-    {OperandCode::BRK,{.name="brk", .features = {} }},
-    {OperandCode::RET,{.name="ret", .features = {} }},
-    {OperandCode::RTI,{.name="rti", .features = {} }},
-    {OperandCode::RTE,{.name="rte", .features = {} }},
-{OperandCode::BEQ,{.name="beq", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Branching}},
-{OperandCode::BNE,{.name="bne", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand |  OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Branching}},
-
-{OperandCode::LSL, {.name="lsl", .features = OperandDescriptionFlags::OperandSize |
-                                        OperandDescriptionFlags::TwoOperands |
-                                        OperandDescriptionFlags::Immediate |
-                                        OperandDescriptionFlags::Register }},
-{OperandCode::LSR, {.name="lsr", .features = OperandDescriptionFlags::OperandSize |
-                                        OperandDescriptionFlags::TwoOperands |
-                                        OperandDescriptionFlags::Immediate |
-                                        OperandDescriptionFlags::Register }},
-{OperandCode::ASL, {.name="asl", .features = OperandDescriptionFlags::OperandSize |
-                                        OperandDescriptionFlags::TwoOperands |
-                                        OperandDescriptionFlags::Immediate |
-                                        OperandDescriptionFlags::Register }},
-{OperandCode::ASR, {.name="asr", .features = OperandDescriptionFlags::OperandSize |
-                                        OperandDescriptionFlags::TwoOperands |
-                                        OperandDescriptionFlags::Immediate |
-                                        OperandDescriptionFlags::Register }},
-{OperandCode::LEA,{.name="lea", .features = OperandDescriptionFlags::OperandSize |
-                                            OperandDescriptionFlags::TwoOperands |
-                                            OperandDescriptionFlags::Immediate |
-                                            OperandDescriptionFlags::Register |
-                                            OperandDescriptionFlags::Addressing |
-                                            OperandDescriptionFlags::Branching}},       // <- FIXME: Rename this
-{OperandCode::MOV,{.name="move", .features = OperandDescriptionFlags::OperandSize |
-                                                OperandDescriptionFlags::TwoOperands |
-                                                OperandDescriptionFlags::Immediate |
-                                                OperandDescriptionFlags::Control |
-                                                OperandDescriptionFlags::Register |
-                                                OperandDescriptionFlags::Addressing}},
-    {OperandCode::CMP, {.name="cmp", .features = OperandDescriptionFlags::OperandSize |
-                                                        OperandDescriptionFlags::TwoOperands |
-                                                        OperandDescriptionFlags::Immediate |
-                                                        OperandDescriptionFlags::Register |
-                                                        OperandDescriptionFlags::Addressing}},
-    {OperandCode::ADD,{.name="add", .features = OperandDescriptionFlags::OperandSize |
-                                              OperandDescriptionFlags::TwoOperands |
-                                              OperandDescriptionFlags::Immediate |
-                                              OperandDescriptionFlags::Register |
-                                              OperandDescriptionFlags::Addressing}},
-{OperandCode::SUB,{.name="sub", .features = OperandDescriptionFlags::OperandSize |
-                                              OperandDescriptionFlags::TwoOperands |
-                                              OperandDescriptionFlags::Immediate |
-                                              OperandDescriptionFlags::Register |
-                                              OperandDescriptionFlags::Addressing}},
-{OperandCode::MUL,{.name="mul", .features = OperandDescriptionFlags::OperandSize |
-                                              OperandDescriptionFlags::TwoOperands |
-                                              OperandDescriptionFlags::Immediate |
-                                              OperandDescriptionFlags::Register |
-                                              OperandDescriptionFlags::Addressing}},
-{OperandCode::DIV,{.name="div", .features = OperandDescriptionFlags::OperandSize |
-                                              OperandDescriptionFlags::TwoOperands |
-                                              OperandDescriptionFlags::Immediate |
-                                              OperandDescriptionFlags::Register |
-                                              OperandDescriptionFlags::Addressing}},
-
-    // Push can be from many sources
-  {OperandCode::PUSH,{.name="push", .features = OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Addressing}},
-    // Pop can only be to register...
-  {OperandCode::POP,{.name="pop", .features = OperandDescriptionFlags::OperandSize  | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Register}},
-
-    {OperandCode::CALL, {.name="call", .features = OperandDescriptionFlags::Branching | OperandDescriptionFlags::OperandSize | OperandDescriptionFlags::OneOperand | OperandDescriptionFlags::Immediate | OperandDescriptionFlags::Register  | OperandDescriptionFlags::Addressing}},
-};
-
-const std::unordered_map<OperandCode, OperandDescription> &gnilk::vcpu::GetInstructionSet() {
-    return instructionSet;
+InstructionSetManager &InstructionSetManager::Instance() {
+    static InstructionSetManager glb_InstructionSetManager;
+    return glb_InstructionSetManager;
 }
 
 
-std::optional<OperandDescription> gnilk::vcpu::GetOpDescFromClass(OperandCode opClass) {
-    if (!instructionSet.contains(opClass)) {
-        return{};
-    }
-    return instructionSet.at(opClass);
+InstructionSet &InstructionSetManager::GetInstructionSet() {
+    return GetExtension(kRootInstrSet);
 }
 
-// Look up table is built when an operand from str is first called
-static std::unordered_map<std::string, OperandCode> strToOpClassMap;
+bool InstructionSetManager::HaveInstructionSet() {
+    return HaveExtension(kRootInstrSet);
+}
 
-std::optional<OperandCode> gnilk::vcpu::GetOperandFromStr(const std::string &str) {
-    // Lazy create on first request
-    static bool haveNameOpClassTable = false;
-    if (!haveNameOpClassTable) {
-        for(auto [opClass, desc] : instructionSet) {
-            strToOpClassMap[desc.name] = opClass;
-        }
-        haveNameOpClassTable = true;
+InstructionSet &InstructionSetManager::GetExtension(uint8_t extOpCode) {
+    if (extensions.find(extOpCode) == extensions.end()) {
+        fprintf(stderr, "ERR: No instruction set with ext '0x%.2x' found\n",extOpCode);
+        exit(1);
     }
+    return *extensions[extOpCode];
+}
 
-    if (!strToOpClassMap.contains(str)) {
-        return {};
-    }
-    return strToOpClassMap.at(str);
+bool InstructionSetManager::HaveExtension(uint8_t extOpCode) {
+    return (extensions.find(extOpCode) != extensions.end());
 }

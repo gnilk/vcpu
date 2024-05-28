@@ -6,12 +6,16 @@
 #define VCPU_SUPERSCALARCPU_H
 
 #include "CPUBase.h"
-#include "InstructionSetImpl.h"
-#include "InstructionDecoder.h"
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1Impl.h"
+#include "InstructionSetV1/InstructionSetV1Decoder.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "Timer.h"
 #include <array>
+#include <assert.h>
+
+#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1.h"
 
 namespace gnilk {
     namespace vcpu {
@@ -28,16 +32,35 @@ namespace gnilk {
         //
         class InstructionPipeline {
         public:
-            using OnInstructionDecoded = std::function<void(InstructionDecoder &decoder)>;
+            using OnInstructionDecoded = std::function<void(InstructionDecoderBase &decoder)>;
             struct PipeLineDecoder {
                 size_t id = {};
                 int tickCount = 0;
                 RegisterValue ip;
-                InstructionDecoder decoder;
+                InstructionDecoderBase::Ref decoder = nullptr;
+
+                bool IsIdle() {
+                    assert(decoder);
+                    return decoder->IsIdle();
+                }
+                void Reset() {
+                    assert(decoder);
+                    decoder->Reset();
+                }
+                bool IsFinished() {
+                    assert(decoder);
+                    return decoder->IsFinished();
+                }
 
                 bool Tick(CPUBase &cpu) {
+                    if (decoder == nullptr) {
+                        decoder = InstructionSetManager::Instance().GetInstructionSet().CreateDecoder();
+                    }
+
                     tickCount++;
-                    return decoder.Tick(cpu);
+                    // FIXME: DO NOT reference the V1 instr.set like this
+                    return decoder->Tick(cpu);
+                    return false;
                 }
             };
         public:

@@ -140,11 +140,12 @@ x- linker
     ! Support for static (within a compile-unit) and exported functions and variables
     - Dummy linker don't compute segment start-addresses properly when multiple segments and chunks
 - VCPU
+    - Refactor the InstructionSet/InstructionImpl/InstructionSetV1Decoder so that it works with InstructionExtensions      
     ! Separate the instruction handler from the CPUBase, instead make that happen through composition
       Not sure how though - as it requires a much more well defined interface to avoid refactoring-hell..
     - Try to remove arithmetic flags
       RISC-V don't define them - they are deduced through other means => makes parallel execution much more efficient
-    + CPU Control Register - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
+    + CPU kFeature_Control kFeature_AnyRegister - interrupt mask register (1-on, 0 - off), exception mask (1-on, 0-off)
       Currently we fire interrupts even if no handlers are enabled (not good)
       All Interrupts should be disabled on reset...
     + Properly define the memory layout

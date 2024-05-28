@@ -45,8 +45,13 @@
 #include <limits>
 #include "VirtualCPU.h"
 
-#include "InstructionDecoder.h"
+#include "InstructionSetV1/InstructionSetV1Decoder.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
+
 #include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1.h"
+
+
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -104,12 +109,15 @@ bool VirtualCPU::Step() {
         return true;
     }
 
-    InstructionDecoder instrDecoder;
-    instrDecoder.Decode(*this);
 
-    // Note: The instruction decoder will advance the IP
-    InstructionSetImpl instructionBase(*this);
-    if (!instructionBase.ExecuteInstruction(instrDecoder)) {
+    auto &instructionSet = InstructionSetManager::Instance().GetInstructionSet();
+    auto &instructionDecoder = instructionSet.GetDecoder();
+
+    //InstructionDecoderBase::Ref instrDecoder = InstructionDecoder::Create();
+    instructionDecoder.Decode(*this);
+
+    auto &instrImpl = instructionSet.GetImplementation();
+    if (!instrImpl.ExecuteInstruction(*this, instructionDecoder)) {
         return false;
     }
 
@@ -118,7 +126,8 @@ bool VirtualCPU::Step() {
         lastDecodedInstruction.isrStateAfter = GetActiveISRControlBlock()->isrState;
     }
     lastDecodedInstruction.cpuRegistersAfter = registers;
-    lastDecodedInstruction.instrDecoder = instrDecoder;
+    // FIXME: Understand directly why I need this - I think it is for 'ToString' of the last decoded instr.
+    lastDecodedInstruction.instrDecoder = dynamic_cast<InstructionSetV1Decoder&>(instructionDecoder);
     return true;
 }
 

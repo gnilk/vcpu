@@ -5,8 +5,8 @@
 #include <map>
 #include <unordered_set>
 #include "Parser.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 #include "InstructionSet.h"
-
 /*
  * TO-OD:
  * - Move over Expression and Literals from 'astparser' project
@@ -313,7 +313,8 @@ ast::Statement::Ref Parser::ParseArrayDeclaration(vcpu::OperandSize opSize) {
 
 ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
     // Check if this is a proper instruction
-    if (vcpu::GetOperandFromStr(At().value).has_value()) {
+    auto &definition = vcpu::InstructionSetManager::Instance().GetInstructionSet().GetDefinition();
+    if (definition.GetOperandFromStr(At().value).has_value()) {
         return ParseInstruction();
     }
     // This is just an identifier - deal with it...
@@ -327,24 +328,30 @@ ast::Statement::Ref Parser::ParseIdentifierOrInstr() {
 }
 
 ast::Statement::Ref Parser::ParseInstruction() {
+    auto &instructionSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
+
     auto operand = At().value;
-    auto opClass = gnilk::vcpu::GetOperandFromStr(operand);
+    auto opClass = instructionSet.GetDefinition().GetOperandFromStr(operand);
 
     if (!opClass.has_value()) {
         fmt::println(stderr, "Unsupported instruction '{}'", At().value);
         return nullptr;
     }
 
-    auto optionalDesc = vcpu::GetOpDescFromClass(*opClass);
+    //
+    // FIXME: handle extensions!
+    //
+    auto optionalDesc = instructionSet.GetDefinition().GetOpDescFromClass(*opClass);
 
     if (!optionalDesc.has_value()) {
         fmt::println(stderr, "unsupported instruction {}", At().value);
         return nullptr;
     }
     auto opDesc = *optionalDesc;
-    if (opDesc.features & vcpu::OperandDescriptionFlags::TwoOperands) {
+    // FIXME: consolidate the op-desc-flags
+    if (opDesc.features & vcpu::OperandFeatureFlags::kFeature_TwoOperands) {
         return ParseTwoOpInstruction(operand);
-    } else if (opDesc.features & vcpu::OperandDescriptionFlags::OneOperand) {
+    } else if (opDesc.features & vcpu::OperandFeatureFlags::kFeature_OneOperand) {
         return ParseOneOpInstruction(operand);
     }
 

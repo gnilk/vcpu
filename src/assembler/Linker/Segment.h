@@ -11,7 +11,7 @@
 #include <vector>
 #include <string>
 
-#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1Def.h"
 
 namespace gnilk {
     namespace assembler {

@@ -5,6 +5,9 @@
 #include <vector>
 #include <testinterface.h>
 
+#include "InstructionSetV1/InstructionSetV1.h"
+#include "Simd/SIMDInstructionSet.h"
+
 #include "VirtualCPU.h"
 
 using namespace gnilk;

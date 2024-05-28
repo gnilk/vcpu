@@ -10,6 +10,8 @@
 #include "StrUtil.h"
 #include "VirtualCPU.h"
 #include "elfio/elfio.hpp"
+#include "InstructionSet.h"
+#include "InstructionSetV1/InstructionSetV1.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -86,6 +88,9 @@ int main(int argc, char **argv)  {
         fmt::println("no files - bailing");
         return 1;
     }
+
+    // Set the root instruction set
+    InstructionSetManager::Instance().SetInstructionSet<InstructionSetV1>();
 
     // Now, initialize the CPU
     cpuemu.Begin(cpu_ram_memory, 1024 * VCPU_MMU_PAGE_SIZE);

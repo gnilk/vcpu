@@ -33,9 +33,9 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
     regs.dataRegisters[0].data.word = 0x4711;
 
     InstructionPipeline pipeline;
-    pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoder &decoder){
-        InstructionSetImpl instructionBase(cpu);
-        instructionBase.ExecuteInstruction(decoder);
+    pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoderBase &decoder){
+        InstructionSetV1Impl instructionBase;
+        instructionBase.ExecuteInstruction(cpu,decoder);
         //cpu.ExecuteInstruction(decoder);
     });
 
@@ -87,9 +87,9 @@ DLL_EXPORT int test_pipeline_instr_move_immediate(ITesting *t) {
     SuperScalarCPU cpu;
     cpu.QuickStart(program, 1024);
     InstructionPipeline pipeline;
-    pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoder &decoder){
-        InstructionSetImpl instructionBase(cpu);
-        instructionBase.ExecuteInstruction(decoder);
+    pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoderBase &decoder){
+        InstructionSetV1Impl instructionBase;
+        instructionBase.ExecuteInstruction(cpu, decoder);
         //cpu.ExecuteInstruction(decoder);
     });
 

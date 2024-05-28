@@ -2,9 +2,14 @@
 // Created by gnilk on 10.03.2024.
 //
 
+// This is very much tied to the current instruction set we are assembling
+// Can we make this more 'generic'?
+
+
 #include "CompileUnit.h"
 #include "Identifiers.h"
 #include "StmtEmitter.h"
+#include "InstructionSet.h"
 
 //
 // 1) Process AST and make a flat list of EmitStatements -> this can and should be done in parallell
@@ -608,6 +613,7 @@ bool EmitCodeStatement::ProcessNoOpInstrStmt(ast::NoOpInstrStatment::Ref stmt) {
 }
 
 
+// FIXME: InstructionSet dependent?
 bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpInstrStatment::Ref stmt) {
     if (!EmitOpCodeForSymbol(stmt->Symbol())) {
         return false;
@@ -618,8 +624,9 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpIn
     //
     auto opSizeWritePoint = data.size(); // Save where we are
 
-    auto opClass = *vcpu::GetOperandFromStr(stmt->Symbol());
-    auto opDesc = *vcpu::GetOpDescFromClass(opClass);
+    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
+    auto opClass = *instrSet.GetDefinition().GetOperandFromStr(stmt->Symbol());
+    auto opDesc = *instrSet.GetDefinition().GetOpDescFromClass(opClass);
 
 
     if (!EmitInstrOperand(context, opDesc, opSize, stmt->Operand())) {
@@ -637,6 +644,7 @@ bool EmitCodeStatement::ProcessOneOpInstrStmt(CompileUnit &context, ast::OneOpIn
     return true;
 }
 
+// FIXME: InstructionSet dependent?
 bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpInstrStatment::Ref twoOpInstr) {
     if (twoOpInstr->Symbol() == "lea") {
         int breakme = 1;
@@ -646,15 +654,27 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
         return false;
     }
 
-    auto opSizeWritePoint = data.size();
+    // Fetch the instruction set..
+    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
 
+
+    // FIXME: This can't be correct in case we have to recalibrate the opsize [will we ever need that for a two-op instr?]
     auto opSize = twoOpInstr->OpSize();
     uint8_t opSizeAndFamilyCode = static_cast<uint8_t>(opSize);
+    //
+    //  We should have the instr.set encode this...
+    //
     opSizeAndFamilyCode |= static_cast<uint8_t>(twoOpInstr->OpFamily()) << 4;
 
-    auto opClass = *vcpu::GetOperandFromStr(twoOpInstr->Symbol());
-    auto opDesc = *vcpu::GetOpDescFromClass(opClass);
+//    auto opSizeAndFamilyCode = instrSet.GetDefinition().EncodeOpSizeAndFamily(twoOpInstr->OpSize(), twoOpInstr->OpFamily());
 
+    auto opClass = *instrSet.GetDefinition().GetOperandFromStr(twoOpInstr->Symbol());
+    auto opDesc = *instrSet.GetDefinition().GetOpDescFromClass(opClass);
+
+    // Save the write point..
+    auto opSizeWritePoint = data.size();
+    // This is temporary (might be changed)
+    // FIXME: Verify this - not sure this is correct..
     EmitOpSize(opSizeAndFamilyCode);
 
     // This can't output opSize..
@@ -672,14 +692,18 @@ bool EmitCodeStatement::ProcessTwoOpInstrStmt(CompileUnit &context, ast::TwoOpIn
 
     // If we didn't write the operand size and family, let's do it now...
     if (!(emitFlags & kEmitFlags::kEmitOpSize)) {
+        // FIXME: This branch is never hit - need unit test to specifically stress this (if even possible)
         data.insert(data.begin() + opSizeWritePoint, opSize);
     }
 
     return true;
 }
 
+// FIXME: Instruction set dependent
 bool EmitCodeStatement::EmitOpCodeForSymbol(const std::string &symbol) {
-    auto opcode = gnilk::vcpu::GetOperandFromStr(symbol);
+
+    auto &instrSet = vcpu::InstructionSetManager::Instance().GetInstructionSet();
+    auto opcode = instrSet.GetDefinition().GetOperandFromStr(symbol);
     if (!opcode.has_value()) {
         fmt::println(stderr, "Unknown/Unsupported symbol: {}", symbol);
         return false;
@@ -699,7 +723,7 @@ void EmitCodeStatement::EmitRegMode(uint8_t regMode) {
 }
 
 
-bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, const vcpu::OperandDescription &desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
+bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, const vcpu::OperandDescriptionBase &desc, vcpu::OperandSize opSize, ast::Expression::Ref operandExp) {
 
     // If this is an identifier - check if it is actually a constant and work out the actual value - recursively
     if (operandExp->Kind() == ast::NodeType::kIdentifier) {
@@ -713,27 +737,27 @@ bool EmitCodeStatement::EmitInstrOperand(CompileUnit &context, const vcpu::Opera
 
     switch(operandExp->Kind()) {
         case ast::NodeType::kNumericLiteral :
-            if (desc.features & vcpu::OperandDescriptionFlags::Immediate) {
+            if (desc.features & vcpu::OperandFeatureFlags::kFeature_Immediate) {
                 return EmitNumericLiteralForInstr(opSize, std::dynamic_pointer_cast<ast::NumericLiteral>(operandExp));
             }
             fmt::println(stderr, "Instruction Operand does not support immediate");
             break;
         case ast::NodeType::kRegisterLiteral :
-            if (desc.features & vcpu::OperandDescriptionFlags::Register) {
+            if (desc.features & vcpu::OperandFeatureFlags::kFeature_AnyRegister) {
                 return EmitRegisterLiteral(std::dynamic_pointer_cast<ast::RegisterLiteral>(operandExp));
             }
             fmt::println(stderr, "Instruction Operand does not support register");
             break;
         case ast::NodeType::kIdentifier :
             // After statement parsing is complete we will change all place-holders
-            if ((desc.features & vcpu::OperandDescriptionFlags::Addressing) && (opSize == vcpu::OperandSize::Long)) {
+            if ((desc.features & vcpu::OperandFeatureFlags::kFeature_Addressing) && (opSize == vcpu::OperandSize::Long)) {
                 return EmitLabelAddress(context, desc, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             } else {
                 return EmitRelativeLabelAddress(context, desc, std::dynamic_pointer_cast<ast::Identifier>(operandExp), opSize);
             }
             break;
         case ast::NodeType::kDeRefExpression :
-            if (desc.features & vcpu::OperandDescriptionFlags::Addressing) {
+            if (desc.features & vcpu::OperandFeatureFlags::kFeature_Addressing) {
                 return EmitDereference(context, std::dynamic_pointer_cast<ast::DeReferenceExpression>(operandExp));
             }
             break;
@@ -778,7 +802,8 @@ bool EmitCodeStatement::EmitRegisterLiteral(ast::RegisterLiteral::Ref regLiteral
     return EmitRegisterLiteralWithAddrMode(regLiteral, vcpu::AddressMode::Register);
 }
 
-// Note: these are 'raw' values - in order to have them in the REGMODE byte of an instr. they must be shifted
+// FIXME: Instruction set dependent
+//   Note: these are 'raw' values - in order to have them in the REGMODE byte of an instr. they must be shifted
 //       see 'EmitRegisterLiteral'
 static std::unordered_map<std::string, uint8_t> regToIdx = {
         {"d0",0},
@@ -937,7 +962,8 @@ bool EmitCodeStatement::EmitDereference(CompileUnit &context, ast::DeReferenceEx
     return false;
 }
 
-bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, const vcpu::OperandDescription &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
+// FIXME: need pointer/ref to current instr. set
+bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, const vcpu::OperandDescriptionBase &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
     // This is an absolute jump
@@ -946,7 +972,10 @@ bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, const vcpu::Opera
     // FIXME: How to distinguish when/where we should have immediate or absolute
     // like: 'call label' <- should be immediate (i.e. the value is placed here and should be used as a fixed jump point)
     //       'cmp.l label, 0'  <- should be absolute (i.e. the absolute value from address of label should be read)
-    if (desc.features & vcpu::OperandDescriptionFlags::Branching) {
+
+    // FIXME: need pointer/ref to current instr. set
+    //        -> Replace 'IsFeatureSupported()'
+    if (desc.features & vcpu::OperandFeatureFlags::kFeature_Branching) {
         regMode |= vcpu::AddressMode::Immediate;
     } else {
         regMode |= vcpu::AddressMode::Absolute;
@@ -980,7 +1009,7 @@ bool EmitCodeStatement::EmitLabelAddress(CompileUnit &context, const vcpu::Opera
 
 // FIXME: This must be done in the post-emit stage, which is a problem - since it will be hard to compute the actual jump size...
 //        What I would need to is to 'estimate' or 'guess' the size of the jump - and the recompute everything if it doesn't work out...
-bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, const vcpu::OperandDescription &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
+bool EmitCodeStatement::EmitRelativeLabelAddress(CompileUnit &context, const vcpu::OperandDescriptionBase &desc, ast::Identifier::Ref identifier, vcpu::OperandSize opSize) {
     uint8_t regMode = 0; // no register
 
     // This a relative jump

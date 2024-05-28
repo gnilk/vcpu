@@ -16,19 +16,24 @@ if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext)
 endif()
 
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext/ELFIO)
-    message(WARNING "Installing ELFIO library")
+    message(STATUS "Installing ELFIO library")
     execute_process(COMMAND git clone https://github.com/serge1/ELFIO ${CMAKE_SOURCE_DIR}/src/ext/ELFIO)
 endif ()
 
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/src/ext/posit)
+    message(STATUS "Installing posit library")
+    execute_process(COMMAND git clone https://github.com/federicorossifr/cppposit.git ${CMAKE_SOURCE_DIR}/src/ext/posit)
+endif()
 
 
 #
 # Virtual CPU sources
 #
 list(APPEND vcpusrc src/vcpu/CPUBase.cpp src/vcpu/CPUBase.h)
-list(APPEND vcpusrc src/vcpu/InstructionSetImpl.cpp src/vcpu/InstructionSetImpl.cpp)
-list(APPEND vcpusrc src/vcpu/InstructionDecoder.cpp src/vcpu/InstructionDecoder.h)
 list(APPEND vcpusrc src/vcpu/InstructionSet.cpp src/vcpu/InstructionSet.h)
+list(APPEND vcpusrc src/vcpu/InstructionSetImplBase.h)
+list(APPEND vcpusrc src/vcpu/InstructionSetDefBase.h)
+list(APPEND vcpusrc src/vcpu/InstructionDecoderBase.cpp src/vcpu/InstructionDecoderBase.h)
 list(APPEND vcpusrc src/vcpu/Interrupt.h)
 list(APPEND vcpusrc src/vcpu/Peripheral.h)
 list(APPEND vcpusrc src/vcpu/RegisterValue.h)
@@ -49,12 +54,31 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/HWMappedBus.cpp src/vcpu/MemorySubSys/
 list(APPEND vcpusrc src/vcpu/MemorySubSys/RamBus.cpp src/vcpu/MemorySubSys/RamBus.h)
 # temp...
 list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSys/PageAllocator.h)
+
+# Base/Core Instruction Set
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1.cpp src/vcpu/InstructionSetV1/InstructionSetV1.cpp)
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Decoder.cpp src/vcpu/InstructionSetV1/InstructionSetV1Decoder.h)
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Def.cpp src/vcpu/InstructionSetV1/InstructionSetV1Def.h)
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp)
+
+
+# SIMD extensions
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSet.cpp src/vcpu/Simd/SIMDInstructionSet.h)
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSetDef.cpp src/vcpu/Simd/SIMDInstructionSetDef.h)
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionSetImpl.cpp src/vcpu/Simd/SIMDInstructionSetImpl.h)
+list(APPEND cpuext_simd src/vcpu/Simd/SIMDInstructionDecoder.cpp src/vcpu/Simd/SIMDInstructionDecoder.h)
+
+# SIMD extension testing
+list(APPEND vcputestsrc src/vcpu/Simd/tests/test_simd_decoder.cpp)
+
+
 #
 # Virtual CPU unit test sources
 #
 list(APPEND vcputestsrc src/vcpu/tests/test_exceptions.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_integration.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_interrupt.cpp)
+list(APPEND vcputestsrc src/vcpu/tests/test_main.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_memlayout.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_pipeline.cpp)
 list(APPEND vcputestsrc src/vcpu/tests/test_soc.cpp)
@@ -112,12 +136,13 @@ list(APPEND asmtestsrc src/assembler/tests/test_stmtemitter.cpp)
 
 
 # test library for vcpu
-add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${commonsrc})
+add_library(test SHARED ${vcputestsrc} ${asmtestsrc} ${asmsrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_compile_options(test PUBLIC -DTRUN_USE_V1)
 target_include_directories(test PUBLIC src/vcpu)
 target_include_directories(test PUBLIC src/assembler)
 target_include_directories(test PUBLIC src/common)
 target_include_directories(test PUBLIC src/ext/ELFIO)
+target_include_directories(test PUBLIC src/ext/posit/include)
 
 if (APPLE)
     target_include_directories(test PUBLIC /usr/local/include)
@@ -127,17 +152,18 @@ endif()
 #
 # Emulator and Assembler apps
 #
-add_executable(emu apps/emulator/emulator.cpp ${emusrc} ${vcpusrc} ${commonsrc})
+add_executable(emu apps/emulator/emulator.cpp ${emusrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_include_directories(emu PUBLIC src/vcpu)
 target_include_directories(emu PUBLIC src/common)
 target_include_directories(emu PUBLIC src/ext/ELFIO)
+target_include_directories(emu PUBLIC src/ext/posit/include)
 
-add_executable(asm apps/assembler/assembler.cpp ${asmsrc} ${vcpusrc} ${commonsrc})
+add_executable(asm apps/assembler/assembler.cpp ${asmsrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
 target_include_directories(asm PUBLIC src/common)
 target_include_directories(asm PUBLIC src/vcpu)
 target_include_directories(asm PUBLIC src/ext/ELFIO)
-
+target_include_directories(asm PUBLIC src/ext/posit/include)
 #
 # link targets
 #

@@ -2,34 +2,43 @@
 // Created by gnilk on 16.12.23.
 //
 
-#include "InstructionDecoder.h"
+#include "InstructionSetV1Decoder.h"
 #include <utility>
-#include <fmt/core.h>
+#include "fmt/core.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
 
-const std::string &InstructionDecoder::StateToString(InstructionDecoder::State s) {
-    static std::unordered_map<InstructionDecoder::State, std::string> stateNames = {
-            {InstructionDecoder::State::kStateIdle, "Idle"},
-            {InstructionDecoder::State::kStateDecodeAddrMode, "AddrMode"},
-            {InstructionDecoder::State::kStateReadMem, "ReadMem"},
-            {InstructionDecoder::State::kStateFinished, "Finished"},
+const std::string &InstructionSetV1Decoder::StateToString(InstructionSetV1Decoder::State s) {
+    static std::unordered_map<InstructionSetV1Decoder::State, std::string> stateNames = {
+            {InstructionSetV1Decoder::State::kStateIdle,            "Idle"},
+            {InstructionSetV1Decoder::State::kStateDecodeAddrMode,  "AddrMode"},
+            {InstructionSetV1Decoder::State::kStateReadMem,         "ReadMem"},
+            {InstructionSetV1Decoder::State::kStateFinished,        "Finished"},
+            {InstructionSetV1Decoder::State::kStateDecodeExtension, "Extension"},
     };
     return stateNames[s];
 }
 
-InstructionDecoder::Ref InstructionDecoder::Create(uint64_t memoryOffset) {
-
-    auto inst = std::make_shared<InstructionDecoder>();
-    inst->memoryOffset = memoryOffset;
-    inst->ofsStartInstr = 0;
-    inst->ofsEndInstr = 0;
+InstructionSetV1Decoder::Ref InstructionSetV1Decoder::Create() {
+    auto inst = std::make_shared<InstructionSetV1Decoder>();
     return inst;
 }
 
-bool InstructionDecoder::Tick(CPUBase &cpu) {
+void InstructionSetV1Decoder::Reset() {
+    ChangeState(State::kStateIdle);
+}
+
+//
+// FIXME: Some instructions (like cmp - see 'InstructionSetV1Impl' need an additional 'ReadMem' tick for the destination value
+//        We should implement that and add it as a 'Feature' flag for the op-code...
+//        This way the decoding is complete before handing over to the Impl.
+//        Which allows decoding to be 100% separated from execution => many execution units and longer decoding-pipelines possible..
+//
+//        See (for a simplified picture): https://upload.wikimedia.org/wikipedia/commons/b/b0/AMD_Bulldozer_block_diagram_%28CPU_core_block%29.png
+//
+bool InstructionSetV1Decoder::Tick(CPUBase &cpu) {
     switch(state) {
         case State::kStateIdle :
             return ExecuteTickFromIdle(cpu);
@@ -40,6 +49,9 @@ bool InstructionDecoder::Tick(CPUBase &cpu) {
         case State::kStateFinished :
             //fmt::println(stderr, "InstrDecoder - tick on state 'kStateFinished' we should never reach this - should auto-go to IDLE");
             return true;
+        case State::kStateDecodeExtension :
+            return ExecuteTickDecodeExt(cpu);
+            break;
     }
     return false;
 }
@@ -47,7 +59,7 @@ bool InstructionDecoder::Tick(CPUBase &cpu) {
 //
 // This is the first TICK in an instruction - it will ALWAYS read 32bit of the Instr.Ptr...
 //
-bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
+bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     memoryOffset = cpu.GetInstrPtr().data.longword;
     ofsStartInstr = memoryOffset;
     ofsEndInstr = memoryOffset;
@@ -57,19 +69,38 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
         return false;
     }
 
+    auto &instrSetDefinition = InstructionSetManager::Instance().GetInstructionSet().GetDefinition();
+
     // Decode the op-code
     code.opCode =  static_cast<OperandCode>(code.opCodeByte);
     // check if we have this instruction defined
-    if (!gnilk::vcpu::GetInstructionSet().contains(code.opCode)) {
+    if (!instrSetDefinition.GetInstructionSet().contains(code.opCode)) {
         return false;
     }
 
-    code.description = gnilk::vcpu::GetInstructionSet().at(code.opCode);
+    if (IsExtension(code.opCodeByte)) {
+        // We will break here - just move one instruction forward..
+        cpu.AdvanceInstrPtr(1);
+        if (extDecoders.find(code.opCodeByte) == extDecoders.end()) {
+            // Don't have extension - exit
+            if (!InstructionSetManager::Instance().HaveExtension(code.opCodeByte)) {
+                fmt::println(stderr, "ERR: Invalid extension {:#X} no extension instr.set registered", code.opCodeByte);
+                exit(1);
+            }
+            extDecoders[code.opCodeByte] = InstructionSetManager::Instance().GetExtension(code.opCodeByte).CreateDecoder();
+        }
+        extDecoders[code.opCodeByte]->Reset();
+        ChangeState(State::kStateDecodeExtension);
+        return true;
+    }
+
+
+    code.description = instrSetDefinition.GetInstructionSet().at(code.opCode);
 
     //
     // Decode addressing
     //
-    if (code.description.features & OperandDescriptionFlags::OperandSize) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OperandSize) {
         code.opSizeAndFamilyCode = NextByte(cpu);
         code.opSize = static_cast<OperandSize>(code.opSizeAndFamilyCode & 0x03);
         code.opFamily = static_cast<OperandFamily>((code.opSizeAndFamilyCode >> 4) & 0x03);
@@ -82,9 +113,9 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     opArgSrc = {};
 
     // we do NOT write values back to the CPU (thats part of instr. execution) but we do READ data as part of decoding
-    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
         DecodeOperandArg(cpu, opArgDst);
-    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         DecodeOperandArg(cpu, opArgDst);
         DecodeOperandArg(cpu, opArgSrc);
     } else {
@@ -98,7 +129,7 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     // and the Pipeline to grab a new instruction..
     cpu.AdvanceInstrPtr(szComputed);
 
-    if ((code.description.features & OperandDescriptionFlags::OneOperand) || (code.description.features & OperandDescriptionFlags::TwoOperands)) {
+    if ((code.description.features & OperandFeatureFlags::kFeature_OneOperand) || (code.description.features & OperandFeatureFlags::kFeature_TwoOperands)) {
         state = State::kStateDecodeAddrMode;
         return true;
     }
@@ -107,14 +138,30 @@ bool InstructionDecoder::ExecuteTickFromIdle(CPUBase &cpu) {
     return true;
 }
 
+// Checks if the first byte matches the extension mask
+bool InstructionSetV1Decoder::IsExtension(uint8_t opCodeByte) const {
+    if ((opCodeByte & OperandCodeExtensionMask) != OperandCodeExtensionMask) {
+        return false;
+    }
+    return true;
+}
+
+InstructionDecoderBase::Ref InstructionSetV1Decoder::GetDecoderForExtension(uint8_t ext) {
+    if (extDecoders.find(ext) == extDecoders.end()) {
+        return nullptr;
+    }
+    return extDecoders[ext];
+}
+
+
 //
 // this is the second tick - here we decode the Operands
 // relative addressing needs one byte per operand if used
 // Absolute addressing will need op.size bytes will read an additional X bytes (opSize dependent) from the instr.ptr
 //
-bool InstructionDecoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
+bool InstructionSetV1Decoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
     DecodeOperandArgAddrMode(cpu, opArgDst);
-    if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+    if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         DecodeOperandArgAddrMode(cpu, opArgSrc);
     }
     // FIXME: Is this required?
@@ -125,41 +172,45 @@ bool InstructionDecoder::ExecuteTickDecodeAddrMode(CPUBase &cpu) {
 //
 // This is the third tick, here we fetch any data from from RAM - not following the instr. pointer
 //
-bool InstructionDecoder::ExecuteTickReadMem(CPUBase &cpu) {
-    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+bool InstructionSetV1Decoder::ExecuteTickReadMem(CPUBase &cpu) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
         value = ReadDstValue(cpu); //ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
-    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         value = ReadSrcValue(cpu); //value = ReadFrom(cpu, opSize, srcAddrMode, srcAbsoluteAddr, srcRelAddrMode, srcRegIndex);
     }
     state = State::kStateFinished;
     return true;
 }
 
-bool InstructionDecoder::Decode(CPUBase &cpu) {
-
-    // Decode using the tick functions - this will track number of ticks for the operand
-    state = State::kStateIdle;
-    while(state != State::kStateFinished) {
-        if (!Tick(cpu)) {
-            return false;
-        }
+//
+// Decode an extension
+//
+bool InstructionSetV1Decoder::ExecuteTickDecodeExt(CPUBase &cpu) {
+    auto extDecoder = GetDecoderForExtension(code.opCodeByte);
+    if (extDecoder == nullptr) {
+        fmt::println(stderr, "ERR: No extension decoder!");
+        return false;
     }
-    return true;
+    bool result = extDecoder->Tick(cpu);
+    if (extDecoder->IsFinished()) {
+        ChangeState(State::kStateFinished);
+    }
+    return result;
 }
 
-size_t InstructionDecoder::ComputeInstrSize() const {
+size_t InstructionSetV1Decoder::ComputeInstrSize() const {
     size_t opSize = ofsEndInstr - ofsStartInstr;    // Start here - as operands have different sizes..
 
-    if (code.description.features & OperandDescriptionFlags::OneOperand) {
+    if (code.description.features & OperandFeatureFlags::kFeature_OneOperand) {
         opSize += ComputeOpArgSize(opArgDst);
-    } else if (code.description.features & OperandDescriptionFlags::TwoOperands) {
+    } else if (code.description.features & OperandFeatureFlags::kFeature_TwoOperands) {
         opSize += ComputeOpArgSize(opArgDst);
         opSize += ComputeOpArgSize(opArgSrc);
     }
     return opSize;
 }
 
-size_t InstructionDecoder::ComputeOpArgSize(const InstructionDecoder::OperandArg &opArg) const {
+size_t InstructionSetV1Decoder::ComputeOpArgSize(const InstructionSetV1Decoder::OperandArg &opArg) const {
     size_t szOpArg = 0;
     if (opArg.addrMode == AddressMode::Absolute) {
         szOpArg += sizeof(uint64_t);
@@ -174,7 +225,7 @@ size_t InstructionDecoder::ComputeOpArgSize(const InstructionDecoder::OperandArg
     return szOpArg;
 }
 
-void InstructionDecoder::DecodeOperandArg(CPUBase &cpu, InstructionDecoder::OperandArg &inOutOpArg) {
+void InstructionSetV1Decoder::DecodeOperandArg(CPUBase &cpu, InstructionSetV1Decoder::OperandArg &inOutOpArg) {
     inOutOpArg.regAndFlags = NextByte(cpu);
     inOutOpArg.addrMode = static_cast<AddressMode>(inOutOpArg.regAndFlags & 0x03);
     inOutOpArg.relAddrMode.mode  = static_cast<RelativeAddressMode>((inOutOpArg.regAndFlags & 0x0c)>>2);
@@ -183,7 +234,7 @@ void InstructionDecoder::DecodeOperandArg(CPUBase &cpu, InstructionDecoder::Oper
     inOutOpArg.regIndex = (inOutOpArg.regAndFlags>>4) & 15;
 }
 
-void InstructionDecoder::DecodeOperandArgAddrMode(CPUBase &cpu, InstructionDecoder::OperandArg &inOutOpArg) {
+void InstructionSetV1Decoder::DecodeOperandArgAddrMode(CPUBase &cpu, InstructionSetV1Decoder::OperandArg &inOutOpArg) {
     if (inOutOpArg.addrMode == AddressMode::Indirect) {
         // Do nothing - this is decoded from the data about - details will be decoded further down...
     } else if (inOutOpArg.addrMode == AddressMode::Absolute) {
@@ -214,18 +265,18 @@ void InstructionDecoder::DecodeOperandArgAddrMode(CPUBase &cpu, InstructionDecod
 
 
 // Returns a value based on src op decoding
-RegisterValue InstructionDecoder::ReadSrcValue(CPUBase &cpu) {
+RegisterValue InstructionSetV1Decoder::ReadSrcValue(CPUBase &cpu) {
     return ReadFrom(cpu, code.opSize, opArgSrc.addrMode, opArgSrc.absoluteAddr, opArgSrc.relAddrMode, opArgSrc.regIndex);
 }
 
 // Returns a value based on dst op decoding
-RegisterValue InstructionDecoder::ReadDstValue(CPUBase &cpu) {
+RegisterValue InstructionSetV1Decoder::ReadDstValue(CPUBase &cpu) {
     return ReadFrom(cpu, code.opSize, opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.relAddrMode, opArgDst.regIndex);
 //    return ReadFrom(cpu, opSize, dstAddrMode, dstAbsoluteAddr, dstRelAddrMode, dstRegIndex);
 }
 
 
-RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddrMode, int idxRegister) {
+RegisterValue InstructionSetV1Decoder::ReadFrom(CPUBase &cpuBase, OperandSize szOperand, AddressMode addrMode, uint64_t absAddress, RelativeAddressing relAddrMode, int idxRegister) {
     RegisterValue v = {};
 
     // This should be performed by instr. decoder...
@@ -246,7 +297,7 @@ RegisterValue InstructionDecoder::ReadFrom(CPUBase &cpuBase, OperandSize szOpera
     return v;
 }
 
-uint64_t InstructionDecoder::ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddrMode) {
+uint64_t InstructionSetV1Decoder::ComputeRelativeAddress(CPUBase &cpuBase, const RelativeAddressing &relAddrMode) {
     uint64_t relativeAddrOfs = 0;
     // Break out to own function - this is also used elsewhere..
     if ((relAddrMode.mode == RelativeAddressMode::AbsRelative) || (relAddrMode.mode == RelativeAddressMode::RegRelative)) {
@@ -262,25 +313,22 @@ uint64_t InstructionDecoder::ComputeRelativeAddress(CPUBase &cpuBase, const Rela
     return relativeAddrOfs;
 }
 
-uint8_t InstructionDecoder::NextByte(CPUBase &cpu) {
-    // Note: FetchFromRam will modifiy the address!!!!
-    auto nextByte = cpu.FetchFromPhysicalRam<uint8_t>(memoryOffset);
-    return nextByte;
-}
 
 
-std::string InstructionDecoder::ToString() const {
-    if (!GetInstructionSet().contains(code.opCode)) {
+std::string InstructionSetV1Decoder::ToString() const {
+    auto &instrSetDefinition = InstructionSetManager::Instance().GetInstructionSet().GetDefinition(); //glb_InstructionSetV1.definition;
+
+    if (!instrSetDefinition.GetInstructionSet().contains(code.opCode)) {
         // Note, we don't raise an exception - this is a helper for SW - not an actual HW type of function
         std::string invalid;
         fmt::format_to(std::back_inserter(invalid), "invalid instr. {:#x} @ {:#x}", (int)code.opCode, ofsStartInstr);
         return invalid;
     }
-    auto desc = *GetOpDescFromClass(code.opCode);
+    auto desc = instrSetDefinition.GetOpDescFromClass(code.opCode);
     std::string opString;
 
-    opString = desc.name;
-    if (desc.features & OperandDescriptionFlags::OperandSize) {
+    opString = desc->name;
+    if (desc->features & OperandFeatureFlags::kFeature_OperandSize) {
         switch(code.opSize) {
             case OperandSize::Byte :
                 opString += ".b";
@@ -297,12 +345,12 @@ std::string InstructionDecoder::ToString() const {
         }
     }
 
-    if (desc.features & OperandDescriptionFlags::OneOperand) {
+    if (desc->features & OperandFeatureFlags::kFeature_OneOperand) {
         opString += "\t";
         opString += DisasmOperand(opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.regIndex, opArgDst.relAddrMode);
     }
 
-    if (desc.features & OperandDescriptionFlags::TwoOperands) {
+    if (desc->features & OperandFeatureFlags::kFeature_TwoOperands) {
         opString += "\t";
         opString += DisasmOperand(opArgDst.addrMode, opArgDst.absoluteAddr, opArgDst.regIndex, opArgDst.relAddrMode);
 
@@ -314,7 +362,7 @@ std::string InstructionDecoder::ToString() const {
     return opString;
 }
 
-std::string InstructionDecoder::DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionDecoder::RelativeAddressing relAddr) const {
+std::string InstructionSetV1Decoder::DisasmOperand(AddressMode addrMode, uint64_t absAddress, uint8_t regIndex, InstructionSetV1Decoder::RelativeAddressing relAddr) const {
     std::string opString = "";
     if (addrMode == AddressMode::Register) {
         if (regIndex > 7) {
