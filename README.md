@@ -57,6 +57,7 @@ This is to support `.org <offset>` type of statements..
 * libfmt - part of source tree.
 * testrunner - https://github.com/gnilk/testrunner - for unit testing
 * elfio - https://github.com/serge1/ELFIO - clone this into src/ext/ELFIO
+* debugbreak - https://github.com/scottt/debugbreak/blob/master/debugbreak.h - single file header, added to src/common
 
 # Details
 * Instruction set is documented in the file `InstructionSet.cpp` and `InstructionSet.h`
