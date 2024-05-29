@@ -1,6 +1,25 @@
 # CPU Emulator and Assembler
 
-Virtual/Emulated CPU (m68k look-alike) with Assembler/Linker.
+Started out as: Virtual/Emulated CPU (m68k look-alike) with Assembler/Linker.
+
+Now: An embryo to a fully multi-core (multi-ISA) superscalar CPU with an MMU doing proper memory translation.
+CPU architecture has support for:
+* Dynamic instruction set extensions (up to 16 sub-instr. set)
+  * Basic instruction set is M68k look-alike
+  * SIMD extension (in progress) instruction set - using instr.set prefix-coding
+* Separation between Decoding and Execution - through single Dispatcher -> i.e. 'hyper-threading' possible
+* Can handle different number of execution engines per ISA (i.e. you may have 4 x Integer and 1 x SIMD)
+* Multi staged in-order pipeline execution (SuperScalar) - this is currently only optimistic (i.e. no register allocation handling and such)
+* MMU with L1/L2 caching using MESI bus protocols
+* Memory mapped HW (currently a Timer)
+* Interrupts
+* Exceptions
+
+Note: The CPU Emulator is a tad bit more than a regular 'byte interpreter'.
+
+Supportive tools:
+* Assembler (two-pass assembler and linker, can produce ELF binaries)
+* Emulator (to load and execute ELF binaries)
 
 # Building
 This has so far only been tested with Clang on Linux. Anyway...
