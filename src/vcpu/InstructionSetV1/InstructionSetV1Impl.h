@@ -18,6 +18,7 @@ namespace gnilk {
         class InstructionSetV1Impl : public InstructionSetImplBase {
         public:
             bool ExecuteInstruction(CPUBase &newCpu) override;
+            std::string DisasmLastInstruction();
 
         protected:
             // one operand instr.
@@ -45,6 +46,9 @@ namespace gnilk {
             void ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
 
             void WriteToDst(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput, const RegisterValue &v);
+
+        private:
+            InstructionSetV1Def::DecoderOutput decoderOutput;
 
         };
     }

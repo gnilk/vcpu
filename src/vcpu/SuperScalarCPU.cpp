@@ -16,21 +16,48 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+void InstructionPipeline::Reset() {
+    for(auto &pipelineDecoder : pipelineDecoders) {
+        pipelineDecoder.Reset();
+    }
+    idxNextAvail = 0;
+    idExec = 0;
+    idNextExec = 0;
+    idLastExec = 0;
+    tickCount = 0;
+    ipLastFetch = {};       // FIXME: Verify
+}
+
+//
+// Tick the instruction pipeline one step
+// This will update all decoders and start ONE new...
+//
 bool InstructionPipeline::Tick(CPUBase &cpu) {
     tickCount++;
-    if (!Update(cpu)) {
+    fmt::println("Pipeline @ tick = {}", tickCount);
+    if (!UpdatePipeline(cpu)) {
         return false;
     }
-    if (pipeline[idxNextAvail].IsIdle()) {
+
+    // In case the dispatcher is a problem - we have a hard fault!
+    if (!ProcessDispatcher(cpu)) {
+        return false;
+    }
+
+    // Start decoding another instruction if we have one
+    // Note: 'BeginNext' will perform the initial TICK to push the decoder from IDLE
+    if (pipelineDecoders[idxNextAvail].IsIdle()) {
         return BeginNext(cpu);
     }
     return true;
 }
 
-// FIXME: This is wrong!
+//
+// FIXME: This is just a placeholder - the idea is that we should reset anything in the pipeline and revert the instruction pointer back to a 'safe place' (i.e. after last-executed)
+//
 void InstructionPipeline::Flush(CPUBase &cpu) {
     fmt::println("Pipeline, flushing - idNext={}", idNextExec);
-    for(auto &pipelineDecoder : pipeline) {
+    for(auto &pipelineDecoder : pipelineDecoders) {
         // We reset the IP to the next instruction that would execute
         // FIXME: This won't work for out-of-order execution - not sure how to do that...
         fmt::println("  id={}, state={} (forcing to idle)", pipelineDecoder.id, pipelineDecoder.decoder->StateString());
@@ -44,7 +71,7 @@ void InstructionPipeline::Flush(CPUBase &cpu) {
 
 void InstructionPipeline::DbgDump() {
     fmt::println("PipeLine @ tick = {}, ID Next To Execute={}, Next decoder Index={}", tickCount, idNextExec, idxNextAvail);
-    for(auto &pipelineDecoder : pipeline) {
+    for(auto &pipelineDecoder : pipelineDecoders) {
         // Might not yet be assigned..
         if (pipelineDecoder.decoder == nullptr) {
             continue;
@@ -54,8 +81,9 @@ void InstructionPipeline::DbgDump() {
     }
 }
 
+// Check if alla pipes are idle
 bool InstructionPipeline::IsEmpty() {
-    for(auto &pipelineDecoder : pipeline) {
+    for(auto &pipelineDecoder : pipelineDecoders) {
         if (!pipelineDecoder.IsIdle()) {
             return false;
         }
@@ -63,64 +91,70 @@ bool InstructionPipeline::IsEmpty() {
     return true;
 }
 
-bool InstructionPipeline::Update(CPUBase &cpu) {
-    for (auto &pipelineDecoder : pipeline) {
-        auto &decoder = pipelineDecoder.decoder;
+// Update all decoders in the pipeline - IF they have anything to process...
+bool InstructionPipeline::UpdatePipeline(CPUBase &cpu) {
+    // Update the pipeline and push to dispatcher
+    for (auto &pipelineDecoder : pipelineDecoders) {
+        // Idle? - skip - 'BeginNext' will do the first 'Tick' as it initializes the decoder for the OP code
+        if (pipelineDecoder.IsIdle()) {
+            continue;
+        }
+
 
         if (!pipelineDecoder.Tick(cpu)) {
             return false;
         }
 
-
+        // Are we ready to execute - in that case - finalize
+        // This is enforcing in-order execution - through 'idNextExec'
         if (CanExecute(pipelineDecoder)) {
+            // Finalize and push to dispatcher..
             pipelineDecoder.decoder->Finalize(cpu);
-        }
-
-        auto processResult = cpu.ProcessDispatch();
-        if (processResult == CPUBase::kProcessDispatchResult::kNoInstrSet) {
-            return false;
-        } else if (processResult == CPUBase::kProcessDispatchResult::kExecFailed) {
-            return false;
-        } else if (processResult == CPUBase::kProcessDispatchResult::kExecOk) {
-            fmt::println("Was executed!");
-        }
-
-        // FIXME: Need to reset the pipeline decoder once finished
-        if (pipelineDecoder.IsFinished()) {
             idNextExec = NextExecID(idNextExec);
-            idLastExec = pipelineDecoder.id;
             pipelineDecoder.Reset();
         }
-
-/*
-
-        // FIXME: This is not needed
-        if (CanExecute(pipelineDecoder)) {
-
-            idNextExec = NextExecID(idNextExec);
-
-            fmt::println("Pipeline, EXECUTE id={} (idLast={}, idNext={}), ticks={}, instr={}", pipelineDecoder.id, idLastExec, idNextExec, pipelineDecoder.tickCount, decoder->ToString());
-            if (cbDecoded != nullptr) {
-                cbDecoded(*decoder);
-            }
-            idLastExec = pipelineDecoder.id;
-            //decoder.state = InstructionDecoder::State::kStateIdle;
-            decoder->Reset();
-
-            // should we 'pad' instructions up to next 32 bit boundary?
-            // this would make bus-reads (or in this case L1 cache reads 32 bit - which might simplify things)
-            auto alignMismatch = (cpu.GetInstrPtr().data.dword & 0x03);
-            auto deltaToAlign = (4 - alignMismatch) & 0x03;
-            fmt::println("Pipeline, ip={}, ofAlign={}, deltaToAlign={}", cpu.GetInstrPtr().data.dword, alignMismatch, deltaToAlign);
-        }
-*/
     }
     return true;
 }
+
+//
+// Process the dispatch queue
+// Returns
+//      true  - empty or instructions executed
+//      false - hard fault
+//
+bool InstructionPipeline::ProcessDispatcher(CPUBase &cpu) {
+    // Process any instruction in the dispatcher
+    CPUBase::kProcessDispatchResult processResult = {};
+    do {
+
+        processResult = cpu.ProcessDispatch();
+        if (processResult == CPUBase::kProcessDispatchResult::kExecOk) {
+            fmt::println("  ** EXEC **: {}", cpu.GetLastExecuted());
+        }
+    } while(processResult == CPUBase::kProcessDispatchResult::kExecOk);
+
+    // FIXME: Raise hard fault exception here - or let caller do it?
+    if (processResult == CPUBase::kProcessDispatchResult::kNoInstrSet) {
+        return false;
+    } else if (processResult == CPUBase::kProcessDispatchResult::kExecFailed) {
+        return false;
+    }
+
+    return true;
+}
+
+//
+// Returns the next ID from an existing..  used for round-robing scheduling...
+//
 size_t InstructionPipeline::NextExecID(size_t id) {
     return (id + 1) % (GNK_VCPU_PIPELINE_SIZE << 2);
 }
 
+
+//
+// Checks if a specific pipeline decoding instance can and is allowed to execute
+//
 bool InstructionPipeline::CanExecute(InstructionPipeline::PipeLineDecoder &plDecoder) {
     if (!plDecoder.IsFinished()) {
         return false;
@@ -142,9 +176,15 @@ bool InstructionPipeline::CanExecute(InstructionPipeline::PipeLineDecoder &plDec
     return true;
 }
 
+//
+// Begin's decoding on the next available decoder in the pipeline (note: caller must check if nextAvailable is free)
+// Returns
+//      false - the initial tick was a failure - exception raised by the decoder..
+//      true  - everything when smooth
+//
 bool InstructionPipeline::BeginNext(CPUBase &cpu) {
     // Next must be idle when we get here...
-    auto &pipelineDecoder = pipeline[idxNextAvail];
+    auto &pipelineDecoder = pipelineDecoders[idxNextAvail];
 
     auto &decoder = pipelineDecoder.decoder;
     idxNextAvail = (idxNextAvail + 1) % GNK_VCPU_PIPELINE_SIZE;
@@ -153,7 +193,7 @@ bool InstructionPipeline::BeginNext(CPUBase &cpu) {
     pipelineDecoder.ip = cpu.GetInstrPtr();
     idExec = NextExecID(idExec);
 
-    fmt::println("PipeLine, begin instr @ {}", cpu.GetInstrPtr().data.dword);
+    fmt::println("  Begin instr @ {}", cpu.GetInstrPtr().data.dword);
     ipLastFetch = cpu.GetInstrPtr();
     if (!pipelineDecoder.Tick(cpu)) {
         return false;
@@ -162,7 +202,10 @@ bool InstructionPipeline::BeginNext(CPUBase &cpu) {
     return true;
 }
 
-
+//
+// Quick start the CPU
+// Note: QuickStart DOES NOT initialize the system block (i.e. memory layout block)
+//
 void SuperScalarCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     CPUBase::QuickStart(ptrRam, sizeOfRam);
     // In quick-start mode we create a 'fake' timer - there is no mapping to anything in RAM...
@@ -176,17 +219,22 @@ void SuperScalarCPU::QuickStart(void *ptrRam, size_t sizeOfRam) {
     };
 
     AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(&timerConfigBlock));
+    pipeline.Reset();
+    // NOTE: DO NOT CALL 'CPU::Reset' here since it will zero out the 'ram' ptr...
 }
 
+// Begin, this will zero out the memory and initialize the systemblock (i.e. memory layout)
 void SuperScalarCPU::Begin(void *ptrRam, size_t sizeOfRam) {
     CPUBase::Begin(ptrRam, sizeOfRam);
     // Create the timers
     AddPeripheral(CPUIntFlag::INT0, CPUKnownIntIds::kTimer0, Timer::Create(&systemBlock->timer0));
+    pipeline.Reset();
 }
 
 
 void SuperScalarCPU::Reset() {
     CPUBase::Reset();
+    pipeline.Reset();
 }
 
 bool SuperScalarCPU::Tick() {

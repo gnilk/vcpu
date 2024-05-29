@@ -18,6 +18,10 @@ namespace gnilk {
             virtual bool ExecuteInstruction(CPUBase &cpu) {
                 return false;
             }
+            // Just a test for now..
+            virtual std::string DisasmLastInstruction() {
+                return "";
+            }
         };
     }
 }

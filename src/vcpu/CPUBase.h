@@ -295,7 +295,22 @@ namespace gnilk {
             CPUBase() = default;
             virtual ~CPUBase();
 
+            // Quick start the CPU without initialize the systemblock / memory layout
+            // This simplifies setup - as you can execute code from address 0 and just go one...
+            // However, exception handling and stuff won't work - since it depends on the systemblock/memory layout to be
+            // properly initialized...   If you need that use 'Begin'
             virtual void QuickStart(void *ptrRam, size_t sizeOfRam);
+
+            // Begin, properly initialize the CPU including
+            // - zero out all memory
+            // - map system block to address 0 (incl. ISR vectors, Execption, etc..)
+            // - set's the initial program counter to VCPU_INITIAL_PC (default = 0x2000)
+            // - set's the initial stack pointer to end of physical RAM
+            // NOTE: Since memory is all zeroed out you need to memcpy your binary executable code to 0x2000 before starting the CPU
+            // Like:
+            //      static uint8_t myRam[64*1024];      // 64kb
+            //      cpu.Begin(myRam, 512*1024);         // Initialize
+            //      memcpy(&myRam[0x2000], binary, sizeof(binary)); // Copy the binary...
             virtual void Begin(void *ptrRam, size_t sizeOfRam);
             virtual void End();
             virtual void Reset();
@@ -606,6 +621,14 @@ namespace gnilk {
 
             std::unordered_map<CPUInterruptId , CPUIntFlag> interruptMapping;
             std::unordered_map<uint32_t, SysCall::Ref> syscalls;
+            // debugging
+            // TMP TMP
+        public:
+            const std::string &GetLastExecuted() {
+                return lastExecuted;
+            }
+        private:
+            std::string lastExecuted = {};
         };
     }
 }

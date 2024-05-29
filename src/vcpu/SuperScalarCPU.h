@@ -40,7 +40,9 @@ namespace gnilk {
                     return decoder->IsIdle();
                 }
                 void Reset() {
-                    assert(decoder);
+                    if (decoder == nullptr) {
+                        decoder = InstructionSetManager::Instance().GetInstructionSet().CreateDecoder(0);
+                    }
                     decoder->Reset();
                 }
                 bool IsFinished() {
@@ -49,13 +51,10 @@ namespace gnilk {
                 }
 
                 bool Tick(CPUBase &cpu) {
-                    if (decoder == nullptr) {
-                        decoder = InstructionSetManager::Instance().GetInstructionSet().CreateDecoder(0);
-                    }
-
                     tickCount++;
                     return decoder->Tick(cpu);
                 }
+
             public:
                 size_t id = {};
                 int tickCount = 0;
@@ -70,14 +69,19 @@ namespace gnilk {
             void SetInstructionDecodedHandler(OnInstructionDecoded onInstructionDecoded) {
                 cbDecoded = onInstructionDecoded;
             }
+            void Reset();
             bool Tick(CPUBase &cpu);    // Progress one tick
             bool IsEmpty();             // Check if pipeline is empty
             void Flush(CPUBase &cpu);               // Flush pipeline
 
+            size_t GetTickCounter() {
+                return tickCount;
+            }
             void DbgDump();
         protected:
+            bool UpdatePipeline(CPUBase &cpu);      // Update the complete pipeline
+            bool ProcessDispatcher(CPUBase &cpu);
             bool CanExecute(PipeLineDecoder &plDecoder);    // check if we are allowed to execute an instruction
-            bool Update(CPUBase &cpu);      // Update the complete pipeline
             bool BeginNext(CPUBase &cpu);   // Start decoding the next instruction
             size_t NextExecID(size_t id);   // advance the Execute ID
 
@@ -93,7 +97,8 @@ namespace gnilk {
 
             size_t tickCount = 0;
 
-            std::array<PipeLineDecoder, GNK_VCPU_PIPELINE_SIZE> pipeline;
+            // FIXME: rename
+            std::array<PipeLineDecoder, GNK_VCPU_PIPELINE_SIZE> pipelineDecoders;
         };
 
         // This one uses the pipelining

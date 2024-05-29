@@ -53,6 +53,7 @@ void CPUBase::Reset() {
 
 //
 // Process the dispatch queue
+// FIXME: This should be a loop?
 //
 CPUBase::kProcessDispatchResult CPUBase::ProcessDispatch() {
     DispatchBase::DispatchItemHeader header;
@@ -72,10 +73,12 @@ CPUBase::kProcessDispatchResult CPUBase::ProcessDispatch() {
     }
 
     auto &instructionSet = InstructionSetManager::Instance().GetExtension(header.instrTypeId);
-    auto execResult =  instructionSet.GetImplementation().ExecuteInstruction(*this);
+    auto &impl = instructionSet.GetImplementation();
+    auto execResult =  impl.ExecuteInstruction(*this);
     if (!execResult) {
         return kProcessDispatchResult::kExecFailed;
     }
+    lastExecuted = impl.DisasmLastInstruction();
     return kProcessDispatchResult::kExecOk;
 }
 

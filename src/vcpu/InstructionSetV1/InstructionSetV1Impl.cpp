@@ -7,6 +7,7 @@
 #include "InstructionSetV1Impl.h"
 #include "InstructionSetV1Def.h"
 #include "InstructionSetV1Decoder.h"
+#include "InstructionSetV1Disasm.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -14,7 +15,6 @@ using namespace gnilk::vcpu;
 //
 bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu) {
 
-    InstructionSetV1Def::DecoderOutput decoderOutput;
     if (!cpu.GetDispatch().Pop(&decoderOutput, sizeof(decoderOutput))) {
         fmt::println(stderr, "[InstructionSetV1Impl::ExecuteInstruction] Unable to fetch decoder output from dispatcher!");
         return false;
@@ -90,7 +90,9 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu) {
     }
     return true;
 }
-
+std::string InstructionSetV1Impl::DisasmLastInstruction() {
+    return InstructionSetV1Disasm::FromDecoded(decoderOutput);
+}
 
 ////////////////////////////
 //

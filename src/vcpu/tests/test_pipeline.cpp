@@ -33,21 +33,27 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
     regs.dataRegisters[0].data.word = 0x4711;
 
     InstructionPipeline pipeline;
-    pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoderBase &decoder){
-        InstructionSetV1Impl instructionBase;
-        instructionBase.ExecuteInstruction(cpu);
-        //cpu.ExecuteInstruction(decoder);
-    });
+    pipeline.Reset();
 
-    // This currently creates an out-of-order execution...
-    int counter = 0;
+    //
     while(!cpu.IsHalted()) {
         pipeline.DbgDump();
         pipeline.Tick(cpu);
-        counter++;
-        if(counter > 100) {
+        // Verify value propagation, the first 2 ticks are not executing anything..
+        if (pipeline.GetTickCounter() == 3) {
+            TR_ASSERT(t, regs.dataRegisters[1].data.word == 0x4711);
+        }
+        if (pipeline.GetTickCounter() == 4) {
+            TR_ASSERT(t, regs.dataRegisters[5].data.word == 0x4711);
+        }
+        if (pipeline.GetTickCounter() == 5) {
+            TR_ASSERT(t, regs.dataRegisters[2].data.byte == 0x11);
+        }
+
+        if(pipeline.GetTickCounter() > 100) {
             return kTR_Fail;
         }
+
     }
     pipeline.Flush(cpu);
     fmt::println("******** done ********");
@@ -86,12 +92,9 @@ DLL_EXPORT int test_pipeline_instr_move_immediate(ITesting *t) {
     };
     SuperScalarCPU cpu;
     cpu.QuickStart(program, 1024);
+    // Note: Testing the pipeline externally - not through the SuperScalar itself
     InstructionPipeline pipeline;
-    pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoderBase &decoder){
-        InstructionSetV1Impl instructionBase;
-        instructionBase.ExecuteInstruction(cpu);
-        //cpu.ExecuteInstruction(decoder);
-    });
+    pipeline.Reset();
 
     // This currently creates an out-of-order execution...
     int counter = 0;

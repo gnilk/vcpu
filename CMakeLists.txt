@@ -61,6 +61,7 @@ list(APPEND vcpusrc src/vcpu/MemorySubSys/PageAllocator.cpp src/vcpu/MemorySubSy
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1.cpp src/vcpu/InstructionSetV1/InstructionSetV1.cpp)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Decoder.cpp src/vcpu/InstructionSetV1/InstructionSetV1Decoder.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Def.cpp src/vcpu/InstructionSetV1/InstructionSetV1Def.h)
+list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Disasm.cpp src/vcpu/InstructionSetV1/InstructionSetV1Disasm.h)
 list(APPEND vcpusrc src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp src/vcpu/InstructionSetV1/InstructionSetV1Impl.cpp)
 
 
