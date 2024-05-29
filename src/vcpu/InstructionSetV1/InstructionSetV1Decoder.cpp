@@ -136,6 +136,7 @@ bool InstructionSetV1Decoder::ExecuteTickFromIdle(CPUBase &cpu) {
     code.opCode =  static_cast<OperandCode>(code.opCodeByte);
     // check if we have this instruction defined
     if (!instrSetDefinition.GetInstructionSet().contains(code.opCode)) {
+        cpu.RaiseException(CPUKnownExceptions::kInvalidInstruction);
         return false;
     }
 
