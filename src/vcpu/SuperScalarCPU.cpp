@@ -11,6 +11,7 @@
 
 #include "InstructionSetV1/InstructionSetV1Decoder.h"
 #include "InstructionSetV1/InstructionSetV1Def.h"
+#include "debugbreak.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -25,17 +26,18 @@ bool InstructionPipeline::Tick(CPUBase &cpu) {
     }
     return true;
 }
+
+// FIXME: This is wrong!
 void InstructionPipeline::Flush(CPUBase &cpu) {
-    fmt::println("Pipeline, flushing");
+    fmt::println("Pipeline, flushing - idNext={}", idNextExec);
     for(auto &pipelineDecoder : pipeline) {
         // We reset the IP to the next instruction that would execute
         // FIXME: This won't work for out-of-order execution - not sure how to do that...
+        fmt::println("  id={}, state={} (forcing to idle)", pipelineDecoder.id, pipelineDecoder.decoder->StateString());
         if (pipelineDecoder.id == idNextExec) {
-            fmt::println("  ResetIP to: {}", pipelineDecoder.ip.data.dword);
+            fmt::println("    ResetIP to: {}", pipelineDecoder.ip.data.dword);
             cpu.SetInstrPtr(pipelineDecoder.ip.data.dword);
         }
-        // FIXME: Internal decoder state
-        //fmt::println("  id={}, state={} (forcing to idle)", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder->state));
         pipelineDecoder.Reset();
     }
 }
@@ -43,8 +45,12 @@ void InstructionPipeline::Flush(CPUBase &cpu) {
 void InstructionPipeline::DbgDump() {
     fmt::println("PipeLine @ tick = {}, ID Next To Execute={}, Next decoder Index={}", tickCount, idNextExec, idxNextAvail);
     for(auto &pipelineDecoder : pipeline) {
-        // FIXME: Internal decoder state
-        //fmt::println("  id={}, state={}, ticks={}", pipelineDecoder.id, InstructionDecoder::StateToString(pipelineDecoder.decoder->state), pipelineDecoder.tickCount);
+        // Might not yet be assigned..
+        if (pipelineDecoder.decoder == nullptr) {
+            continue;
+        }
+
+        fmt::println("  id={}, state={}, ticks={}", pipelineDecoder.id, pipelineDecoder.decoder->StateString(), pipelineDecoder.tickCount);
     }
 }
 
@@ -61,17 +67,34 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
     for (auto &pipelineDecoder : pipeline) {
         auto &decoder = pipelineDecoder.decoder;
 
-        if (decoder->IsIdle()) {
-            continue;
+        if (!pipelineDecoder.Tick(cpu)) {
+            return false;
         }
 
-        // Tick this unless it was finished (i.e. moved back to idle)
-        if (!decoder->IsIdle()) {
-            if (!pipelineDecoder.Tick(cpu)) {
-                return false;
-            }
+
+        if (CanExecute(pipelineDecoder)) {
+            pipelineDecoder.decoder->Finalize(cpu);
         }
 
+        auto processResult = cpu.ProcessDispatch();
+        if (processResult == CPUBase::kProcessDispatchResult::kNoInstrSet) {
+            return false;
+        } else if (processResult == CPUBase::kProcessDispatchResult::kExecFailed) {
+            return false;
+        } else if (processResult == CPUBase::kProcessDispatchResult::kExecOk) {
+            fmt::println("Was executed!");
+        }
+
+        // FIXME: Need to reset the pipeline decoder once finished
+        if (pipelineDecoder.IsFinished()) {
+            idNextExec = NextExecID(idNextExec);
+            idLastExec = pipelineDecoder.id;
+            pipelineDecoder.Reset();
+        }
+
+/*
+
+        // FIXME: This is not needed
         if (CanExecute(pipelineDecoder)) {
 
             idNextExec = NextExecID(idNextExec);
@@ -90,7 +113,7 @@ bool InstructionPipeline::Update(CPUBase &cpu) {
             auto deltaToAlign = (4 - alignMismatch) & 0x03;
             fmt::println("Pipeline, ip={}, ofAlign={}, deltaToAlign={}", cpu.GetInstrPtr().data.dword, alignMismatch, deltaToAlign);
         }
-
+*/
     }
     return true;
 }

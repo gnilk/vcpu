@@ -40,7 +40,7 @@ namespace gnilk {
 
             void Reset() override;
             bool Tick(CPUBase &cpu) override;
-            bool Finalize(CPUBase &cpu);
+            bool Finalize(CPUBase &cpu) override;
             bool PushToDispatch(CPUBase &cpu);
 
 
@@ -55,6 +55,10 @@ namespace gnilk {
             bool IsIdle() override { return (state == State::kStateIdle); }
             bool IsFinished() override { return (state == State::kStateFinished); }
 
+
+            const std::string &StateString() const override {
+                return StateToString(state);
+            }
 
             // Converts a decoded instruction back to it's mnemonic form
             std::string ToString() const override;

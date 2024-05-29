@@ -35,7 +35,7 @@ DLL_EXPORT int test_pipeline_instr_move_reg2reg(ITesting *t) {
     InstructionPipeline pipeline;
     pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoderBase &decoder){
         InstructionSetV1Impl instructionBase;
-        instructionBase.ExecuteInstruction(cpu,decoder);
+        instructionBase.ExecuteInstruction(cpu);
         //cpu.ExecuteInstruction(decoder);
     });
 
@@ -89,7 +89,7 @@ DLL_EXPORT int test_pipeline_instr_move_immediate(ITesting *t) {
     InstructionPipeline pipeline;
     pipeline.SetInstructionDecodedHandler([&cpu](InstructionDecoderBase &decoder){
         InstructionSetV1Impl instructionBase;
-        instructionBase.ExecuteInstruction(cpu, decoder);
+        instructionBase.ExecuteInstruction(cpu);
         //cpu.ExecuteInstruction(decoder);
     });
 

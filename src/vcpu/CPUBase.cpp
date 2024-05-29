@@ -51,6 +51,34 @@ void CPUBase::Reset() {
 
 }
 
+//
+// Process the dispatch queue
+//
+CPUBase::kProcessDispatchResult CPUBase::ProcessDispatch() {
+    DispatchBase::DispatchItemHeader header;
+    auto peekResult = dispatcher.Peek(&header);
+    if (peekResult < 0) {
+        fmt::println(stderr, "[CPU] ProcessDispatch failed while peeking");
+        return kProcessDispatchResult::kPeekErr;
+    }
+    // empty?
+    if (peekResult == 0) {
+        return kProcessDispatchResult::kEmpty;
+    }
+
+    if (!InstructionSetManager::Instance().HaveExtension(header.instrTypeId)) {
+        fmt::println(stderr, "[CPU] Instruction set missing for type={:#X}", header.instrTypeId);
+        return kProcessDispatchResult::kNoInstrSet;
+    }
+
+    auto &instructionSet = InstructionSetManager::Instance().GetExtension(header.instrTypeId);
+    auto execResult =  instructionSet.GetImplementation().ExecuteInstruction(*this);
+    if (!execResult) {
+        return kProcessDispatchResult::kExecFailed;
+    }
+    return kProcessDispatchResult::kExecOk;
+}
+
 
 
 void *CPUBase::GetRawPtrToRAM(uint64_t addr) {

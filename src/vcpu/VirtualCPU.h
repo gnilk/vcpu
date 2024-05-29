@@ -37,9 +37,6 @@ namespace gnilk {
                 return &lastDecodedInstruction;
             }
         private:
-            bool ProcessDispatch();
-
-        private:
             Timer *timer0;
             LastInstruction lastDecodedInstruction;
             //InstructionDecoder::Ref lastDecodedInstruction = nullptr;

@@ -33,12 +33,8 @@ namespace gnilk {
         class InstructionPipeline {
         public:
             using OnInstructionDecoded = std::function<void(InstructionDecoderBase &decoder)>;
-            struct PipeLineDecoder {
-                size_t id = {};
-                int tickCount = 0;
-                RegisterValue ip;
-                InstructionDecoderBase::Ref decoder = nullptr;
-
+            class PipeLineDecoder {
+            public:
                 bool IsIdle() {
                     assert(decoder);
                     return decoder->IsIdle();
@@ -58,10 +54,14 @@ namespace gnilk {
                     }
 
                     tickCount++;
-                    // FIXME: DO NOT reference the V1 instr.set like this
                     return decoder->Tick(cpu);
-                    return false;
                 }
+            public:
+                size_t id = {};
+                int tickCount = 0;
+                RegisterValue ip;
+                InstructionDecoderBase::Ref decoder = nullptr;
+
             };
         public:
             InstructionPipeline() = default;
@@ -107,6 +107,7 @@ namespace gnilk {
             void Reset() override;
 
             bool Tick();
+            bool ProcessDispatch();
         private:
             InstructionPipeline pipeline;
         };

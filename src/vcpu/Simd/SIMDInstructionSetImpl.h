@@ -14,7 +14,7 @@ namespace gnilk {
 
         class SIMDInstructionSetImpl : public InstructionSetImplBase {
         public:
-            bool ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &decoder) override;
+            bool ExecuteInstruction(CPUBase &cpu) override;
         protected:
             void ExecuteLoad(CPUBase &cpu, SIMDInstructionSetDef::Operand &operand);
         };

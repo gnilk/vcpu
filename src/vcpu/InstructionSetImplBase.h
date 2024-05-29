@@ -15,7 +15,7 @@ namespace gnilk {
         public:
             InstructionSetImplBase() = default;
             virtual ~InstructionSetImplBase() = default;
-            virtual bool ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &baseDecoder) {
+            virtual bool ExecuteInstruction(CPUBase &cpu) {
                 return false;
             }
         };

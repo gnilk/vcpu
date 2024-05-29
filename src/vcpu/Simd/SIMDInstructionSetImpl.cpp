@@ -8,7 +8,7 @@
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
-bool SIMDInstructionSetImpl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &decoder) {
+bool SIMDInstructionSetImpl::ExecuteInstruction(CPUBase &cpu) {
 
     SIMDInstructionSetDef::Operand decoderOutput;
     if (!cpu.GetDispatch().Pop(&decoderOutput, sizeof(decoderOutput))) {

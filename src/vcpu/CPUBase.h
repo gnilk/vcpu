@@ -284,6 +284,13 @@ namespace gnilk {
             friend InstructionDecoderBase;
         public:
             using Ref = std::shared_ptr<CPUBase>;
+            enum class kProcessDispatchResult {
+                kExecFailed = -3,
+                kNoInstrSet = -2,
+                kPeekErr = -1,
+                kEmpty = 0,
+                kExecOk = 1,
+            };
         public:
             CPUBase() = default;
             virtual ~CPUBase();
@@ -292,6 +299,9 @@ namespace gnilk {
             virtual void Begin(void *ptrRam, size_t sizeOfRam);
             virtual void End();
             virtual void Reset();
+
+
+            kProcessDispatchResult ProcessDispatch();
 
             bool RegisterSysCall(uint16_t id, const std::string &name, SysCallDelegate handler);
 

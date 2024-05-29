@@ -17,18 +17,7 @@ namespace gnilk {
         // Note: the instruction decoder is heavily coupled to the instruction set at this point
         class InstructionSetV1Impl : public InstructionSetImplBase {
         public:
-            // This more like the 'CPUCore'
-//            InstructionSetV1Impl(CPUBase &newCpu) : cpu(newCpu) {
-//
-//            }
-//            InstructionSetV1Impl(InstructionSetV1Impl &other) : InstructionSetV1Impl(other.cpu) {
-//
-//            }
-//            InstructionSetV1Impl(InstructionSetV1Impl &&other) noexcept : InstructionSetV1Impl(other.cpu) {
-//
-//            }
-
-            bool ExecuteInstruction(CPUBase &newCpu, InstructionDecoderBase &baseDecoder) override;
+            bool ExecuteInstruction(CPUBase &newCpu) override;
 
         protected:
             // one operand instr.
@@ -55,8 +44,6 @@ namespace gnilk {
             void ExecuteBeqInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
             void ExecuteBneInstr(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput);
 
-            // FIXME: Can (hopefully) be removed - Should no longer be needed - the dispatcher will take care of this - leaving as is for now
-            void ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &baseDecoder);
             void WriteToDst(CPUBase &cpu, InstructionSetV1Def::DecoderOutput &decoderOutput, const RegisterValue &v);
 
         };

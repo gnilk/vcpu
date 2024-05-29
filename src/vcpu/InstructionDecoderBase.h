@@ -44,6 +44,9 @@ namespace gnilk {
 
             // Reset the decoder - generally you should change state to 'Idle'
             virtual void Reset() { }
+            virtual bool Finalize(CPUBase &cpu) {
+                return false;
+            }
 
             // Tick, perform a single step
             // Returns
@@ -52,6 +55,11 @@ namespace gnilk {
             virtual bool Tick(CPUBase &cpu) { return false; }
 
             virtual std::string ToString() const {
+                static std::string dummy = "nothing";
+                return dummy;
+            }
+
+            virtual const std::string &StateString() const {
                 static std::string dummy = "nothing";
                 return dummy;
             }

@@ -23,7 +23,7 @@ namespace gnilk {
         public:
             virtual bool IsEmpty() = 0;
             virtual bool CanInsert(size_t szItem) = 0;
-            virtual bool Peek(DispatchItemHeader *outHeader) = 0;
+            virtual int32_t Peek(DispatchItemHeader *outHeader) = 0;
             virtual bool Push(uint8_t instrTypeId, const void *item, size_t szItem) = 0;
             virtual bool Pop(void *ptrOut, size_t szItem) = 0;
 
@@ -38,19 +38,26 @@ namespace gnilk {
             Dispatch() = default;
             virtual ~Dispatch() = default;
 
-            bool Peek(DispatchItemHeader *outHeader) override {
+            //
+            // Peek
+            // Returns
+            //       0  - empty
+            //      -1 - error, queue is corrupt
+            //       1 - one item available
+            //
+            int32_t Peek(DispatchItemHeader *outHeader) override {
                 std::lock_guard guard(lock);
                 if (IsEmpty()) {
-                    return false;
+                    return 0;
                 }
                 // This should not be the case - but better safe than sorry..
                 if (ringbuffer.BytesAvailable() <= sizeof(DispatchItemHeader)) {
-                    return false;
+                    return -1;
                 }
                 if (ringbuffer.Peek(outHeader, sizeof(DispatchItemHeader)) < 0) {
-                    return false;
+                    return -1;
                 }
-                return true;
+                return 1;
             }
 
 

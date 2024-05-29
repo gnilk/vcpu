@@ -74,9 +74,7 @@ bool InstructionSetV1Decoder::Tick(CPUBase &cpu) {
         case State::kStateFinished :
             return true;
     }
-    if (state == State::kStateFinished) {
-        res = Finalize(cpu);
-    }
+
     return res;
 }
 
@@ -85,8 +83,12 @@ void InstructionSetV1Decoder::ChangeState(State newState) {
     state = newState;
 }
 bool InstructionSetV1Decoder::Finalize(gnilk::vcpu::CPUBase &cpu) {
+    if (state != State::kStateFinished) {
+        return false;
+    }
     if (IsExtension(code.opCodeByte) && (currentExtDecoder != nullptr)) {
         // Note: The extension has already automatically on changing to finished - we just check if we had a valid extension...
+        currentExtDecoder->Finalize(cpu);
         return true;
     }
     return PushToDispatch(cpu);
@@ -383,8 +385,9 @@ RegisterValue InstructionSetV1Decoder::ReadFrom(CPUBase &cpuBase, OperandSize sz
 }
 
 
-
-
+//
+// breakout to separate 'disasm' class..
+//
 std::string InstructionSetV1Decoder::ToString() const {
     auto &instrSetDefinition = InstructionSetManager::Instance().GetInstructionSet().GetDefinition(); //glb_InstructionSetV1.definition;
 

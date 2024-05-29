@@ -118,6 +118,7 @@ bool VirtualCPU::Step() {
         return false;
     }
 
+    instructionDecoder.Finalize(*this);
     // Process dispatcher
     ProcessDispatch();
 
@@ -131,24 +132,6 @@ bool VirtualCPU::Step() {
     //        been given enough attention...
     lastDecodedInstruction.instrDecoder = dynamic_cast<InstructionSetV1Decoder&>(instructionDecoder);
     return true;
-}
-
-bool VirtualCPU::ProcessDispatch() {
-    DispatchBase::DispatchItemHeader header;
-    if (!dispatcher.Peek(&header)) {
-        fmt::println(stderr, "[VCPU] ProcessDispatch failed while peeking");
-        return false;
-    }
-
-    if (!InstructionSetManager::Instance().HaveExtension(header.instrTypeId)) {
-        fmt::println(stderr, "[VCPU] Instruction set missing for type={:#X}", header.instrTypeId);
-        return false;
-    }
-
-    auto &instructionSet = InstructionSetManager::Instance().GetExtension(header.instrTypeId);
-    auto &instructionDecoder = instructionSet.GetDecoder();
-    return instructionSet.GetImplementation().ExecuteInstruction(*this, instructionDecoder);
-    return false;
 }
 
 

@@ -12,19 +12,13 @@ using namespace gnilk;
 using namespace gnilk::vcpu;
 
 //
-bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBase &baseDecoder) {
+bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu) {
 
     InstructionSetV1Def::DecoderOutput decoderOutput;
     if (!cpu.GetDispatch().Pop(&decoderOutput, sizeof(decoderOutput))) {
         fmt::println(stderr, "[InstructionSetV1Impl::ExecuteInstruction] Unable to fetch decoder output from dispatcher!");
         return false;
     }
-
-
-
-
-    // FIXME: Remove the decoder
-    auto &decoder = dynamic_cast<InstructionSetV1Decoder&>(baseDecoder);
 
     switch(decoderOutput.operand.opCode) {
         case BRK :
@@ -86,11 +80,8 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBa
         case BNE :
             ExecuteBneInstr(cpu, decoderOutput);
             break;
-        case SIMD:
-            ExecuteSIMDInstr(cpu, decoder);
-            break;
         default:
-            fmt::println(stderr, "Invalid operand: {} - raising exception handler (if available)", decoder.code.opCodeByte);
+            fmt::println(stderr, "Invalid operand: {} - raising exception handler (if available)", decoderOutput.operand.opCodeByte);
             //
             if (!cpu.RaiseException(CPUKnownExceptions::kInvalidInstruction)) {
                 return false;
@@ -100,21 +91,6 @@ bool InstructionSetV1Impl::ExecuteInstruction(CPUBase &cpu, InstructionDecoderBa
     return true;
 }
 
-
-void InstructionSetV1Impl::ExecuteSIMDInstr(CPUBase &cpu, InstructionSetV1Decoder &baseDecoder) {
-    // FIXME: This doesn't support assymetric multi-core, i.e. different number of cores depending on the instr. set
-    //        In essence there must be an equal amount of cores..
-
-//    auto simdDecoder = instrDecoder.GetDecoderForExtension(SIMD);
-//    // Note: This should not happen
-//    if (simdDecoder == nullptr) {
-//        fmt::println(stderr,"ERR: Decoder for SIMD extension missing");
-//        exit(1);
-//    }
-//
-//    auto &simdInstructionSet = InstructionSetManager::Instance().GetExtension(SIMD);
-//    simdInstructionSet.GetImplementation().ExecuteInstruction(cpu, *simdDecoder);
-}
 
 ////////////////////////////
 //

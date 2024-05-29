@@ -43,9 +43,6 @@ bool SIMDInstructionDecoder::Tick(CPUBase &cpu) {
         case State::kStateFinished :
             return true;
     }
-    if (state == State::kStateFinished) {
-        res = Finalize(cpu);
-    }
     return res;
 }
 
