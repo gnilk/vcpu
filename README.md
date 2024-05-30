@@ -317,4 +317,252 @@ make -j
 Will give you a few libraries and executables..
 Nothing except the unit-tests will work right now...
 
+# Thoughts
+Tossing around the idea to break down the ISA to microcode and build the front/backend more like a proper microarchitecture.
+From my scratch-pad...
 
+Some abbreviations
+* Execution Unit - generic for any type
+* AGU/ACU - Address Generation/Computation Unit
+* ALU - Arithmetic Logic Unit (Integer operation)
+* FPU - Floating point unit
+* SIMD - Single Inst. Multiple Data
+* SME - Streaming Matrix Execution (not sure - but the idea is that it operates on larger areas registers broken down to something)
+
+Branching is also interesting - in the first case - we need to flush the backend Dispatcher cache and reset decoding from the new IP.
+
+Not sure how this should look like - I really want different numbers for each type..
+
+Not sure how I should handle AGU/ACU (Address Generation/Computation Unit) - since also ALU operations  can have AGU dependencies..
+
+Some paths look like:   `AGU -> ALU -> Write | AGU -> FPU -> Write`
+While others look like: `ALU -> Write | FPU -> Write`
+
+Things would become simpler if this is restricted on the ISA side...
+with specific load/store operations.  i.e. no ALU operations allowed by the actually ALU operation...
+Which we could define if we break down the ISA to micro-code first..
+
+## Registers
+
+The CPU registers would be translated to an internal map of many more registers allowing for reordering and out-of-order
+execution. 
+
+The backend would then have a registermap of 128 registers from which the allocation takes place
+each register is 64bit - which gives a 1kb register map file..
+
+Would be defined in two banks and allocation is done with a bitmask of 64bit each...
+Assuming we can have a true 64bit core across the board...
+
+The microcode would have to allocate a register. Each microcode block would be given a register mask in a bank.
+
+## Microcode thoughts
+There are multiple ways to achieve this. But there is a big design decision IF the AGU/ACU should be integrated with
+execution units. 
+* Integrated - The microcode block can be handed over as-is to the ALU
+* Outside - The microcode must be divided up (either through specific code's that signal an end and handover)
+
+If Integrated the various ALU's will blow up in size - if outside the backend must toss the code around between different
+execution units.
+
+```c++
+// Basic layout of a microcode block
+struct Microcode {
+    uint8_t euFetureBitMask;     // What features we want from the execution unit     
+    uint8_t instrPtr;     
+    uint8_t code[MAX_BYTES];
+};
+```
+Assuming each micro-code operation is 16 bit fixed. Size of the op-code poses (a minor) problem dealing with immediate values.
+Will have to be split into multiple load operations Or an exception is made to allow loading of 64bit immediate values. Which means
+loading a 'byte' into a register like `move.b d0, 0x42` would still be translated to `load_immediate <64bit>`
+
+One way of doing this would be to break-down the micro-code in 
+* Common part - all ISA must translate to this
+* EU/ALU specific part - the ALU handover will be very small
+
+Also - the register allocation could be hinted in the microcode cntrl block, like:
+```c++
+struct PreFetchControlBlock {
+    uint8_t   reg_x_flags;    // flags - size, expansion, memory access, etc...
+    uint8_t   reg_x_src;      // the source register
+    uint8_t   reg_y_flags;    // flags?
+    uint8_t   reg_y_src;     // which register to map to first allocation
+};
+```
+This would make the prefetcher work on the control-block instead of having micro-code for this.
+
+
+```asm
+add d0, (a0) ; load (a0), add d0, store d0  - the ALU would have a scratch register in this case
+add (a0),d0  ; load (a0), add d0, store d0  - the ALU would have a scratch register in this case
+```
+
+basically break down 'add d0, (a0)' to:
+  ALU:
+  ```asm
+     load alu.x, (a0)       ; alu.x = ram[a0]        <- this should not happen in the ALU
+     load alu.y  d0         ; alu.y = regmap[d0]
+     add                    ; alu.result = x + y         <- the arithmetic operation always operates on X,y and stores in result
+     store d0               ; regmap[d0] = alu.result
+ ```
+While this microcode is ALU centric is can be fairly easily translated from the ISA level
+However, it is not deterministic => or is it?  assuming there would be a max size for this...
+                                                     
+```asm
+ move d0, (a0+d1)    <- relative addressing requires and 'add'
+```
+
+Translates to:
+```asm
+ load alu.x, a0
+ load alu.y, d1
+ add
+ store a0
+```
+
+However?
+ `[read memory here]`      -> where to?
+
+```asm
+ load alu.x, (a0)        ; should this happen in the ALU (-> requires L1 access)
+ zero alu.y
+ or
+ store d0
+```
+Another problem - we don't want the alu to read-memory, so memory reads should be resolved before...
+
+## Operations requires by the ALU
+
+* load  <alu register>,<regmapsrc> ; alu has two registers (1 bit)
+* store <regmap target>            ; always store 'alu.result'
+* zero <alu register>
+* brk                 ; break ALU...
+* add
+* sub
+* xor
+* or
+* and
+* asr
+* asl
+* lsr
+* asl
+* ones    - ?
+
+Assuming an extremely limited instr.set for the ALU we could perhaps encode the microcode like:
+```text
+BYTE
+  0      ALT 1: 6 bit instr, 1 bit alu reg, 1 bit if memory access       <- no prefetcher
+         ALT 2: 7 bit instr, 1 bit alu reg                               <- w. prefetcher
+  1      7 bit registry, 1 bit carry/borrow
+```
+
+
+there must be some micro-code (common) for the pre-fetcher as well, i.e. to read from memory..
+This must also be emitted by the ext. instr. sets
+
+assuming:
+```asm
+     move    d0, (a0)
+```
+
+microcode:
+```asm
+     allocate        ; allocate a register
+     load    (a0)    ; fetch
+     store   d0      ; store and release
+```
+
+Either this happens in the BEFORE we hit the ALU - OR there are some ALU+AGU units - a block anyway
+needs to 'tag' which type of execution unit is targetted.
+
+With a prefetcher we need to execute the microcode-stream across different execution units - we might be
+tricky...  Without the pre-fetcher we need some (or all) ALU's to be extended with AGU and L1 Cache access.
+
+## Instruction dependencies (in/out of order execution)
+Quite a few instruction pairs can be executed out-of-order and/or mixed, depending on how you schedule things.
+```asm
+  add   d0,d1
+  add   d2,d3
+  move   d4,(a0)
+  move  (a1),d5
+```
+
+All of these can execute without dependencies. The dependencies are encoded already in the `pre-fetch-control-block`.
+The control-block should take the `reg_x` and `reg_y` and mask it with the `active_mask`, like:
+```c++
+    // pseude code - but in principle - this is what it would like (naive first thought)
+    
+    // Step 1. assign micro code to the various execution units...
+    // Assuming the control-block only holds a reg mask
+    if (((cntrlBlock.reg_x & active_mask) == 0) && ((cntrlBlock.reg_y & active_mask) == 0)) {
+        // This micro_code block can be executed perfectly fine - with no collisions
+        active_mask |= cntrlBlock.reg_x;
+        active_mask |= cntrlBlock.reg_y;
+        eu = GetExecutionBlockFromFeatures(cntrlBlock.featureMask);
+        eu.Schedule(microCodeBlock);
+    }
+    
+    // This should be 'ok' in HW - design, Update/Finished are just signals and bit/mask operations should be ok...
+    
+    // Step 2. update the execution units
+    for(eu : executionUnits) {
+        eu.Update();
+        // Finished - remove the active mask flags - so we can run again...
+        if (eu.IsFinished()) {
+            active_mask &= ^eu.cntrlBlock.reg_x;
+            active_mask &= ^eu.cntrlBlock.reg_y;
+        }
+    }
+    // repeat...
+```
+
+## Branching
+If I use 'combined' EU's - where an execution unit is tagged with features (see: Coffee Lake and others) I can let 
+the decoder add the requested features in 'ExecutionUnitFeatureMask' bit-field during decoding. The Dispatcher will 
+then put that microcode block on the queue for the specific execution unit.
+
+
+There is however a special combination - ALU+BRANCH - which requires some extra consideration. Since one design goal is
+to get rid of the ALU flags [carry, borrow, zero, etc..]
+```asm
+  bne   d0,d1,<label>
+```
+If using a `pre-fetch-control-block` we would map; `reg_x = d0`, `reg_y = d1` the ALU microcode would simply be:
+```asm
+  cmp          ;; compares reg.x with reg.y and sets the ALU flags
+  brk          ;; break ALU execution
+  bz <label>   ;; branch on zero to label   <- this is however, not so easy - as this is not part of the ALU..
+               ;; <- no break needed as the pre-fetcher will terminate on the branch   
+```
+
+Not sure how to handle the label... Is it a fixed value following the microcode?
+Or do I introduce a specific 'ldimm' (load immediate) which loads a number of bytes from the microcode stream.
+like:
+```asm
+  ldimm     1,2,4,8     ; load 1,2,4, or 8 bytes from the microcode
+  bz                    ; compare the ALU output and issue a branch if needed (branch is simply 'add to IP' <- which is a special IP ALU)
+```
+
+```asm
+  call <label>
+```
+
+Branching is also interesting - in the first case - we need to flush the backend Dispatcher cache and reset decoding from the new IP.
+
+
+If using a `pre-fetch-control-block` we would map; `reg_x = d0`, `reg_y = d1` the ALU microcode would simply be:
+```asm
+  jl           ;; jump and link
+               ;; <- no break needed as the pre-fetcher will terminate on the branch   
+```
+
+```asm
+  call (a0)
+```
+
+
+## Other things
+* Microcode can be cached - and the instr. decoder bypassed. 
+  * Keeping a circular buffer of X microcode buffers indicated by the IP
+  * This would speed up tight loops by quite a bit..
+  * How big can such a cache be?
