@@ -5,6 +5,7 @@
 #include <testinterface.h>
 #include "System.h"
 #include "MemorySubSys/CacheController.h"
+#include "MemorySubSys/RamBus.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;

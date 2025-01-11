@@ -163,6 +163,14 @@ target_include_directories(emu PUBLIC src/common)
 target_include_directories(emu PUBLIC src/ext/ELFIO)
 target_include_directories(emu PUBLIC src/ext/posit/include)
 
+
+add_executable(emu2 apps/emu2/emu2.cpp ${emusrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
+target_include_directories(emu2 PUBLIC src/vcpu)
+target_include_directories(emu2 PUBLIC src/common)
+target_include_directories(emu2 PUBLIC src/ext/ELFIO)
+target_include_directories(emu2 PUBLIC src/ext/posit/include)
+
+
 add_executable(asm apps/assembler/assembler.cpp ${asmsrc} ${vcpusrc} ${cpuext_simd} ${commonsrc})
 target_include_directories(asm PUBLIC src/assembler)
 target_include_directories(asm PUBLIC src/common)

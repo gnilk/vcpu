@@ -22,11 +22,11 @@ BusBase::Ref FlashBus::Create(size_t szRam) {
 
 void FlashBus::ReadData(void *dst, uint64_t addrDescriptor, size_t nBytes) {
     // FIXME: Need better read/write routines in RAM
-    ram->ReadVolatile(dst, addrDescriptor & VCPU_SOC_ADDR_MASK, nBytes);
+    ram->ReadVolatile(dst, addrDescriptor & VCPU_MEM_ADDR_MASK, nBytes);
 }
 
 void FlashBus::WriteData(uint64_t addrDescriptor, const void *src, size_t nBytes) {
     // FIXME: Need better read/write routines in RAM
-    ram->WriteVolatile(addrDescriptor & VCPU_SOC_ADDR_MASK, src, nBytes);
+    ram->WriteVolatile(addrDescriptor & VCPU_MEM_ADDR_MASK, src, nBytes);
 }
 

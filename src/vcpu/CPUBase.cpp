@@ -26,6 +26,7 @@ void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
 void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
     ram = static_cast<uint8_t *>(ptrRam);
     szRam = sizeOfRam;
+
     Reset();
 }
 void CPUBase::End() {

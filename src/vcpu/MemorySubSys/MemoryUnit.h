@@ -9,9 +9,9 @@
 #include <stdint.h>
 #include <unordered_map>
 
-#include "System.h"
 #include "CacheController.h"
 #include "RegisterValue.h"
+#include "MemoryRegion.h"
 
 //
 // When refactoring take a look at RISC-V, https://github.com/riscv-software-src/riscv-isa-sim
@@ -154,12 +154,12 @@ namespace gnilk {
 
 
             __inline uint8_t constexpr RegionFromAddress(uint64_t virtualAddress) {
-                uint8_t region = (virtualAddress & VCPU_SOC_REGION_MASK) >> (VCPU_SOC_REGION_SHIFT);
+                uint8_t region = (virtualAddress & VCPU_MEM_REGION_MASK) >> (VCPU_MEM_REGION_SHIFT);
                 return region;
             }
 
             __inline uint64_t constexpr RegionFromIndex(uint64_t regionIndex) {
-                uint8_t region = (regionIndex & 0x0f) << (VCPU_SOC_REGION_SHIFT);
+                uint8_t region = (regionIndex & 0x0f) << (VCPU_MEM_REGION_SHIFT);
                 return region;
             }
 

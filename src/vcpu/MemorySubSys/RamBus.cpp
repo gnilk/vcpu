@@ -59,11 +59,11 @@ MesiBusBase::Ref RamBus::Create(RamMemory *ptrRam) {
 
 void RamBus::ReadLine(void *dst, uint64_t addrDescriptor) {
     // FIXME: Not sure this should be done here...
-    ram->Read(dst, addrDescriptor & VCPU_SOC_ADDR_MASK);
+    ram->Read(dst, addrDescriptor & VCPU_MEM_ADDR_MASK);
 }
 
 void RamBus::WriteLine(uint64_t addrDescriptor, const void *src) {
     // FIXME: Not sure this should be done here...
-    ram->Write(addrDescriptor & VCPU_SOC_ADDR_MASK, src);
+    ram->Write(addrDescriptor & VCPU_MEM_ADDR_MASK, src);
 }
 

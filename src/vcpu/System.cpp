@@ -7,6 +7,7 @@
 #include "MemorySubSys/FlashBus.h"
 #include "MemorySubSys/RamBus.h"
 #include "MemorySubSys/HWMappedBus.h"
+#include "VirtualCPU.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -21,11 +22,17 @@ SoC &SoC::Instance() {
 
 void SoC::Initialize() {
     SetDefaults();
+    for(int i=0;i<VCPU_SOC_MAX_CORES;i++) {
+        if (cores[i].cpu != nullptr) continue;
+        cores[i].cpu = std::make_shared<VirtualCPU>();
+        cores[i].mmu.Initialize(i);
+        cores[i].isValid = true;
+    }
     isInitialized = true;
 }
 
 void SoC::Reset() {
-    for(int i=0;i<VCPU_SOC_MAX_REGIONS;i++) {
+    for(int i=0; i < VCPU_MEM_MAX_REGIONS; i++) {
         if (!(regions[i].flags & kRegionFlag_Valid)) continue;
         if (regions[i].flags & kRegionFlag_NonVolatile) continue;
         if (regions[i].ptrPhysical == nullptr) continue;
@@ -99,7 +106,7 @@ MemoryRegion &SoC::GetRegion(size_t idxRegion) {
 }
 
 MemoryRegion *SoC::GetFirstRegionMatching(uint8_t kRegionFlags) {
-    for(int i=0;i<VCPU_SOC_MAX_REGIONS;i++) {
+    for(int i=0; i < VCPU_MEM_MAX_REGIONS; i++) {
         if ((regions[i].flags & kRegionFlags) == kRegionFlags) {
             return &regions[i];
         }
