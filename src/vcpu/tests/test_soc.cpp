@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string.h>
 #include <testinterface.h>
+#include "MemorySubSys/RamBus.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "MemorySubSys/HWMappedBus.h"
 #include "System.h"
@@ -21,6 +22,7 @@ DLL_EXPORT int test_soc_getflashregion(ITesting *t);
 DLL_EXPORT int test_soc_resetram(ITesting *t);
 DLL_EXPORT int test_soc_regionfromaddr(ITesting *t);
 DLL_EXPORT int test_soc_hwmapping(ITesting *t);
+DLL_EXPORT int test_soc_getregionfromtype(ITesting *t);
 }
 
 DLL_EXPORT int test_soc(ITesting *t) {
@@ -100,6 +102,7 @@ DLL_EXPORT int test_soc_regionfromaddr(ITesting *t) {
 
     return kTR_Pass;
 }
+
 DLL_EXPORT int test_soc_hwmapping(ITesting *t) {
 
     static uint8_t hwregs[1024] = {};
@@ -132,4 +135,11 @@ DLL_EXPORT int test_soc_hwmapping(ITesting *t) {
 
     return kTR_Pass;
 
+}
+
+DLL_EXPORT int test_soc_getregionfromtype(ITesting *t) {
+    auto region = SoC::Instance().GetFirstRegionFromBusType<HWMappedBus>();
+    TR_ASSERT(t, region != nullptr);
+
+    return kTR_Pass;
 }

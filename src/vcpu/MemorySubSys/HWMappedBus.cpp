@@ -5,6 +5,8 @@
 #include <memory>
 #include "System.h"
 #include "HWMappedBus.h"
+#include "MemoryRegion.h"
+
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
@@ -15,12 +17,12 @@ BusBase::Ref HWMappedBus::Create() {
 
 void HWMappedBus::ReadData(void *dst, uint64_t addrDescriptor, size_t nBytes) {
     if (onRead != nullptr) {
-        onRead(dst, addrDescriptor & VCPU_SOC_ADDR_MASK, nBytes);
+        onRead(dst, addrDescriptor & VCPU_MEM_ADDR_MASK, nBytes);
     }
 }
 void HWMappedBus::WriteData(uint64_t addrDescriptor, const void *src, size_t nBytes) {
     if (onWrite != nullptr) {
-        onWrite(addrDescriptor & VCPU_SOC_ADDR_MASK, src, nBytes);
+        onWrite(addrDescriptor & VCPU_MEM_ADDR_MASK, src, nBytes);
     }
 
 }

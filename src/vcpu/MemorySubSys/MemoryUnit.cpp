@@ -5,6 +5,7 @@
 #include <string.h>
 #include "MemoryUnit.h"
 #include "FlashBus.h"
+#include "System.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -77,7 +78,7 @@ uint64_t MMU::TranslateAddress(uint64_t address) {
         return address;
     }
     // Remove the region index
-    return address & VCPU_SOC_ADDR_MASK;
+    return address & VCPU_MEM_ADDR_MASK;
 }
 
 void MMU::Touch(const uint64_t address) {

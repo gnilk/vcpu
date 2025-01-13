@@ -10,6 +10,7 @@
 #include "MemorySubSys/MemoryUnit.h"
 #include "MemorySubSys/PageAllocator.h"
 #include "MemorySubSys/RamBus.h"
+#include "System.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
