@@ -8,6 +8,7 @@
 #include <functional>
 #include <stdint.h>
 #include <vector>
+#include <span>
 
 #include "CPUBase.h"
 #include "MemorySubSys/RamBus.h"
@@ -29,9 +30,8 @@ namespace gnilk {
         struct Core {
             bool isValid = false;
             CPUBase::Ref cpu = nullptr;
-            MMU mmu;
+            //MMU mmu;
         };
-
 
         // This defines the System-on-a-Chip, it holds all the on-chip hardware..
         class SoC {
@@ -43,6 +43,8 @@ namespace gnilk {
 
             // Reset the System - all non-volatile memory is lost (i.e. non-flash)
             void Reset();
+
+            void CreateMemoryRegionsFromConfig(std::span<MemoryRegionConfiguration> configs);
 
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end);
             void MapRegion(uint8_t region, uint8_t flags, uint64_t start, uint64_t end, MemoryAccessHandler handler);
@@ -69,7 +71,7 @@ namespace gnilk {
             MemoryRegion *GetFirstRegionFromBusType() {
                 for(int i=0;i<VCPU_MEM_MAX_REGIONS;i++) {
                     if (!(regions[i].flags & kRegionFlag_Valid)) continue;
-                    if (!is_instanceof<TBus>(regions[0].bus.get())) continue;
+                    if (!is_instanceof<TBus>(regions[i].bus.get())) continue;
                     return &regions[i];
                 }
                 return nullptr;
@@ -112,6 +114,12 @@ namespace gnilk {
 
                 return true;
             }
+
+            Core &GetCore(size_t idxCore) {
+                // YEAH!
+                return cores[idxCore];
+            }
+
         protected:
             void Initialize();
             void SetDefaults();
@@ -123,6 +131,7 @@ namespace gnilk {
         private:
             bool isInitialized = false;
             Core cores[VCPU_SOC_MAX_CORES];
+            // FIXME: Replace with 'memory configuration'
             MemoryRegion regions[VCPU_MEM_MAX_REGIONS];
         };
 

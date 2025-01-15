@@ -12,6 +12,30 @@
 using namespace gnilk;
 using namespace gnilk::vcpu;
 
+
+
+static MemoryRegionConfiguration memoryConfiguration[]={
+        // Default RAM region
+        {
+                .regionFlags = kMemRegion_Default_Ram,
+                .vAddrStart = 0x00,
+                .sizeBytes = 65536,
+        },
+        // A region with HW mapped memory
+        {
+                .regionFlags = kMemRegion_Default_HWMapped,
+                .vAddrStart = 0x0100'0000'0000'0000,
+                .sizeBytes = 65536,
+        },
+        // Default Flash region
+        {
+            .regionFlags = kMemRegion_Default_Flash,
+            .vAddrStart = 0x0200'0000'0000'0000,
+            .sizeBytes = 65536,
+        },
+};
+
+
 SoC &SoC::Instance() {
     static SoC glbInstance;
     if (!glbInstance.isInitialized) {
@@ -25,7 +49,7 @@ void SoC::Initialize() {
     for(int i=0;i<VCPU_SOC_MAX_CORES;i++) {
         if (cores[i].cpu != nullptr) continue;
         cores[i].cpu = std::make_shared<VirtualCPU>();
-        cores[i].mmu.Initialize(i);
+        cores[i].cpu->memoryUnit.Initialize(i);
         cores[i].isValid = true;
     }
     isInitialized = true;
@@ -50,11 +74,47 @@ void SoC::SetDefaults() {
     //
     // You are free to map more regions - like a secondary emulated external RAM region or additional HW...
     //
+
+    CreateMemoryRegionsFromConfig(memoryConfiguration);
+/*
     CreateDefaultRAMRegion(0);
     CreateDefaultHWRegion(1);
     CreateDefaultFlashRegion(2);
+*/
 }
 
+void SoC::CreateMemoryRegionsFromConfig(std::span<MemoryRegionConfiguration> configs) {
+    size_t idxRegion = 0;
+    for(auto &c : configs) {
+        // Setup the region from configuration here
+        auto &region = GetRegion(idxRegion);
+        region.flags = c.regionFlags;
+        region.vAddrStart = c.vAddrStart;
+        region.vAddrEnd = c.vAddrStart + c.sizeBytes;
+
+        // FIXME: This should perhaps be done differently...  but yeah - let's refactor when we need it...
+        if ((c.regionFlags == kMemRegion_Default_Ram) || (c.regionFlags == kMemRegion_Default_Flash)) {
+            region.szPhysical = c.sizeBytes;
+            region.ptrPhysical = new uint8_t[c.sizeBytes];
+            memset(region.ptrPhysical, 0, region.szPhysical);
+        }
+
+        switch(c.regionFlags) {
+            case kMemRegion_Default_Ram :
+                region.bus = RamBus::Create(new RamMemory(region.ptrPhysical, region.szPhysical));
+                break;
+            case kMemRegion_Default_Flash :
+                region.bus = FlashBus::Create(new RamMemory(region.ptrPhysical, region.szPhysical));
+                break;
+            case kMemRegion_Default_HWMapped :
+                region.bus = HWMappedBus::Create();
+                break;
+        }
+        idxRegion++;
+    }
+}
+
+// Deprecated - keeping them here for the time beeing...
 void SoC::CreateDefaultRAMRegion(size_t idxRegion) {
     // Setup region 0 - this is the default RAM region
     auto &region = GetRegion(idxRegion);

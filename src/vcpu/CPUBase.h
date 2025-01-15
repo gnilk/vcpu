@@ -312,6 +312,9 @@ namespace gnilk {
             //      cpu.Begin(myRam, 512*1024);         // Initialize
             //      memcpy(&myRam[0x2000], binary, sizeof(binary)); // Copy the binary...
             virtual void Begin(void *ptrRam, size_t sizeOfRam);
+            // FIXME: Figure this one out - should take some kind of 'memory definition' parametrer
+            virtual void Begin();
+
             virtual void End();
             virtual void Reset();
 
@@ -537,16 +540,25 @@ namespace gnilk {
             }
 
             // Read from physical memory..
+            // FIXME: Needs to fetch from MMU...
             template<typename T>
             T FetchFromPhysicalRam(uint64_t &address) {
-                if (address > szRam) {
-                    fmt::println(stderr, "FetchFromRam - Invalid address {}", address);
-                    exit(1);
-                }
+//                if (address > szRam) {
+//                    fmt::println(stderr, "FetchFromRam - Invalid address {}", address);
+//                    exit(1);
+//                }
                 T result = {};
+                result = memoryUnit.Read<T>(address);
+                // FIXME: do I really want to advance here
+                address += sizeof(T);
+                return result;
+
+
+
                 uint32_t nBits = 0;
                 auto numToFetch = sizeof(T);
                 while(numToFetch > 0) {
+
                     // FIXME: delegate to 'memory-reader'
                     auto byte = ram[address];
                     address++;
@@ -561,17 +573,15 @@ namespace gnilk {
                 return result;
             }
 
-
+/*
 
             // This one is used alot and should be faster...
             __inline uint8_t FetchByteFromInstrPtr() {
                 return FetchFromInstrPtr<uint8_t>();
-                /*
-                            auto address = registers.instrPointer.data.longword;
-                            auto byte = ram[address++];
-                            registers.instrPointer.data.longword = address;
-                            return byte;
-                */
+//                            auto address = registers.instrPointer.data.longword;
+//                            auto byte = ram[address++];
+//                            registers.instrPointer.data.longword = address;
+//                            return byte;
             }
             uint16_t FetchWordFromInstrPtr() {
                 return FetchFromInstrPtr<uint16_t>();
@@ -582,6 +592,7 @@ namespace gnilk {
             uint64_t FetchLongFromInstrPtr() {
                 return FetchFromInstrPtr<uint64_t>();
             }
+*/
             void UpdateMMU();
        // FIXME: Solve this - these are public since instruction set's inherits and friend's can't follow inheritance
         public:
@@ -592,8 +603,12 @@ namespace gnilk {
             };
         // FIXME: Solve this - these are public since instruction set's inherits and friend's can't follow inheritance
         public:
+            // use this or 'memoryReaderWriter' to access ram
             uint8_t *ram = nullptr;
             size_t szRam = 0;
+
+            //IReaderWriter *memoryReaderWriter = nullptr;
+
             Registers registers = {};
 
 

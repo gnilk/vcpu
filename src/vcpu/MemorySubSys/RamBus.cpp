@@ -56,6 +56,14 @@ MesiBusBase::Ref RamBus::Create(RamMemory *ptrRam) {
     return instance;
 }
 
+void RamBus::ReadData(void *dst, uint64_t addrDescriptor, size_t nBytes) {
+    ram->ReadVolatile(dst, addrDescriptor, nBytes);
+}
+void RamBus::WriteData(uint64_t addrDescriptor, const void *src, size_t nBytes) {
+    ram->WriteVolatile(addrDescriptor, src, nBytes);
+}
+
+
 
 void RamBus::ReadLine(void *dst, uint64_t addrDescriptor) {
     // FIXME: Not sure this should be done here...
@@ -66,4 +74,5 @@ void RamBus::WriteLine(uint64_t addrDescriptor, const void *src) {
     // FIXME: Not sure this should be done here...
     ram->Write(addrDescriptor & VCPU_MEM_ADDR_MASK, src);
 }
+
 

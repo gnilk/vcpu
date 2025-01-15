@@ -29,6 +29,11 @@ void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
 
     Reset();
 }
+void CPUBase::Begin() {
+
+    Reset();
+}
+
 void CPUBase::End() {
     DoEnd();
 }
@@ -39,7 +44,9 @@ void CPUBase::DoEnd() {
 void CPUBase::Reset() {
     // Everything is zero upon reset...
     memset(&registers, 0, sizeof(registers));
-    memset(ram, 0, szRam);
+    if (ram != nullptr) {
+        memset(ram, 0, szRam);
+    }
 
     systemBlock  = (MemoryLayout *)ram;
 

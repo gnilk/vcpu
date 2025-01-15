@@ -11,11 +11,16 @@
 
 using namespace gnilk::vcpu;
 
-// This should not be in the CTOR - I hate CTOR's...
+//
+// TODO: Should rewrite so we don't depend on the SOC instance
+// - Initialize to take 'std::vector<MemoryRegion *> &regions' and a address-to-bus translation routine
+//
+
+// Note: This should not go to the CTOR as we call the global SoC object - subject to change
 void CacheController::Initialize(uint8_t coreIdentifier) {
     idCore = coreIdentifier;
 
-
+    // FIXME: Not quite sure I want this to automatically map cacheable regions, better to supply them in the initializer
     std::vector<MemoryRegion *> regions;
     SoC::Instance().GetCacheableRegions(regions);
 

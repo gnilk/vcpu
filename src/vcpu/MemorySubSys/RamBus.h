@@ -51,9 +51,8 @@ namespace gnilk {
             uint8_t *data = nullptr;
         };
 
-
-
         // RAM Bus
+        // Note: When using a 'CacheController' through the SoC interface these are connected automatically
         class RamBus : public MesiBusBase {
         public:
             RamBus() = default; //(RamMemory &memory) : ram(memory) {}
@@ -65,6 +64,12 @@ namespace gnilk {
             void SetRamMemory(RamMemory *memory) {
                 ram = memory;
             }
+
+            // Writes raw data directly to the memory region hold by the bus
+            // This allows writing to 'RAM' from the EMU and other tools before the system is populated
+            void ReadData(void *dst, uint64_t addrDescriptor, size_t nBytes) override;
+            void WriteData(uint64_t addrDescriptor, const void *src, size_t nBytes) override;
+
 
             void WriteLine(uint64_t addrDescriptor, const void *src) override;
             void ReadLine(void *dst, uint64_t addrDescriptor) override;

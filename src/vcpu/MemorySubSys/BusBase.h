@@ -78,11 +78,13 @@ namespace gnilk {
             virtual void BroadCastWrite(uint8_t idCore, uint64_t addrDescriptor) {}
 
 
+            // Reads and Writes data relative to the offset of the virtual start address...
             virtual void ReadData(void *dst, uint64_t addrDescriptor, size_t nBytes) {}
             virtual void WriteData(uint64_t addrDescriptor, const void *src, size_t nBytes) {}
 
             virtual void WriteLine(uint64_t addrDescriptor, const void *src) {};
             virtual void ReadLine(void *dst, uint64_t addrDescriptor) {};
+
         };
     }
 }

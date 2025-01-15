@@ -7,10 +7,12 @@
 #include <filesystem>
 #include <string.h>
 #include <testinterface.h>
+#include "MemorySubSys/FlashBus.h"
 #include "MemorySubSys/RamBus.h"
 #include "MemorySubSys/MemoryUnit.h"
 #include "MemorySubSys/HWMappedBus.h"
 #include "System.h"
+#include "VirtualCPU.h"
 
 using namespace gnilk;
 using namespace gnilk::vcpu;
@@ -23,6 +25,7 @@ DLL_EXPORT int test_soc_resetram(ITesting *t);
 DLL_EXPORT int test_soc_regionfromaddr(ITesting *t);
 DLL_EXPORT int test_soc_hwmapping(ITesting *t);
 DLL_EXPORT int test_soc_getregionfromtype(ITesting *t);
+DLL_EXPORT int test_soc_flash_upload(ITesting *t);
 }
 
 DLL_EXPORT int test_soc(ITesting *t) {
@@ -141,5 +144,79 @@ DLL_EXPORT int test_soc_getregionfromtype(ITesting *t) {
     auto region = SoC::Instance().GetFirstRegionFromBusType<HWMappedBus>();
     TR_ASSERT(t, region != nullptr);
 
+    return kTR_Pass;
+}
+
+
+DLL_EXPORT int test_soc_flash_upload(ITesting *t) {
+    uint8_t program[]= {
+            0x30,0x01,0x13,0x03,    // add.w d1, d0     // d1 = 0 + 0x4711
+            0x30,0x01,0x53,0x13,    // add.w d5, d1     // d5 = 0 + 0x4711
+            0x30,0x00,0x23,0x53,    // add.b d2, d5     // d2 = 0 + 0x11
+            0x30,0x00,0x23,0x01, 0x01,  // add.b d2, 0x01 // d2 = 0x12
+    };
+
+    auto flash = SoC::Instance().GetFirstRegionFromBusType<FlashBus>();
+    TR_ASSERT(t, flash != nullptr);
+
+    // Upload program to flash memory
+    flash->bus->WriteData(0, program, sizeof(program));
+    auto core = SoC::Instance().GetCore(0);
+    auto cpu = std::dynamic_pointer_cast<VirtualCPU>(core.cpu);
+    cpu->SetInstrPtr(flash->vAddrStart);
+
+    uint8_t *ptrFlashRam = static_cast<uint8_t *>(flash->ptrPhysical);
+
+    // preload reg d0 with 0x4711
+    auto &regs = cpu->GetRegisters();
+    regs.dataRegisters[0].data.word = 0x4711;
+
+
+    // Save ip before we step...
+    RegisterValue ip = cpu->GetInstrPtr();
+
+    // Verify intermediate mode reading works for 8,16,32,64 bit sizes
+    cpu->Step();
+    TR_ASSERT(t, regs.dataRegisters[1].data.word == 0x4711);
+    cpu->Step();
+    TR_ASSERT(t, regs.dataRegisters[1].data.word == 0x4711);
+    TR_ASSERT(t, regs.dataRegisters[5].data.word == 0x4711);
+    cpu->Step();
+    TR_ASSERT(t, regs.dataRegisters[2].data.byte == 0x11);
+    cpu->Step();
+    TR_ASSERT(t, regs.dataRegisters[2].data.byte == 0x12);
+    /*
+
+    fmt::println("------->> Begin Execution <<--------------");
+    while(cpu->Step()) {
+        // generate op-codes for this instruction...
+        std::string strOpCodes = "";
+
+        auto lastDecoded = cpu->GetLastDecodedInstr();
+
+        for(auto ofs = lastDecoded->GetInstrStartOfs(); ofs < lastDecoded->GetInstrEndOfs(); ofs++) {
+            strOpCodes += fmt::format("0x{:02x}, ",ptrFlashRam[ofs]);
+        }
+        // Retrieve the last decoded instruction and transform to string
+        auto lastInstr = cpu->GetLastDecodedInstr();
+        auto str = lastInstr->ToString();
+
+        // now output address (16 bit), instruction and opcodes
+        fmt::println("0x{:04x}\t\t{}\t\t; {}", ip.data.word,str, strOpCodes);
+        // Dump stats and register changes caused by this operation
+        //DumpStatus(cpu);
+        //DumpRegs(cpu);
+
+        // save current ip (this is for op-code)
+        ip = cpu->GetInstrPtr();
+        fmt::println("");
+
+        // Did we trigger 'halt'
+        if (cpu->IsHalted()) {
+            break;
+        }
+    }
+    fmt::println("------->> Execution Complete <<--------------");
+*/
     return kTR_Pass;
 }

@@ -36,6 +36,17 @@ namespace gnilk {
             kRegionFlag_User = 0x80,    // Is this a user or supervisor region
         };
 
+        static const auto kMemRegion_Default_Ram = kRegionFlag_Valid | kRegionFlag_Cache | kRegionFlag_Execute | kRegionFlag_Read | kRegionFlag_Write;
+        static const auto kMemRegion_Default_Flash = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Execute |  kRegionFlag_NonVolatile;
+        static const auto kMemRegion_Default_HWMapped = kRegionFlag_Valid | kRegionFlag_Read | kRegionFlag_Write | kRegionFlag_HWMapping;
+
+        // Structure used to configure the internals for a memory region...
+        struct MemoryRegionConfiguration {
+            uint8_t regionFlags;
+            uint64_t vAddrStart;
+            uint64_t sizeBytes;
+        };
+
         using MemoryAccessHandler = std::function<void(BusBase::kMemOp op, uint64_t address)>;
         // Should each region be tied to a memory bus - or is this optional?
         // Also - a region is global across all MMU instances...

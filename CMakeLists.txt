@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.16)
 project(vcpu)
 set(CMAKE_CXX_STANDARD 20)
 
@@ -93,6 +93,7 @@ list(APPEND vcputestsrc src/vcpu/tests/test_vcpu.cpp)
 # list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu.cpp)
 list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_cache.cpp)
 list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_mmu_new.cpp)
+list(APPEND vcputestsrc src/vcpu/MemorySubSys/Tests/test_memregion.cpp)
 
 
 
