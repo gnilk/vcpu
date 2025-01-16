@@ -338,8 +338,10 @@ DLL_EXPORT int test_vcpu_instr_add_immediate(ITesting *t) {
     vcpu.Step();
     TR_ASSERT(t, regs.dataRegisters[0].data.byte == 0x44);
 
+    regs.dataRegisters[0].data.longword = 0;
     vcpu.SetInstrPtr(0);
     vcpu.QuickStart(wordAdd, 1024);
+
     vcpu.Step();
     TR_ASSERT(t, regs.dataRegisters[0].data.word == 0x4433);
 
@@ -847,12 +849,12 @@ DLL_EXPORT int test_vcpu_instr_bne(ITesting *t) {
 
 DLL_EXPORT int test_vcpu_halt(ITesting *t) {
     uint8_t program[]={
-            OperandCode::NOP,0x00,0x00,0x00,   // nop
-            0x00,   0x00,0x00,0x00,// break
-            OperandCode::NOP, 0x00,0x00,0x00,  // nop - should never execute
-            OperandCode::NOP,  0x00,0x00,0x00, // nop
-            OperandCode::NOP,  0x00,0x00,0x00, // nop
-            OperandCode::NOP,  0x00,0x00,0x00, // nop
+            OperandCode::NOP, // nop
+            OperandCode::BRK, // break
+            OperandCode::NOP,  // nop - should never execute
+            OperandCode::NOP, // nop
+            OperandCode::NOP, // nop
+            OperandCode::NOP, // nop
     };
     VirtualCPU vcpu;
     auto &status = vcpu.GetStatusReg();
