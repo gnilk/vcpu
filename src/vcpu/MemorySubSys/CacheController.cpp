@@ -166,9 +166,10 @@ size_t CacheController::Flush() {
             // All lines in the cache MUST come from a MESI compatible bus...
             auto bus = SoC::Instance().GetDataBusForAddress(cache.lines[i].addrDescriptor);
             WriteMemory(bus, i);
-            cache.ResetLine(i);
             nLinesFlushed++;
         }
+        // Need the reset call here otherwise cached but not modified lines will still be present
+        cache.ResetLine(i);
     }
     return nLinesFlushed;
 }
