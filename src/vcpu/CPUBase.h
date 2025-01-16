@@ -381,17 +381,10 @@ namespace gnilk {
                 return registers.cntrlRegisters.named.exceptionMask;
             }
 
-            uint8_t *GetRamPtr() {
-                return ram;
-            }
-            size_t GetRamSize() {
-                return szRam;
-            }
             bool LoadDataToRam(uint64_t ramAddress, const void *ptrData, size_t szData) {
-                if ((ramAddress + szData) > szRam) {
+                if (memoryUnit.CopyToRamFromExt(ramAddress, ptrData, szData) < 0) {
                     return false;
                 }
-                memcpy(&ram[ramAddress], ptrData, szData);
                 return true;
             }
 
@@ -523,10 +516,7 @@ namespace gnilk {
 
             template<typename T>
             void WriteToPhysicalRam(uint64_t &address, const T &value) {
-
-
                 memoryUnit.Write(address, value);
-
             }
 
             // Read from physical memory..
@@ -550,16 +540,8 @@ namespace gnilk {
             };
         // FIXME: Solve this - these are public since instruction set's inherits and friend's can't follow inheritance
         public:
-            // use this or 'memoryReaderWriter' to access ram
-            uint8_t *ram = nullptr;
-            size_t szRam = 0;
-
-            //IReaderWriter *memoryReaderWriter = nullptr;
-
             Registers registers = {};
 
-
-            //MemoryUnit memoryUnit;
             MMU memoryUnit;
             MemoryLayout *systemBlock = nullptr;
 

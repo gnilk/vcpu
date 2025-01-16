@@ -104,7 +104,7 @@ bool VirtualCPU::Step() {
     }
 
     // if CPU is halted and we idle/waiting for ISR, don't decode and skip..
-    if ((registers.statusReg.flags.halt == 1) && (GetActiveISRControlBlock() != nullptr)) {
+    if (registers.statusReg.flags.halt == 1) {
         // FIXME: A lot of things are 'wrong' here - esp. when we dump 'lastDecodedInstr'..
         return true;
     }

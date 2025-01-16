@@ -4,6 +4,7 @@
 
 #include "fmt/format.h"
 #include "CPUBase.h"
+#include "System.h"
 #include <mutex>
 
 using namespace gnilk;
@@ -15,9 +16,6 @@ CPUBase::~CPUBase() {
 
 // QuickStart won't initialize the ISR Table and reserve stuff - it will just assign the RAM ptr
 void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
-    ram = static_cast<uint8_t *>(ptrRam);
-    szRam = sizeOfRam;
-
     memset(&registers, 0, sizeof(registers));
 
     memoryUnit.CopyToRamFromExt(0, ptrRam, sizeOfRam);
@@ -26,8 +24,11 @@ void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
 }
 
 void CPUBase::Begin(void* ptrRam, size_t sizeOfRam) {
-    ram = static_cast<uint8_t *>(ptrRam);
-    szRam = sizeOfRam;
+//    ram = static_cast<uint8_t *>(ptrRam);
+//    szRam = sizeOfRam;
+
+    memoryUnit.CopyToRamFromExt(0, ptrRam, sizeOfRam);
+
 
     Reset();
 }
@@ -46,17 +47,27 @@ void CPUBase::DoEnd() {
 void CPUBase::Reset() {
     // Everything is zero upon reset...
     memset(&registers, 0, sizeof(registers));
-    if (ram != nullptr) {
-        memset(ram, 0, szRam);
+
+    // Ah - this is interesting - we need to fix this!
+    auto ramregion = SoC::Instance().GetFirstRegionFromBusType<RamBus>();
+    if (ramregion == nullptr) {
+        fmt::println(stderr, "CPUBase::Reset, No RAM configuration!");
+        exit(1);
+    }
+    if (ramregion->ptrPhysical == nullptr) {
+        fmt::println(stderr, "CPUBase::Reset, RAM region found - but physical memory not attached (nullptr)");
+        exit(1);
     }
 
-    systemBlock  = (MemoryLayout *)ram;
+    // FIXME: This is not correct
+    systemBlock  = (MemoryLayout *)ramregion->ptrPhysical;
 
     isrVectorTable = &systemBlock->isrVectorTable; //(ISR_VECTOR_TABLE*)ram;
     isrControlBlocks = systemBlock->isrControlBlocks;   // array - no need to grab pointer...
     expControlBlock = &systemBlock->exceptionControlBlock;
 
-    isrVectorTable->initial_sp = szRam-1;
+    //isrVectorTable->initial_sp = szRam-1;
+    isrVectorTable->initial_sp = ramregion->szPhysical-1;
     isrVectorTable->initial_pc = VCPU_INITIAL_PC;
 
 }
@@ -92,13 +103,20 @@ CPUBase::kProcessDispatchResult CPUBase::ProcessDispatch() {
     return kProcessDispatchResult::kExecOk;
 }
 
-
-
+// Used in unit tests - should probably not be here!
 void *CPUBase::GetRawPtrToRAM(uint64_t addr) {
-    if (addr > szRam) {
+    auto &region = SoC::Instance().GetMemoryRegionFromAddress(addr);
+
+    if ((region.vAddrStart < addr) || (region.vAddrEnd > addr)) {
         return nullptr;
     }
-    return &ram[addr];
+
+    if (region.ptrPhysical == nullptr) {
+        return nullptr;
+    }
+
+    size_t offset = addr - region.vAddrStart;
+    return &static_cast<uint8_t *>(region.ptrPhysical)[offset];
 }
 
 MemoryLayout *CPUBase::GetSystemMemoryBlock() {
@@ -226,6 +244,9 @@ void CPUBase::EnableInterrupt(CPUIntFlag interrupt) {
 }
 
 ISRControlBlock *CPUBase::GetActiveISRControlBlock() {
+    if (isrControlBlocks == nullptr) {
+        return nullptr;
+    }
     auto interruptId = registers.cntrlRegisters.named.intExceptionStatus.interruptId;
     return &isrControlBlocks[interruptId];
 }
