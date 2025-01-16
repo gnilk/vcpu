@@ -80,16 +80,25 @@ DLL_EXPORT int test_vcpu_readwrite_ram(ITesting *t) {
 
 
     RegisterValue writeReg = {};
+    memset(ram,0, sizeof(ram));
     writeReg.data.byte = 0xab;
     vcpu.WriteToMemoryUnit(OperandSize::Byte, 0x00, writeReg);
+
+    vcpu.memoryUnit.CopyToExtFromRam(ram,0,128);
     TR_ASSERT(t, ram[0] == 0xab);
+
     memset(ram,0, sizeof(ram));
     writeReg.data.word = 0x0102;
     vcpu.WriteToMemoryUnit(OperandSize::Word, 0x00, writeReg);
+
+    vcpu.memoryUnit.CopyToExtFromRam(ram,0,128);
     TR_ASSERT(t, (ram[0] == 0x01) && (ram[1] == 0x02));
+
     memset(ram,0, sizeof(ram));
     writeReg.data.dword = 0x01020304;
     vcpu.WriteToMemoryUnit(OperandSize::DWord, 0x00, writeReg);
+
+    vcpu.memoryUnit.CopyToExtFromRam(ram,0,128);
     TR_ASSERT(t, (ram[0] == 0x01) && (ram[1] == 0x02) && (ram[2] == 0x03) && (ram[3] == 0x04));
 
     return kTR_Pass;

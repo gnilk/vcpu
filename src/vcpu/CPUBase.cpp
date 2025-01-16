@@ -20,6 +20,8 @@ void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
 
     memset(&registers, 0, sizeof(registers));
 
+    memoryUnit.CopyToRamFromExt(0, ptrRam, sizeOfRam);
+
     // NOTE: The System Block is not initialized in this...
 }
 

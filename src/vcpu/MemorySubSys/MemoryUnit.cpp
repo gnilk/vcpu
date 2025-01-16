@@ -119,10 +119,6 @@ void MMU::ReadInternalToExternal(void *dst, uint64_t virtualAddress, size_t nByt
 
 // Copy to external (native) RAM from the emulated RAM...
 int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcVirtualAddress, size_t nBytes) {
-    static uint8_t tmpCacheLine[GNK_L1_CACHE_LINE_SIZE];
-    if (nBytes > GNK_L1_CACHE_LINE_SIZE) {
-        return -1;
-    }
     if (nBytes == 0) {
         return 0;
     }
@@ -131,23 +127,37 @@ int32_t MMU::CopyToExtFromRam(void *dstPtr, const uint64_t srcVirtualAddress, si
         return 0;
     }
 
-    // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
+    auto ram = SoC::Instance().GetFirstRegionFromBusType<RamBus>();
+    if (ram == nullptr) {
+        // FIXME: Raise exception
+        return -1;
+    }
+    if (ram->bus == nullptr) {
+        // FIXME: Raise exception
+        return -1;
+    }
+    // Check if we are within the region..
+    if ((srcVirtualAddress < ram->vAddrStart) || (srcVirtualAddress > ram->vAddrEnd)) {
+        // FIXME: Raise exception here - invalid address
+        return -1;
+    }
+    if ((srcVirtualAddress + nBytes) > ram->vAddrEnd) {
+        // FIXME: Raise exception here - copy-outside of available RAM - PageFault
+        return -1;
+    }
 
+    // Make sure we flush the cache first!!!
+    cacheController.Flush();
 
-    auto databus = SoC::Instance().GetDataBusForAddress(srcVirtualAddress);
-    memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
-    databus->ReadLine(tmpCacheLine, srcVirtualAddress);
-    memcpy(dstPtr, tmpCacheLine, nBytes);
+    auto ramAddress = TranslateAddress(srcVirtualAddress);
+    ram->bus->ReadData(dstPtr, ramAddress, nBytes);
+
     return nBytes;
 }
 
 
 // Copy to emulated RAM from native RAM...
 int32_t MMU::CopyToRamFromExt(uint64_t dstVirtualAddr, const void *srcAddress, size_t nBytes) {
-    static uint8_t tmpCacheLine[GNK_L1_CACHE_LINE_SIZE];
-    if (nBytes > GNK_L1_CACHE_LINE_SIZE) {
-        return -1;
-    }
     if (nBytes == 0) {
         return 0;
     }
@@ -156,13 +166,30 @@ int32_t MMU::CopyToRamFromExt(uint64_t dstVirtualAddr, const void *srcAddress, s
         return 0;
     }
 
-    // FIXME: Verify if we can cahce this region - if not - we should fetch another bus!!
+    auto ram = SoC::Instance().GetFirstRegionFromBusType<RamBus>();
+    if (ram == nullptr) {
+        // FIXME: Raise exception
+        return -1;
+    }
+    if (ram->bus == nullptr) {
+        // FIXME: Raise exception
+        return -1;
+    }
+    // Check if we are within the region..
+    if ((dstVirtualAddr < ram->vAddrStart) || (dstVirtualAddr > ram->vAddrEnd)) {
+        // FIXME: Raise exception here - invalid address
+        return -1;
+    }
+    if ((dstVirtualAddr + nBytes) > ram->vAddrEnd) {
+        // FIXME: Raise exception here - copy-outside of available RAM - PageFault
+        return -1;
+    }
 
-    auto databus = SoC::Instance().GetDataBusForAddress(dstVirtualAddr);
+    // Make sure we flush the cache first!!!
+    cacheController.Flush();
 
-    memset(tmpCacheLine, 0, GNK_L1_CACHE_LINE_SIZE);
-    memcpy(tmpCacheLine, srcAddress, nBytes);
-    databus->WriteLine(dstVirtualAddr, tmpCacheLine);
+    auto ramAddress = TranslateAddress(dstVirtualAddr);
+    ram->bus->WriteData(ramAddress, srcAddress, nBytes);
 
     return nBytes;
 }

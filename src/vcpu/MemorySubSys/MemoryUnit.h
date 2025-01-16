@@ -189,15 +189,54 @@ namespace gnilk {
             template<typename T>
             int32_t Write(uint64_t virtualAddress, const T &value) {
                 static_assert(std::is_integral_v<T> == true);
-                return WriteInternalFromExternal(virtualAddress, &value, sizeof(T));
+
+                uint8_t data[sizeof(T)];
+                size_t index = 0;
+                auto numToWrite = sizeof(T);
+                auto bitShift = (numToWrite-1)<<3;
+                while(numToWrite > 0) {
+
+                    data[index] = (value >> bitShift) & 0xff;
+
+                    bitShift -= 8;
+                    index++;
+                    numToWrite -= 1;
+                }
+
+                return WriteInternalFromExternal(virtualAddress, data, sizeof(T));
             }
 
             template<typename T>
             T Read(uint64_t virtualAddress) {
                 static_assert(std::is_integral_v<T> == true);
-                T value;
-                ReadInternalToExternal(&value, virtualAddress, sizeof(T));
-                return value;
+                uint8_t data[sizeof(T)];
+                //T value;
+                ReadInternalToExternal(data, virtualAddress, sizeof(T));
+
+                // Not sure if this actually should be here!
+
+                T result = {};
+
+                size_t index = 0;
+                uint32_t nBits = 0;
+                auto numToFetch = sizeof(T);
+                while(numToFetch > 0) {
+
+                    // FIXME: delegate to 'memory-reader'
+                    auto byte = data[index];
+                    index++;
+                    // this results in 'hex' dumps easier to read - MSB first (most significant byte first) - Intel?
+                    result = (result << nBits) | T(byte);
+                    nBits = 8;
+
+                    // this results in LSB - least significant byte first (Motorola?)
+                    // result |= T(byte) << nBits);
+                    // nBits += 8;
+                    numToFetch -= 1;
+                }
+
+
+                return result;
             }
 
             void Touch(const uint64_t address);

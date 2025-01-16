@@ -523,76 +523,23 @@ namespace gnilk {
 
             template<typename T>
             void WriteToPhysicalRam(uint64_t &address, const T &value) {
-                if ((address + sizeof(T)) > szRam) {
-                    fmt::println(stderr, "WriteToRam - Invalid address {} exceeds physical memory", address);
-                    exit(1);
-                }
-                auto numToWrite = sizeof(T);
-                auto bitShift = (numToWrite-1)<<3;
-                while(numToWrite > 0) {
 
-                    ram[address] = (value >> bitShift) & 0xff;
 
-                    bitShift -= 8;
-                    address++;
-                    numToWrite -= 1;
-                }
+                memoryUnit.Write(address, value);
+
             }
 
             // Read from physical memory..
             // FIXME: Needs to fetch from MMU...
             template<typename T>
             T FetchFromPhysicalRam(uint64_t &address) {
-//                if (address > szRam) {
-//                    fmt::println(stderr, "FetchFromRam - Invalid address {}", address);
-//                    exit(1);
-//                }
                 T result = {};
                 result = memoryUnit.Read<T>(address);
-                // FIXME: do I really want to advance here
+
                 address += sizeof(T);
                 return result;
-
-
-
-                uint32_t nBits = 0;
-                auto numToFetch = sizeof(T);
-                while(numToFetch > 0) {
-
-                    // FIXME: delegate to 'memory-reader'
-                    auto byte = ram[address];
-                    address++;
-                    // this results in 'hex' dumps easier to read - MSB first (most significant byte first) - Intel?
-                    result = (result << nBits) | T(byte);
-                    nBits = 8;
-                    // this results in LSB - least significant byte first (Motorola?)
-                    // result |= T(byte) << nBits);
-                    // nBits += 8;
-                    numToFetch -= 1;
-                }
-                return result;
             }
 
-/*
-
-            // This one is used alot and should be faster...
-            __inline uint8_t FetchByteFromInstrPtr() {
-                return FetchFromInstrPtr<uint8_t>();
-//                            auto address = registers.instrPointer.data.longword;
-//                            auto byte = ram[address++];
-//                            registers.instrPointer.data.longword = address;
-//                            return byte;
-            }
-            uint16_t FetchWordFromInstrPtr() {
-                return FetchFromInstrPtr<uint16_t>();
-            }
-            uint32_t FetchDWordFromInstrPtr() {
-                return FetchFromInstrPtr<uint32_t>();
-            }
-            uint64_t FetchLongFromInstrPtr() {
-                return FetchFromInstrPtr<uint64_t>();
-            }
-*/
             void UpdateMMU();
        // FIXME: Solve this - these are public since instruction set's inherits and friend's can't follow inheritance
         public:

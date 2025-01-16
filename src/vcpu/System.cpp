@@ -13,6 +13,11 @@ using namespace gnilk;
 using namespace gnilk::vcpu;
 
 
+//
+// This is actually quite hard to follow...
+// BUT - the MMU talks SoC - about the memory configuration (defined below)
+// The SoC is auto-initialized on access
+//
 
 static MemoryRegionConfiguration memoryConfiguration[]={
         // Default RAM region
