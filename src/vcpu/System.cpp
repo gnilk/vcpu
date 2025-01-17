@@ -24,19 +24,19 @@ static MemoryRegionConfiguration memoryConfiguration[]={
         {
                 .regionFlags = kMemRegion_Default_Ram,
                 .vAddrStart = 0x00,
-                .sizeBytes = 65536,
+                .sizeBytes = 65535,
         },
         // A region with HW mapped memory
         {
                 .regionFlags = kMemRegion_Default_HWMapped,
                 .vAddrStart = 0x0100'0000'0000'0000,
-                .sizeBytes = 65536,
+                .sizeBytes = 65535,
         },
         // Default Flash region
         {
             .regionFlags = kMemRegion_Default_Flash,
             .vAddrStart = 0x0200'0000'0000'0000,
-            .sizeBytes = 65536,
+            .sizeBytes = 65535,
         },
 };
 
