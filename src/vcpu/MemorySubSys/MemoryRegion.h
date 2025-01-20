@@ -63,6 +63,8 @@ namespace gnilk {
             // EMU stuff - we can assign physically allocated stuff here
             void *ptrPhysical = nullptr;
             size_t szPhysical = 0;
+
+            void Resize(size_t newSize);
         };
 
     }
