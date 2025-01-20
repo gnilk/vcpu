@@ -60,7 +60,7 @@ This is to support `.org <offset>` type of statements..
 * debugbreak - https://github.com/scottt/debugbreak/blob/master/debugbreak.h - single file header, added to src/common
 
 # Details
-* Instruction set is documented in the file `InstructionSet.cpp` and `InstructionSet.h`
+* Instruction set is documented in the file `InstructionSetV1Def.h` and `InstructionSetV1Def.cpp`
 * Any kind of meta-statements for the compiler is not documented
 * The following sections are recognized; `.code` / `.text`, `.data`, `.bss` (not used)
 * Declaration of data is like: `dc.b 0x44, 0x11` (can also handle strings)
@@ -77,7 +77,7 @@ This is to support `.org <offset>` type of statements..
 This tries to emulate a 64bit Motorola 68k look-alike CPU.
 I wanted to generate machine code for my toy-language.
 So I naturally invented a CPU since I thought x86 was too complicated.
-It also presented an opportunity to actually generate code but from
+It also presented an opportunity to actually generate code from
 an assembler instead of directly from the language. So instead
 of finishing the language I started to write an assembler for the
 emulated CPU...  Good riddance!
@@ -86,6 +86,8 @@ emulated CPU...  Good riddance!
 I made the initial op-code decoding step to always consume 32 bits of data. Was pondering to make any CPU
 access 32 bit aligned. However, that would waste quite a bit of space - so I decided not to.
 But I will for now be keeping the 32 bit OP-code structure..  Perhaps reverting it later..
+
+NOTE: This has been reverted - the CPU operates on bytes...
 
 Also, changing the format to be strict about the first 32 bits and then additional information in the
 coming X number of bytes is causing a bit of headache in the compiler..
@@ -100,7 +102,7 @@ Therefore there now is a 'postEmitter' array - where all post-emitters are place
 
 # TO-DO
 ```pre
-- Refactor instruction decoder (and order of details) to enable pipelineing
+! Refactor instruction decoder (and order of details) to enable pipelineing
   I want to be able to calculate the complete instr.size from just the 32 bits (4 bytes) of op. instr. data
 ! Lexer should NOT produce EOL tokens!!!!
 ! basic infrastructure (cpu, assembler, etc..)
