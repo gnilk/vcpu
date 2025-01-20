@@ -33,13 +33,14 @@ namespace gnilk {
             //  - invalid-address mode (or unsupported address mode)
             //  - stack-empty (any auto-stack decrement function where the stack is already empty, pop/ret)
             //
-            EXP_FUNC exp_illegal_instr; // 2
+            EXP_FUNC exp_illegal_instr; // 1
             EXP_FUNC exp_invalid_addrmode; // 2
             EXP_FUNC exp_hard_fault;    // 3        // Or reset vector...
             EXP_FUNC exp_div_zero;      // 4
             EXP_FUNC exp_debug_trap;    // 5
             EXP_FUNC exp_mmu_fault;     // 6
             EXP_FUNC exp_fpu_fault;     // 7
+            EXP_FUNC exp_reserved;      // 8
 
             // Interrupt Service Routines
             ISR_FUNC isr0;        // 8
