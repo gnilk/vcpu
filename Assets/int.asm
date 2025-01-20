@@ -5,7 +5,7 @@
 struct isrTable {
     reserved_sp    rs.l    1
     reserved_ip    rs.l    1
-    exceptions     rs.l    6
+    exceptions     rs.l    8
     isr0           rs.l    1
     isr1           rs.l    1
     isr2           rs.l    1
@@ -20,7 +20,7 @@ isrTable:
     dc.struct   isrTable {}
     .org 0x1000
 isrTimer:
-    move.l  (a0+isrTable.isr0),d0
+    ;move.l  (a0+isrTable.isr0),d0
 
 
     add.l   counter,1
