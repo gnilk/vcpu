@@ -115,6 +115,7 @@ list(APPEND asmsrc src/assembler/Compiler/Identifiers.h)
 list(APPEND asmsrc src/assembler/Compiler/StmtEmitter.cpp src/assembler/Compiler/StmtEmitter.h)
 list(APPEND asmsrc src/assembler/Lexer/TextLexer.cpp src/assembler/Lexer/TextLexer.h)
 list(APPEND asmsrc src/assembler/Parser/Parser.cpp src/assembler/Parser/Parser.h)
+list(APPEND asmsrc src/assembler/Preprocessor/PreProcessor.cpp src/assembler/Preprocessor/PreProcessor.h)
 
 
 list(APPEND asmsrc src/assembler/Linker/BaseLinker.cpp src/assembler/Linker/BaseLinker.h)
@@ -138,6 +139,7 @@ list(APPEND asmtestsrc src/assembler/tests/test_context.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_lexer.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_linker.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_parser.cpp)
+list(APPEND asmtestsrc src/assembler/tests/test_preprocessor.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_segment.cpp)
 list(APPEND asmtestsrc src/assembler/tests/test_stmtemitter.cpp)
 

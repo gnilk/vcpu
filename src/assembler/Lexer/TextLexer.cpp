@@ -57,6 +57,9 @@ const Context &gnilk::GetLexerContext() {
         {"const", TokenType::Const},
         {"public", TokenType::Public},  // make a symbol public - i.e outside the compile unit
         {"export", TokenType::Public},  // alias for public
+        // preprocessor
+        {"include", TokenType::PreProcessor},  // Include src
+
         // Meta symbols
         {"org", TokenType::MetaKeyword},
         {"code", TokenType::MetaKeyword},

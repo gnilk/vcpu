@@ -10,6 +10,7 @@
 
 namespace gnilk {
 
+    // FIXME: Encapsulate in own namespace - or rename 'Context' in this one - way to generic!
     enum class TokenType {
         Unknown,
         Number,
@@ -26,6 +27,7 @@ namespace gnilk {
         String,
         Identifier,
         MetaKeyword,        // Meta keyword
+        PreProcessor,
         // Registers
         DataReg,
         AddressReg,

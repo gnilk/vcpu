@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include "Lexer/TextLexer.h"
+#include "Preprocessor/PreProcessor.h"
 #include "ast/ast.h"
 
 namespace gnilk {
@@ -20,9 +21,10 @@ namespace gnilk {
             virtual ~Parser() = default;
 
             ast::Program::Ref ProduceAST(const std::string_view &srcCode);
+            ast::Program::Ref ProduceAST(const std::string_view &srcCode, PreProcessor::LoadAssetDelegate assetLoader);
         protected:
             ast::Program::Ref Begin(const std::string_view &srcCode);
-
+            ast::Program::Ref Begin(const std::string_view &srcCode, PreProcessor::LoadAssetDelegate assetLoader);
 
             __inline bool Done() {
                 return (At().type == TokenType::EoF || it == tokens.end());

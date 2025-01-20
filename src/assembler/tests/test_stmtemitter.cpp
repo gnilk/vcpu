@@ -40,7 +40,7 @@ DLL_EXPORT int test_stmtemitter_data_byte(ITesting *t) {
     TR_ASSERT(t, ast != nullptr);
 
     ast->Dump();
-    Context context;
+    gnilk::assembler::Context context;
 
     std::vector<EmitStatementBase::Ref> emitters;
 
