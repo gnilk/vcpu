@@ -143,6 +143,7 @@ Support for the following directives:
 + bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
+    - support for include directive
     + output elf files (works - but can be refactored to take advantage of ELF symbol handling)
     ! make a linker step (works, it's good for now)
     ! Ability to output a proper memory layout(??)
@@ -318,6 +319,9 @@ Will give you a few libraries and executables..
 Nothing except the unit-tests will work right now...
 
 # Thoughts
+
+Note to self: Skip this!
+
 Tossing around the idea to break down the ISA to microcode and build the front/backend more like a proper microarchitecture.
 From my scratch-pad...
 
@@ -369,7 +373,7 @@ execution units.
 struct Microcode {
     uint8_t euFetureBitMask;     // What features we want from the execution unit     
     uint8_t instrPtr;     
-    uint8_t code[MAX_BYTES];
+    uint8_t code[MAX_BYTES];    // Question is if this should be 'allocated' from a generic array or a static block
 };
 ```
 Assuming each micro-code operation is 16 bit fixed. Size of the op-code poses (a minor) problem dealing with immediate values.
