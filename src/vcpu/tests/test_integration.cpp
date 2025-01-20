@@ -79,10 +79,12 @@ DLL_EXPORT int test_integration_syscall(ITesting *t) {
     return kTR_Pass;
 }
 
+#define ASM_TEST_FILE ("Assets/test.asm")
+
 DLL_EXPORT int test_integration_file(ITesting *t) {
     // This test depends on various things in the assembler which are not yet working...
 //    return kTR_Pass;
-    std::filesystem::path pathToSrcFile("Assets/test.asm");
+    std::filesystem::path pathToSrcFile(ASM_TEST_FILE);
     size_t szFile = file_size(pathToSrcFile);
     char *data = (char *)malloc(szFile + 10);
     TR_ASSERT(t, data != nullptr);
@@ -90,7 +92,7 @@ DLL_EXPORT int test_integration_file(ITesting *t) {
     memset(data, 0, szFile + 10);
 
 
-    FILE *f = fopen("Assets/test.asm", "r+");
+    FILE *f = fopen(ASM_TEST_FILE, "r+");
     TR_ASSERT(t, f != nullptr);
     auto nRead = fread(data, 1, szFile, f);
     fclose(f);
