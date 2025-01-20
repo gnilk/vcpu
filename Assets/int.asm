@@ -1,4 +1,6 @@
-
+;
+; Note: you can NOT start this through the quick-start function - as it has no vector table!!
+;
     .code
     .org 0x0000
 
