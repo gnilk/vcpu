@@ -250,6 +250,9 @@ namespace gnilk {
 
         using SysCallDelegate = std::function<void(Registers &regs, CPUBase *cpu)>;
 
+        //
+        // A syscall is a gateway to the real world - for now..
+        //
         class SysCall {
         public:
             using Ref = std::shared_ptr<SysCall>;   // this can probably be unique ptr

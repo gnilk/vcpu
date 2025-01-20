@@ -18,7 +18,17 @@ CPUBase::~CPUBase() {
 void CPUBase::QuickStart(void* ptrRam, size_t sizeOfRam) {
     memset(&registers, 0, sizeof(registers));
 
-    memoryUnit.CopyToRamFromExt(0, ptrRam, sizeOfRam);
+    auto defaultRam = SoC::Instance().GetFirstRegionFromBusType<RamBus>();
+    // auto-expand here, in case the default RAM is smaller than the quickstart RAM
+    if (defaultRam->szPhysical < sizeOfRam) {
+        defaultRam->Resize(sizeOfRam);
+    }
+
+    auto copyResult = memoryUnit.CopyToRamFromExt(0, ptrRam, sizeOfRam);
+    if (copyResult < 0) {
+        fmt::println(stderr, "Err: MMU failed to copy from external memory to internal RAM");
+        exit(1);
+    }
 
     // NOTE: The System Block is not initialized in this...
 }
@@ -107,7 +117,7 @@ CPUBase::kProcessDispatchResult CPUBase::ProcessDispatch() {
 void *CPUBase::GetRawPtrToRAM(uint64_t addr) {
     auto &region = SoC::Instance().GetMemoryRegionFromAddress(addr);
 
-    if ((region.vAddrStart < addr) || (region.vAddrEnd > addr)) {
+    if ((region.vAddrStart > addr) || (region.vAddrEnd < addr)) {
         return nullptr;
     }
 
