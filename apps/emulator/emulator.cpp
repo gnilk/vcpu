@@ -203,12 +203,21 @@ bool ProcessRaw(std::filesystem::path &pathToBinary) {
     if (f == nullptr) {
         return false;
     }
-    auto nRead = fread(&cpuemu.GetRamPtr()[rawLoadToAddress], 1, szFile, f);
+
+    auto data = malloc(szFile + 1);
+
+    //auto nRead = fread(&cpuemu.GetRamPtr()[rawLoadToAddress], 1, szFile, f);
+    auto nRead = fread(data, 1, szFile, f);
     if ((nRead == 0) & !feof(f)) {
         fmt::println(stderr, "ERR: ProcessRaw failed to read file '{}'", pathToBinary.c_str());
+        free(data);
         return false;
     }
     fclose(f);
+
+    cpuemu.memoryUnit.CopyToRamFromExt(rawLoadToAddress,data, szFile);
+
+    free(data);
 
     auto res = ExecuteData(rawStartAddress, szFile);
     return res;
