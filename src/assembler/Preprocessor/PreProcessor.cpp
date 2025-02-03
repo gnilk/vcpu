@@ -19,6 +19,7 @@ bool PreProcessor::Process(std::vector<Token> &tokens, LoadAssetDelegate assetLo
         }
         // Verify the directive has a valid structure
         if (!IsValidDirectiveAt(i, tokens)) {
+            fmt::println(stderr, "ERR: Invalid preprocessor directive");
             return false;
         }
 
