@@ -29,10 +29,10 @@ namespace gnilk {
             InstructionDecoderBase &GetDecoder() override {
                 return decoder;
             }
-            InstructionSetDefBase &GetDefinition() {
+            InstructionSetDefBase &GetDefinition() override {
                 return definition;
             };
-            InstructionSetImplBase &GetImplementation() {
+            InstructionSetImplBase &GetImplementation() override {
                 return implementation;
             };
 

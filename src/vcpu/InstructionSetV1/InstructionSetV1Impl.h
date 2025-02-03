@@ -18,7 +18,7 @@ namespace gnilk {
         class InstructionSetV1Impl : public InstructionSetImplBase {
         public:
             bool ExecuteInstruction(CPUBase &newCpu) override;
-            std::string DisasmLastInstruction();
+            std::string DisasmLastInstruction() override;
 
         protected:
             // one operand instr.
