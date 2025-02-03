@@ -47,6 +47,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_cmpbne_forward(ITesting *t);
     DLL_EXPORT int test_compiler_lea_labelseg(ITesting *t);
     DLL_EXPORT int test_compiler_export(ITesting *t);
+    DLL_EXPORT int test_compiler_includefile(ITesting *t);
 }
 
 static uint8_t ram[512*1024] = {};
@@ -57,6 +58,37 @@ DLL_EXPORT int test_compiler(ITesting *t) {
     t->CaseDepends("add_reg2reg", "move_reg2reg");
     return kTR_Pass;
 }
+
+static bool LoadAsset(std::string &out, const std::string &assetName, int flags) {
+    // FIXME: This should be relative current asset!
+    std::filesystem::path pathToAssetFile(assetName);
+    if (!exists(pathToAssetFile)) {
+        return false;
+    }
+
+    size_t szFile = file_size(pathToAssetFile);
+    // Ok, so this is really stupid...
+    char *data = (char *)malloc(szFile + 10);
+    if (data == nullptr) {
+        return false;
+    }
+    memset(data, 0, szFile + 10);
+
+    auto f = fopen(assetName.c_str(), "r+");
+    if (f == nullptr) {
+        return false;
+    }
+    auto nRead = fread(data, 1, szFile, f);
+    out = std::string(data);
+
+    free(data);
+    fclose(f);
+
+    fmt::println("Ok, '{}' loaded", assetName);
+
+    return true;
+}
+
 DLL_EXPORT int test_compiler_file(ITesting *t) {
 
     std::filesystem::path pathToSrcFile("Assets/test.asm");
@@ -74,9 +106,11 @@ DLL_EXPORT int test_compiler_file(ITesting *t) {
     auto nRead = fread(data, 1, szFile, f);
     fclose(f);
 
+
     gnilk::assembler::Parser parser;
     gnilk::assembler::Compiler compiler;
 
+    parser.SetAssetLoader(LoadAsset);
     auto ast = parser.ProduceAST(strData);
     TR_ASSERT(t, ast != nullptr);
 
@@ -1059,4 +1093,20 @@ DLL_EXPORT int test_compiler_export(ITesting *t) {
 
     return kTR_Pass;
 
+}
+
+DLL_EXPORT int test_compiler_includefile(ITesting *t) {
+    gnilk::assembler::Parser parser;
+    gnilk::assembler::Compiler compiler;
+
+    std::string strMainFile;
+    TR_ASSERT(t, LoadAsset(strMainFile, "Assets/test_include.asm", 0));
+
+    parser.SetAssetLoader(LoadAsset);
+    auto ast = parser.ProduceAST(strMainFile);
+    TR_ASSERT(t, ast != nullptr);
+    TR_ASSERT(t, compiler.CompileAndLink(ast));
+
+
+    return kTR_Pass;
 }
