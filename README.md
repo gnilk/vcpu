@@ -132,7 +132,7 @@ Therefore there now is a 'postEmitter' array - where all post-emitters are place
         
 Support for the following directives:
     - block/buffer declarations; dcb.<opsize> <num>{,<initial value>}
-    - include; include "lib/mylib.asm" or include "defs/structs.inc"
+    ! include; include "lib/mylib.asm" or include "defs/structs.inc"
     - incbin, for binary inclusion; incbin "assets/somebinary.bin"
     ! section <code/text/data/bss>  -> long form of '.code','.data', etc.. -> asmone
 
@@ -145,7 +145,8 @@ Support for the following directives:
 + bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
-    - support for include directive
+    - Need context for current asset, in case we compile 'stuff/src.asm' and 'src.asm' includes 'bla.inc' we should first search in 'stuff' - now the context is always the one of the running file.
+    ! support for include directive
     + output elf files (works - but can be refactored to take advantage of ELF symbol handling)
     ! make a linker step (works, it's good for now)
     ! Ability to output a proper memory layout(??)
