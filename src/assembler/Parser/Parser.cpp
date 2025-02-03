@@ -22,6 +22,10 @@ using namespace gnilk::assembler;
 ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
     ast::Statement::Ref stmtPrevious = nullptr;
     auto program = Begin(srcCode);
+    if (!program) {
+        return nullptr;
+    }
+
     while(!Done()) {
         // EOL statements - we just continue
         // if (At().type == TokenType::EoL) {
@@ -39,45 +43,16 @@ ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode) {
     }
     return program;
 }
-
-ast::Program::Ref Parser::ProduceAST(const std::string_view &srcCode, PreProcessor::LoadAssetDelegate assetLoader) {
-    ast::Statement::Ref stmtPrevious = nullptr;
-    auto program = Begin(srcCode, assetLoader);
-
-    // FIXME: Consolidate - this is the same for both functions
-    while(!Done()) {
-        // EOL statements - we just continue
-        // if (At().type == TokenType::EoL) {
-        //     Eat();
-        //     continue;
-        // }
-        auto stmt = ParseStatement();
-
-        // we could expect ';' here?
-        if (stmt == nullptr) {
-            return nullptr;
-        }
-        program->Append(stmt);
-        stmtPrevious = stmt;
-    }
-    return program;
-
-}
-
 
 ast::Program::Ref Parser::Begin(const std::string_view &srcCode) {
-    tokens = lexer.Tokenize(srcCode);
-
-    it = tokens.begin();
-    return std::make_shared<ast::Program>();
-}
-
-ast::Program::Ref Parser::Begin(const std::string_view &srcCode, PreProcessor::LoadAssetDelegate assetLoader) {
     PreProcessor preProcessor;
+
     tokens = lexer.Tokenize(srcCode);
 
-    if (preProcessor.Process(tokens, assetLoader) == false) {
-        return nullptr;
+    if (assetLoader != nullptr) {
+        if (preProcessor.Process(tokens, assetLoader) == false) {
+            return nullptr;
+        }
     }
 
     it = tokens.begin();

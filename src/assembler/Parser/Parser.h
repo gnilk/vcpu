@@ -20,11 +20,13 @@ namespace gnilk {
             Parser() = default;
             virtual ~Parser() = default;
 
+            void SetAssetLoader(PreProcessor::LoadAssetDelegate useAssetLoader) {
+                assetLoader = useAssetLoader;
+            }
+
             ast::Program::Ref ProduceAST(const std::string_view &srcCode);
-            ast::Program::Ref ProduceAST(const std::string_view &srcCode, PreProcessor::LoadAssetDelegate assetLoader);
         protected:
             ast::Program::Ref Begin(const std::string_view &srcCode);
-            ast::Program::Ref Begin(const std::string_view &srcCode, PreProcessor::LoadAssetDelegate assetLoader);
 
             __inline bool Done() {
                 return (At().type == TokenType::EoF || it == tokens.end());
@@ -93,6 +95,8 @@ namespace gnilk {
             //std::optional<vcpu::OperandSize> ParseOpSize();
 
         private:
+            PreProcessor::LoadAssetDelegate assetLoader = {};
+
             Lexer lexer;
             Token last = {};
             std::vector<Token>::iterator it;

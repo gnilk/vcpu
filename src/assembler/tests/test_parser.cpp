@@ -201,7 +201,8 @@ DLL_EXPORT int test_parser_preproc(ITesting *t) {
     };
 
     Parser parser;
-    auto ast = parser.ProduceAST(src1, assetLoader);
+    parser.SetAssetLoader(assetLoader);
+    auto ast = parser.ProduceAST(src1);
     TR_ASSERT(t, ast != nullptr);
     ast->Dump();
     return kTR_Pass;
