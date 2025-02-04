@@ -1,5 +1,5 @@
 
-    .include "Assets/src_to_include.inc"
+    .include "src_to_include.inc"
 
     .code
 ; this should work

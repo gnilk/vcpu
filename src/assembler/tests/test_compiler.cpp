@@ -74,7 +74,7 @@ static bool LoadAsset(std::string &out, const std::string &assetName, int flags)
     }
     memset(data, 0, szFile + 10);
 
-    auto f = fopen(assetName.c_str(), "r+");
+    auto f = fopen(pathToAssetFile.c_str(), "r+");
     if (f == nullptr) {
         return false;
     }
