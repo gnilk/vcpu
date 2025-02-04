@@ -18,6 +18,7 @@ namespace gnilk {
         // https://godbolt.org/z/rbcf5KsGc
         class InstructionSet {
         public:
+            virtual ~InstructionSet() = default;
             virtual InstructionDecoderBase &GetDecoder() = 0;
             virtual InstructionSetDefBase &GetDefinition() = 0;
             virtual InstructionSetImplBase &GetImplementation() = 0;
@@ -26,6 +27,7 @@ namespace gnilk {
         template<typename TDec, typename TDef, typename TImpl>
         class InstructionSetInst : public InstructionSet {
         public:
+            virtual ~InstructionSetInst() = default;
             InstructionDecoderBase &GetDecoder() override {
                 return decoder;
             }
