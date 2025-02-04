@@ -19,7 +19,11 @@
 #include <stack>
 
 
+// Some globals - used by app...
 static gnilk::assembler::BaseLinker::Ref ptrUseLinker = nullptr;
+static std::stack<std::string> assetStack;
+static std::vector<std::string> includePaths;
+
 
 bool ProcessFile(const std::string &outFilename, std::filesystem::path &pathToSrcFile);
 
@@ -28,6 +32,7 @@ static void Usage() {
     fmt::println("Use:");
     fmt::println("  asm [options] <input file>");
     fmt::println("Options");
+    fmt::println("  -I <path>      Include path, specify multiple times for more");
     fmt::println("  -o <output>    Output filename (default: a.gnk)");
     fmt::println("  -t <raw | elf> Binary type (default: elf)");
     fmt::println("Ex:");
@@ -58,6 +63,17 @@ int main(int argc, const char **argv) {
                     }
                     break;
                 }
+                case 'I' : {
+                    std::filesystem::path incPath(argv[++i]);
+                    if (!exists(incPath)) {
+                        fmt::println(stderr,"ERR: Invalid include path {} - does not exists", incPath.c_str());
+                    } else if (!is_directory(incPath)) {
+                        fmt::println(stderr, "ERR: Include path {} is not a directory", incPath.c_str());
+                        return -1;
+                    }
+                    includePaths.push_back(incPath.string());
+                    }
+                    break;
                 case '?' :
                 case 'H' :
                 case 'h' :
@@ -113,7 +129,6 @@ int main(int argc, const char **argv) {
 bool CompileData(const std::string &outFilename, const std::string_view &srcData);
 bool SaveCompiledData(const std::string &outFilename, const std::vector<uint8_t> &data);
 
-static std::stack<std::string> assetStack;
 
 
 bool LoadAsset(std::string &out, const std::string &assetName, int flags) {
@@ -121,14 +136,23 @@ bool LoadAsset(std::string &out, const std::string &assetName, int flags) {
     std::filesystem::path pathToAssetFile(assetName);
 
     if ((!pathToAssetFile.is_absolute()) && (!assetStack.empty())) {
-        printf("Dependent asset, relative path!\n");
+        pathToAssetFile = std::filesystem::current_path() / assetName;
+        if (exists(pathToAssetFile)) goto asset_found;
         pathToAssetFile = std::filesystem::path(assetStack.top()).parent_path() / assetName;
+        if (exists(pathToAssetFile)) goto asset_found;
+        // Here search include paths...
+        for(auto &includePath : includePaths) {
+            pathToAssetFile = std::filesystem::path(includePath) / assetName;
+            if (exists(pathToAssetFile)) goto asset_found;
+        }
+        fmt::println(stderr, "ERR: Unable to locate {}", assetName);
     }
-    printf("Asset Path: %s\n", absolute(pathToAssetFile).c_str());
-
+asset_found:
     if (!exists(pathToAssetFile)) {
         return false;
     }
+
+    printf("Asset found - Abs.Path: %s\n", absolute(pathToAssetFile).c_str());
 
     size_t szFile = file_size(pathToAssetFile);
     // Ok, so this is really stupid...
