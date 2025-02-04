@@ -37,7 +37,7 @@ namespace gnilk {
             bool IsIdle() override;
             void Reset() override;
 
-            bool Finalize(CPUBase &cpu);
+            bool Finalize(CPUBase &cpu) override;
             bool PushToDispatch(CPUBase &cpu);
 
 
