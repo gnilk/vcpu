@@ -12,6 +12,11 @@
 
 #include "Linker/RawLinker.h"
 #include "Linker/ElfLinker.h"
+#include "InstructionSetV1/InstructionSetV1.h"
+#include "Simd/SIMDInstructionSet.h"
+#include "InstructionSet.h"
+
+#include <stack>
 
 
 static gnilk::assembler::BaseLinker::Ref ptrUseLinker = nullptr;
@@ -108,35 +113,74 @@ int main(int argc, const char **argv) {
 bool CompileData(const std::string &outFilename, const std::string_view &srcData);
 bool SaveCompiledData(const std::string &outFilename, const std::vector<uint8_t> &data);
 
-bool ProcessFile(const std::string &outFilename, std::filesystem::path &pathToSrcFile) {
-    size_t szFile = file_size(pathToSrcFile);
+static std::stack<std::string> assetStack;
+
+
+bool LoadAsset(std::string &out, const std::string &assetName, int flags) {
+    // Assume absolute
+    std::filesystem::path pathToAssetFile(assetName);
+
+    if ((!pathToAssetFile.is_absolute()) && (!assetStack.empty())) {
+        printf("Dependent asset, relative path!\n");
+        pathToAssetFile = std::filesystem::path(assetStack.top()).parent_path() / assetName;
+    }
+    printf("Asset Path: %s\n", absolute(pathToAssetFile).c_str());
+
+    if (!exists(pathToAssetFile)) {
+        return false;
+    }
+
+    size_t szFile = file_size(pathToAssetFile);
+    // Ok, so this is really stupid...
     char *data = (char *)malloc(szFile + 10);
     if (data == nullptr) {
         return false;
     }
     memset(data, 0, szFile + 10);
-    std::string_view strData(data, szFile);
 
-    // Read file
-    FILE *f = fopen(pathToSrcFile.c_str(), "r+");
+    auto f = fopen(pathToAssetFile.c_str(), "r+");
     if (f == nullptr) {
-        free(data);
         return false;
     }
     auto nRead = fread(data, 1, szFile, f);
+    out = std::string(data);
+
+    free(data);
     fclose(f);
+
+    assetStack.push(assetName);
+
+    fmt::println("Ok, '{}' loaded", assetName);
+
+    return true;
+}
+
+bool ProcessFile(const std::string &outFilename, std::filesystem::path &pathToSrcFile) {
+
+    std::string strData;
+    if (!LoadAsset(strData, absolute(pathToSrcFile), 0)) {
+        return false;
+    }
 
     return CompileData(outFilename, strData);
 }
 
 bool CompileData(const std::string &outFilename, const std::string_view &srcData) {
 
+
+    if (!gnilk::vcpu::InstructionSetManager::Instance().HaveInstructionSet()) {
+        gnilk::vcpu::InstructionSetManager::Instance().SetInstructionSet<gnilk::vcpu::InstructionSetV1>();
+    }
+
     gnilk::assembler::Parser parser;
     gnilk::assembler::Compiler compiler;
+
+
 
     // Use the elf-linker by default...
     compiler.SetLinker(ptrUseLinker);
 
+    parser.SetAssetLoader(LoadAsset);
     auto ast = parser.ProduceAST(srcData);
     if (ast == nullptr) {
         return false;
