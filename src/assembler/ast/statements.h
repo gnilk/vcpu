@@ -112,6 +112,14 @@ namespace gnilk {
 
             virtual ~StructStatement() = default;
 
+            size_t SizeOf() override {
+                size_t sz = 0;
+                for(auto &d : declarations) {
+                    sz += SizeOf();
+                }
+                return sz;
+            }
+
             const std::string &Name() {
                 return ident;
             }
@@ -136,15 +144,19 @@ namespace gnilk {
             std::vector<ast::Statement::Ref> declarations;
         };
 
+        // FIXME: Consider splitting this into two statement
+        //        One for NativeOperand size and one for custom types
+        //        This one can still be the base class for such
         class ReservationStatement : public Statement {
         public:
             using Ref = std::shared_ptr<ReservationStatement>;
         public:
-            ReservationStatement() : Statement(NodeType::kReservationStatment) {
+            ReservationStatement() = delete;
+            ReservationStatement(NodeType kind) : Statement(kind) {
             }
-            ReservationStatement(ast::Identifier::Ref identifier, vcpu::OperandSize szOperand, ast::Expression::Ref numElem) :
-                Statement(NodeType::kReservationStatment),
-                ident(identifier), opSize(szOperand), numElemExpression(numElem) {
+            ReservationStatement(NodeType subKind,ast::Identifier::Ref identifier, ast::Expression::Ref numElem) :
+                    Statement(subKind),
+                    ident(identifier), numElemExpression(numElem) {
 
             }
             virtual ~ReservationStatement() {}
@@ -152,28 +164,88 @@ namespace gnilk {
             ast::Identifier::Ref Identifier() {
                 return ident;
             }
-            vcpu::OperandSize OperandSize() {
-                return opSize;
+
+            size_t SizeOf() override {
+                return 0;
             }
+
+
             ast::Expression::Ref NumElements() {
                 return numElemExpression;
             }
 
             void Dump() override {
-                WriteLine("Reservation Statement");
-                Indent();
                 WriteLine("Name: {}", ident->Symbol());
-                WriteLine("ElemSize: {}", (int)opSize);
                 WriteLine("Elements:");
                 Indent();
                 numElemExpression->Dump();
                 Unindent();
+            }
+        protected:
+            ast::Identifier::Ref ident = {};
+            ast::Expression::Ref numElemExpression = {};
+        };
+
+        class ReservationStatementNativeType : public ReservationStatement {
+        public:
+            using Ref = std::shared_ptr<ReservationStatementNativeType>;
+        public:
+            ReservationStatementNativeType() : ReservationStatement(NodeType::kReservationStatementNative) {
+            }
+            ReservationStatementNativeType(ast::Identifier::Ref identifier, vcpu::OperandSize szOperand, ast::Expression::Ref numElem) :
+                ReservationStatement(NodeType::kReservationStatementNative, identifier, numElem), nativeType(szOperand) {
+
+            }
+
+            size_t ElementByteSize() {
+                switch(nativeType) {
+                    case vcpu::OperandSize::Byte :
+                        return 1;
+                    case vcpu::OperandSize::Word :
+                        return 2;
+                    case vcpu::OperandSize::DWord :
+                        return 4;
+                    case vcpu::OperandSize::Long :
+                        return 8;
+                }
+                return 0;
+            }
+
+            void Dump() override {
+                WriteLine("Reservation Statement Native Type");
+                Indent();
+                ReservationStatement::Dump();
+                WriteLine("Elem.ByteSize: {}", ElementByteSize());
                 Unindent();
             }
         protected:
-            ast::Identifier::Ref ident;
-            vcpu::OperandSize opSize = vcpu::OperandSize::Byte;
-            ast::Expression::Ref numElemExpression = {};
+            vcpu::OperandSize nativeType;
+
+        };
+        class ReservationStatementCustomType : public ReservationStatement {
+        public:
+            using Ref = std::shared_ptr<ReservationStatementCustomType>;
+        public:
+            ReservationStatementCustomType() : ReservationStatement(NodeType::kReservationStatementCustom) {
+            }
+            ReservationStatementCustomType(ast::Identifier::Ref identifier, ast::StructStatement::Ref typeStmt, ast::Expression::Ref numElem) :
+                ReservationStatement(NodeType::kReservationStatementCustom, identifier, numElem), customType(typeStmt) {
+            }
+
+            void Dump() override {
+                WriteLine("Reservation Statement Custom Type");
+                Indent();
+                ReservationStatement::Dump();
+                // struct size - needed?
+                WriteLine("StructSize: {}", 0);
+                customType->Dump();
+
+            }
+            ast::Statement::Ref CustomType() {
+                return customType;
+            }
+        protected:
+            ast::StructStatement::Ref customType;
         };
 
 

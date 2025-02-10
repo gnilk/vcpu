@@ -60,10 +60,25 @@ namespace gnilk {
 
             ast::Statement::Ref ParseStatement();
 
+
+            union OpSizeOrStruct {
+                vcpu::OperandSize opSize;
+                bool structType;
+            };
+
+            enum class ParseOpSizeResult {
+                Error,
+                OpSize,
+                StructType,
+            };
+
+
             ast::Statement::Ref ParseConst();
-            ast::Statement::Ref ParseStruct();
+            ast::Statement::Ref ParseStructDefinition();
             ast::Statement::Ref ParseExport();
             ast::Statement::Ref ParseReservationStatement();
+            ast::Statement::Ref ParseNativeReservationStatement(ast::Expression::Ref identifier, OpSizeOrStruct opSize);
+            ast::Statement::Ref ParseCustomTypeReservationStatement(ast::Expression::Ref identifier);
             ast::Statement::Ref ParseMetaStatement();
             ast::Statement::Ref ParseLineComment();
             ast::Statement::Ref ParseDeclaration();
@@ -79,16 +94,6 @@ namespace gnilk {
             ast::Expression::Ref ParseUnaryExpression();
             ast::Expression::Ref ParsePrimaryExpression();
 
-            union OpSizeOrStruct {
-                vcpu::OperandSize opSize;
-                bool structType;
-            };
-
-            enum class ParseOpSizeResult {
-                Error,
-                OpSize,
-                StructType,
-            };
 
             std::pair<ParseOpSizeResult, OpSizeOrStruct> ParseOpSizeOrStruct();
             std::pair<bool, vcpu::OperandSize> ParseOpSize();
@@ -96,7 +101,7 @@ namespace gnilk {
 
         private:
             PreProcessor::LoadAssetDelegate assetLoader = {};
-
+            std::unordered_map<std::string, ast::Statement::Ref> typedefCache;
             Lexer lexer;
             Token last = {};
             std::vector<Token>::iterator it;

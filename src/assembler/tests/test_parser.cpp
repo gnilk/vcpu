@@ -13,6 +13,7 @@ extern "C" {
     DLL_EXPORT int test_parser_linecomments(ITesting *t);
     DLL_EXPORT int test_parser_meta(ITesting *t);
     DLL_EXPORT int test_parser_struct(ITesting *t);
+    DLL_EXPORT int test_parser_struct_in_struct(ITesting *t);
     DLL_EXPORT int test_parser_structref(ITesting *t);
     DLL_EXPORT int test_parser_const(ITesting *t);
     DLL_EXPORT int test_parser_expressions(ITesting *t);
@@ -85,10 +86,10 @@ DLL_EXPORT int test_parser_meta(ITesting *t) {
 DLL_EXPORT int test_parser_struct(ITesting *t) {
     const char srcCode[]= {
         "struct table {\n"\
-        "   some_byte rs.b 1\n"\
-        "   some_word rs.w 1\n"\
-        "   some_dword rs.d 1\n"\
-        "   some_long rs.l 1\n"\
+        "   some_byte dc.b 1\n"\
+        "   some_word dc.w 1\n"\
+        "   some_dword dc.d 1\n"\
+        "   some_long dc.l 1\n"\
         "}\n"\
         ""
     };
@@ -100,13 +101,36 @@ DLL_EXPORT int test_parser_struct(ITesting *t) {
     return kTR_Pass;
 }
 
+DLL_EXPORT int test_parser_struct_in_struct(ITesting *t) {
+    const char srcCode[]= {
+        "struct table {\n"\
+        "   some_byte dc.b 1\n"\
+        "   some_word dc.w 1\n"\
+        "   some_dword dc.d 1\n"\
+        "   some_long dc.l 1\n"\
+        "}\n"\
+        ""
+        "struct table_2 {\n"\
+        "   tableref dc.struct table,1\n"\
+        "}\n"\
+        ""
+    };
+
+    Parser parser;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    return kTR_Pass;
+}
+
+
 DLL_EXPORT int test_parser_structref(ITesting *t) {
     const char srcCode[]= {
         "struct table {\n"\
-        "   some_byte rs.b 1\n"\
-        "   some_word rs.w 1\n"\
-        "   some_dword rs.d 1\n"\
-        "   some_long rs.l 1\n"\
+        "   some_byte dc.b 1\n"\
+        "   some_word dc.w 1\n"\
+        "   some_dword dc.d 1\n"\
+        "   some_long dc.l 1\n"\
         "}\n"\
         "  move.l (a0+table.some_byte),d0\n"\
         ""

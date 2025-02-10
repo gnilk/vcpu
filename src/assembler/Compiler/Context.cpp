@@ -384,7 +384,7 @@ bool Context::EnsureChunk() {
 
 uint64_t Context::GetCurrentWriteAddress() {
     if (activeSegment == nullptr) {
-        fmt::println(stderr, "Compiler, not active segment!!");
+        fmt::println(stderr, "Context, not active segment!!");
         return 0;
     }
     if (activeSegment->currentChunk == nullptr) {

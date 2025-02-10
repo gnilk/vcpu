@@ -20,7 +20,11 @@ void CompileUnit::Clear() {
 // Process the AST tree create emit statement which is a sort of intermediate compile step
 bool CompileUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, ast::Statement::Ref statement) {
     publicHandler = iPublicIdentifiers;
+    return ProcessASTStatement(statement);
+}
 
+// Allow recursive call's when flattening the AST tree
+bool CompileUnit::ProcessASTStatement(ast::Statement::Ref statement) {
     auto stmtEmitter = EmitStatementBase::Create(statement);
     if (stmtEmitter == nullptr) {
         fmt::println(stderr, "Compiler, failed to generate emitter for statement {}", ast::NodeTypeToString(statement->Kind()));
@@ -33,6 +37,7 @@ bool CompileUnit::ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, as
     emitStatements.push_back(stmtEmitter);
     return true;
 }
+
 
 // Process all statements and emit the data, this will actually produce the byte code
 bool CompileUnit::EmitData(IPublicIdentifiers *iPublicIdentifiers) {

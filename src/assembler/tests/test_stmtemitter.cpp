@@ -17,6 +17,9 @@ using namespace gnilk::vcpu;
 extern "C" {
 DLL_EXPORT int test_stmtemitter(ITesting *t);
 DLL_EXPORT int test_stmtemitter_data_byte(ITesting *t);
+DLL_EXPORT int test_stmtemitter_struct(ITesting *t);
+DLL_EXPORT int test_stmtemitter_struct_in_struct(ITesting *t);
+DLL_EXPORT int test_stmtemitter_structref(ITesting *t);
 DLL_EXPORT int test_stmtemitter_call_label(ITesting *t);
 DLL_EXPORT int test_stmtemitter_call_relative_label(ITesting *t);
 
@@ -120,5 +123,93 @@ DLL_EXPORT int test_stmtemitter_call_relative_label(ITesting *t) {
     auto binary = compiler.Data();
     TR_ASSERT(t, binary == expectedBinary);
 
+    return kTR_Pass;
+}
+
+
+DLL_EXPORT int test_stmtemitter_struct(ITesting *t) {
+    // Should generate 16 bytes
+    // 1+2+4+8 = 15
+    const char srcCode[]= {
+            "struct table {\n"\
+        "   some_byte dc.b 1\n"\
+        "   some_word dc.w 1\n"\
+        "   some_dword dc.d 1\n"\
+        "   some_long dc.l 1\n"\
+        "}\n"\
+        "data: dc.struct table {}"
+        ""
+    };
+
+    Parser parser;
+    Compiler compiler;
+
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    auto binary = compiler.Data();
+//    TR_ASSERT(t, binary == expectedBinary);
+
+    TR_ASSERT(t, binary.size() == 15);
+    return kTR_Pass;
+}
+
+DLL_EXPORT int test_stmtemitter_structref(ITesting *t) {
+    const char srcCode[]= {
+            "struct table {\n"\
+        "   some_byte dc.b 1\n"\
+        "   some_word dc.w 1\n"\
+        "   some_dword dc.d 1\n"\
+        "   some_long dc.l 1\n"\
+        "}\n"\
+        "  move.l (a0+table.some_byte),d0\n"\
+        ""
+    };
+
+    Parser parser;
+    Compiler compiler;
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    TR_ASSERT(t, res);
+    auto binary = compiler.Data();
+    // TR_ASSERT(t, binary.size() == 123);
+    return kTR_Pass;
+
+}
+
+
+DLL_EXPORT int test_stmtemitter_struct_in_struct(ITesting *t) {
+    // Should generate 16 bytes
+    // 1+2+4+8 = 15
+
+    const char srcCode[]= {
+            "struct table {\n"\
+        "   some_byte dc.b 1\n"\
+        "   some_word dc.w 1\n"\
+        "   some_dword dc.d 1\n"\
+        "   some_long dc.l 1\n"\
+        "}\n"\
+        ""
+            "struct table_2 {\n"\
+        "   tableref dc.struct table,1\n"\
+        "}\n"\
+        "data: dc.struct table {}"
+            ""
+    };
+
+    Parser parser;
+    Compiler compiler;
+
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    auto binary = compiler.Data();
+//    TR_ASSERT(t, binary == expectedBinary);
+
+    TR_ASSERT(t, binary.size() == 15);
     return kTR_Pass;
 }

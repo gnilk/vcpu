@@ -145,6 +145,9 @@ Support for the following directives:
 + bit instructions (lsr, asr, rol, ror, and, or, xor, etc..)
 - mul/div instructions
 - assembler
+    - sizeof(<identifier>) needed
+    - Allow nested structs
+    - Consider using 'dc.<x>' instead of 'rs.<x>' in structs
     - Need context for current asset, in case we compile 'stuff/src.asm' and 'src.asm' includes 'bla.inc' we should first search in 'stuff' - now the context is always the one of the running file.
     ! support for include directive
     + output elf files (works - but can be refactored to take advantage of ELF symbol handling)

@@ -323,7 +323,7 @@ bool EmitDataStatement::ProcessStructLiteral(CompileUnit &context, ast::StructLi
     // Reserve the amount of bytes we need
     data.reserve(szExpected);
 
-    auto writeStart = context.GetCurrentWriteAddress();
+    //auto writeStart = context.GetCurrentWriteAddress();
     size_t szOffset = 0;
     size_t idxMember = 0;
     for (auto &m : stmt->Members()) {
@@ -482,36 +482,21 @@ bool EmitStructStatement::Finalize(gnilk::assembler::CompileUnit &context) {
     return true;
 }
 bool EmitStructStatement::ProcessStructStatement(CompileUnit &context, ast::StructStatement::Ref stmt) {
-
     auto &members = stmt->Declarations();
     size_t nBytes = 0;
 
-    std::vector<StructMember> structMembers;
-
     for(auto &m : members) {
-        if (m->Kind() != ast::NodeType::kReservationStatment) {
-            fmt::println(stderr, "Compiler, struct definition should only contain reservation statments");
+        size_t nToAdd = 0;
+        if (m->Kind() == ast::NodeType::kReservationStatementNative) {
+            nToAdd += ProcessNativeMember(context, m, nBytes);
+        } else {
+            nToAdd += ProcessCustomMember(context, m, nBytes);
+        }
+
+        if (!nToAdd) {
             return false;
         }
-        auto reservation = std::dynamic_pointer_cast<ast::ReservationStatement>(m);
-        auto elemLiteral = EvaluateConstantExpression(context, reservation->NumElements());
-        if (elemLiteral->Kind() != ast::NodeType::kNumericLiteral) {
-            fmt::println(stderr, "Compiler, reservation expression did not yield a numerical result!");
-            return false;
-        }
-        auto numElem = std::dynamic_pointer_cast<ast::NumericLiteral>(elemLiteral);
-        auto szPerElem = vcpu::ByteSizeOfOperandSize(reservation->OperandSize());
-
-        StructMember member;
-        member.ident = reservation->Identifier()->Symbol();
-        member.offset = nBytes;
-        member.byteSize = numElem->Value() * szPerElem;
-        // Backup...
-        member.declarationStatement = m;
-
-        structMembers.push_back(member);
-
-        nBytes += numElem->Value() * szPerElem;
+        nBytes += nToAdd;
     }
 
     StructDefinition structDefinition  = {
@@ -523,6 +508,61 @@ bool EmitStructStatement::ProcessStructStatement(CompileUnit &context, ast::Stru
 
     return true;
 }
+
+size_t EmitStructStatement::ProcessNativeMember(CompileUnit &context, ast::Statement::Ref stmt, size_t currentOffset) {
+    auto reservation = std::dynamic_pointer_cast<ast::ReservationStatementNativeType>(stmt);
+
+    auto elemLiteral = EvaluateConstantExpression(context, reservation->NumElements());
+    if (elemLiteral->Kind() != ast::NodeType::kNumericLiteral) {
+        fmt::println(stderr, "Compiler, reservation expression did not yield a numerical result!");
+        return false;
+    }
+    auto numElem = std::dynamic_pointer_cast<ast::NumericLiteral>(elemLiteral);
+
+    //
+    // FIXME: In case this is struct reference we need do recursively add more
+    //        We should probably NOT do this - even it would work...
+
+    auto szPerElem = reservation->ElementByteSize();
+
+    //auto szPerElem = vcpu::ByteSizeOfOperandSize(reservation->OperandSize());
+
+    StructMember member;
+    member.ident = reservation->Identifier()->Symbol();
+    member.offset = currentOffset;
+    member.byteSize = numElem->Value() * szPerElem;
+    // Backup...
+    member.declarationStatement = stmt;
+
+    structMembers.push_back(member);
+
+    return numElem->Value() * szPerElem;
+}
+size_t EmitStructStatement::ProcessCustomMember(CompileUnit &context, ast::Statement::Ref stmt, size_t currentOffset) {
+    auto reservation = std::dynamic_pointer_cast<ast::ReservationStatementCustomType>(stmt);
+    if (reservation->CustomType()->Kind() != ast::NodeType::kStructStatement) {
+        fmt::println(stderr, "Compiler, emit struct statement, not a struct!");
+        return 0;
+    }
+    auto structStmt = std::dynamic_pointer_cast<ast::StructStatement>(reservation->CustomType());
+    if (structStmt == nullptr) {
+        fmt::println(stderr,"Compiler, internal compiler error in EmitStructStatement::ProcessCustomMember");
+        exit(1);
+    }
+    size_t nBytes = 0;
+    for (auto &m : structStmt->Declarations()) {
+        if (m->Kind() == ast::NodeType::kReservationStatementNative) {
+            nBytes += ProcessNativeMember(context, m, currentOffset);
+        } else if (m->Kind() == ast::NodeType::kReservationStatementCustom) {
+            nBytes += ProcessCustomMember(context, m, currentOffset);
+        } else {
+            fmt::println(stderr, "Compiler, emit struct statement - not a valid node type!");
+        }
+        currentOffset += nBytes;
+    }
+    return nBytes;
+}
+
 
 
 EmitCodeStatement::EmitCodeStatement() {

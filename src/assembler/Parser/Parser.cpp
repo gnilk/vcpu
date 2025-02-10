@@ -8,6 +8,7 @@
 #include "Preprocessor/PreProcessor.h"
 #include "InstructionSetV1/InstructionSetV1Def.h"
 #include "InstructionSet.h"
+#include "ast/statements.h"
 /*
  * TO-OD:
  * - Move over Expression and Literals from 'astparser' project
@@ -75,7 +76,7 @@ ast::Statement::Ref Parser::ParseStatement() {
         case TokenType::Public :
             return ParseExport();
         case TokenType::Struct :
-            return ParseStruct();
+            return ParseStructDefinition();
         case TokenType::Const :
             return ParseConst();
         default:
@@ -96,7 +97,7 @@ ast::Statement::Ref Parser::ParseConst() {
     return std::make_shared<ast::ConstLiteral>(ident, expression);
 }
 
-ast::Statement::Ref Parser::ParseStruct() {
+ast::Statement::Ref Parser::ParseStructDefinition() {
     Eat();
     if (At().type != TokenType::Identifier) {
         fmt::println(stderr, "Parser, Identifier expected for struct; struct <name>,  got: {}", At().value);
@@ -122,7 +123,11 @@ ast::Statement::Ref Parser::ParseStruct() {
     }
     Eat();
 
-    return std::make_shared<ast::StructStatement>(ident, declarations);
+    auto structStmt = std::make_shared<ast::StructStatement>(ident, declarations);
+
+    typedefCache[ident] = structStmt;
+
+    return structStmt;
 }
 
 ast::Statement::Ref Parser::ParseReservationStatement() {
@@ -132,16 +137,20 @@ ast::Statement::Ref Parser::ParseReservationStatement() {
         return nullptr;
     }
 
-    Expect(TokenType::Reservation, "'rs' must follow identifier!");
+    Expect(TokenType::Declaration, "'dc' must follow identifier!");
 
     auto [parseRes, opSize] = ParseOpSizeOrStruct();
     if (parseRes == ParseOpSizeResult::Error) {
         return nullptr;
     }
+
     if (parseRes == ParseOpSizeResult::StructType) {
-        fmt::println(stderr, "Parser, struct in struct not yet supported!");
-        return nullptr;
+        return ParseCustomTypeReservationStatement(identifier);
     }
+    return ParseNativeReservationStatement(identifier, opSize);
+}
+
+ast::Statement::Ref Parser::ParseNativeReservationStatement(ast::Expression::Ref identifier, OpSizeOrStruct opSize) {
 
     auto numToReserve = ParseExpression();
     if (numToReserve->Kind() != ast::NodeType::kNumericLiteral) {
@@ -149,7 +158,38 @@ ast::Statement::Ref Parser::ParseReservationStatement() {
         return nullptr;
     }
 
-    return std::make_shared<ast::ReservationStatement>(std::dynamic_pointer_cast<ast::Identifier>(identifier), opSize.opSize, numToReserve);
+    return std::make_shared<ast::ReservationStatementNativeType>(std::dynamic_pointer_cast<ast::Identifier>(identifier), opSize.opSize, numToReserve);
+}
+
+ast::Statement::Ref Parser::ParseCustomTypeReservationStatement(ast::Expression::Ref identifier) {
+    // FIXME: Here we should parse a CustomTypeReservationStatment
+
+    // Could use something else - like ParseStatement - this would accept a whole new range of things; like struct def in struct def
+    if (At().type != TokenType::Identifier) {
+        fmt::println(stderr, "Parser, identifier must follow struct");
+        return nullptr;
+    }
+
+    if (!typedefCache.contains(At().value)) {
+        fmt::println(stderr, "Parser, invalid identifier '{}' - unknown type", At().value);
+        return nullptr;
+    }
+    auto structDef = typedefCache[At().value];
+    if (structDef->Kind() != ast::NodeType::kStructStatement) {
+        fmt::println(stderr, "Parser, reservation type is not struct");
+        return nullptr;
+    }
+    Eat();
+
+    ast::Expression::Ref numToReserve;
+    if (At().type != TokenType::Comma) {
+        numToReserve = std::make_shared<ast::NumericLiteral>(1);
+    } else {
+        Eat();
+        numToReserve = ParseExpression();
+    }
+    return std::make_shared<ast::ReservationStatementCustomType>(std::dynamic_pointer_cast<ast::Identifier>(identifier),
+                                                       std::dynamic_pointer_cast<ast::StructStatement>(structDef), numToReserve);
 }
 
 ast::Statement::Ref Parser::ParseExport() {
@@ -259,7 +299,6 @@ std::pair<Parser::ParseOpSizeResult, Parser::OpSizeOrStruct> Parser::ParseOpSize
 
     return {ParseOpSizeResult::OpSize, {.opSize = strToOpSize[opSize.value]}};
 }
-
 
 ast::Statement::Ref Parser::ParseDeclaration() {
     Eat();

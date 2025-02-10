@@ -39,7 +39,9 @@ namespace gnilk {
             kCommentStatement,
             kMetaStatement,
             kStructStatement,
-            kReservationStatment,
+            kReservationStatement,
+            kReservationStatementNative,
+            kReservationStatementCustom,
             kProperty,
 
             // 20
@@ -123,6 +125,9 @@ namespace gnilk {
             __inline NodeType Kind() const noexcept {
                 return kind;
             }
+            virtual size_t SizeOf() {
+                return 0;
+            }
             virtual void Dump() {
                 WriteLine("kind={}", (int)kind);
             }
@@ -163,6 +168,10 @@ namespace gnilk {
             Expression() = default;
             explicit Expression(NodeType nt) : Statement(nt) {}
             virtual ~Expression() = default;
+            // FIXME: we should be able to evaluate here
+            virtual ast::Expression::Ref Evaluate() {
+                return nullptr;
+            }
         };
 
         class DeReferenceExpression : public Expression {
@@ -246,6 +255,11 @@ namespace gnilk {
 
             const Expression::Ref &Member() {
                 return member;
+            }
+            void Dump() override {
+                WriteLine("Member Expression");
+                ident->Dump();
+                member->Dump();
             }
 
         protected:

@@ -33,6 +33,7 @@ namespace gnilk {
             void Clear();
 
             bool ProcessASTStatement(IPublicIdentifiers *iPublicIdentifiers, ast::Statement::Ref statement);
+            bool ProcessASTStatement(ast::Statement::Ref statement);
             bool EmitData(IPublicIdentifiers *iPublicIdentifiers);
 
             size_t Write(const std::vector<uint8_t> &data);

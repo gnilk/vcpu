@@ -8,6 +8,7 @@
 
 #include "InstructionSetV1/InstructionSetV1Def.h"
 #include "ast/ast.h"
+#include "Identifiers.h"
 
 //
 // This should replace EmitStatement.cpp/EmitStatement.h
@@ -204,8 +205,10 @@ namespace gnilk {
             bool Finalize(CompileUnit &context) override;
         protected:
             bool ProcessStructStatement(CompileUnit &context, ast::StructStatement::Ref stmt);
-
-
+            size_t ProcessNativeMember(CompileUnit &context, ast::Statement::Ref stmt, size_t currentOffset);
+            size_t ProcessCustomMember(CompileUnit &context, ast::Statement::Ref stmt, size_t currentOffset);
+        private:
+            std::vector<StructMember> structMembers;
         };
 
         class EmitCodeStatement : public EmitStatementBase {
