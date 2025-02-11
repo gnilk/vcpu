@@ -256,7 +256,7 @@ namespace gnilk {
             std::string symbol;
             size_t address = 0;         // needed???
             size_t placeholderAddress = 0;
-            vcpu::OperandSize opSize;
+            vcpu::OperandSize opSize = {};
             //int ofsRelative = 0;
 
         };

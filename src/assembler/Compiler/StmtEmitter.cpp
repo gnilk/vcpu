@@ -481,6 +481,13 @@ bool EmitStructStatement::Process(gnilk::assembler::CompileUnit &context) {
 bool EmitStructStatement::Finalize(gnilk::assembler::CompileUnit &context) {
     return true;
 }
+
+//
+// FIXME: This must be synced with the look up step later on
+//        'Members' from the statement parsing looks correct
+//         But here we flatten it out and add the flatten struct definition to the context - which is wrong...
+//         Or - it depends on how it is being used...
+//
 bool EmitStructStatement::ProcessStructStatement(CompileUnit &context, ast::StructStatement::Ref stmt) {
     auto &members = stmt->Declarations();
     size_t nBytes = 0;
@@ -489,8 +496,11 @@ bool EmitStructStatement::ProcessStructStatement(CompileUnit &context, ast::Stru
         size_t nToAdd = 0;
         if (m->Kind() == ast::NodeType::kReservationStatementNative) {
             nToAdd += ProcessNativeMember(context, m, nBytes);
-        } else {
+        } else if (m->Kind() == ast::NodeType::kReservationStatementCustom) {
             nToAdd += ProcessCustomMember(context, m, nBytes);
+        } else {
+            fmt::println(stderr, "Compiler, unsupported node type in 'EmitStructStatement::ProcessStructStatement'");
+            return false;
         }
 
         if (!nToAdd) {
@@ -509,23 +519,17 @@ bool EmitStructStatement::ProcessStructStatement(CompileUnit &context, ast::Stru
     return true;
 }
 
+// Returns 0 for error
 size_t EmitStructStatement::ProcessNativeMember(CompileUnit &context, ast::Statement::Ref stmt, size_t currentOffset) {
     auto reservation = std::dynamic_pointer_cast<ast::ReservationStatementNativeType>(stmt);
 
     auto elemLiteral = EvaluateConstantExpression(context, reservation->NumElements());
     if (elemLiteral->Kind() != ast::NodeType::kNumericLiteral) {
         fmt::println(stderr, "Compiler, reservation expression did not yield a numerical result!");
-        return false;
+        return 0;
     }
     auto numElem = std::dynamic_pointer_cast<ast::NumericLiteral>(elemLiteral);
-
-    //
-    // FIXME: In case this is struct reference we need do recursively add more
-    //        We should probably NOT do this - even it would work...
-
     auto szPerElem = reservation->ElementByteSize();
-
-    //auto szPerElem = vcpu::ByteSizeOfOperandSize(reservation->OperandSize());
 
     StructMember member;
     member.ident = reservation->Identifier()->Symbol();
@@ -538,6 +542,8 @@ size_t EmitStructStatement::ProcessNativeMember(CompileUnit &context, ast::State
 
     return numElem->Value() * szPerElem;
 }
+
+// Returns 0 for error
 size_t EmitStructStatement::ProcessCustomMember(CompileUnit &context, ast::Statement::Ref stmt, size_t currentOffset) {
     auto reservation = std::dynamic_pointer_cast<ast::ReservationStatementCustomType>(stmt);
     if (reservation->CustomType()->Kind() != ast::NodeType::kStructStatement) {
@@ -549,21 +555,22 @@ size_t EmitStructStatement::ProcessCustomMember(CompileUnit &context, ast::State
         fmt::println(stderr,"Compiler, internal compiler error in EmitStructStatement::ProcessCustomMember");
         exit(1);
     }
-    size_t nBytes = 0;
+    size_t nBytesTotal = 0;
     for (auto &m : structStmt->Declarations()) {
+        size_t nBytesMember = 0;
         if (m->Kind() == ast::NodeType::kReservationStatementNative) {
-            nBytes += ProcessNativeMember(context, m, currentOffset);
+            nBytesMember = ProcessNativeMember(context, m, currentOffset);
         } else if (m->Kind() == ast::NodeType::kReservationStatementCustom) {
-            nBytes += ProcessCustomMember(context, m, currentOffset);
+            nBytesMember = ProcessCustomMember(context, m, currentOffset);
         } else {
             fmt::println(stderr, "Compiler, emit struct statement - not a valid node type!");
+            return 0;
         }
-        currentOffset += nBytes;
+        currentOffset += nBytesMember;
+        nBytesTotal += nBytesMember;
     }
-    return nBytes;
+    return nBytesTotal;
 }
-
-
 
 EmitCodeStatement::EmitCodeStatement() {
     emitType = kEmitType::kCode;
@@ -1218,7 +1225,24 @@ ast::Literal::Ref EmitStatementBase::EvaluateMemberExpression(CompileUnit &conte
         return nullptr;
     }
 
+    //
+    // FIXME: This is somewhat stupid but works, since we are flattening the 'struct' definition we simply traverse the
+    //        Reference expression to the last element and look it up from there...
+    //        PROBLEM is that we can't have two members with the same name in a nested structure situation...
+    //
+    // We should not flatten the struct definition while parsing!!!
+    //
+
+
     auto structDef = context.GetStructDefinitionFromTypeName(ident->Symbol());
+    while(expression->Member()->Kind() != ast::NodeType::kIdentifier) {
+        if (expression->Member()->Kind() != ast::NodeType::kMemberExpression) {
+            fmt::println(stderr, "Compiler, nested expressions must be member expressions!");
+            return nullptr;
+        }
+        expression = std::dynamic_pointer_cast<ast::MemberExpression>(expression->Member());
+    }
+
 
     // Make sure out member is an identifier (this should always be the case - but ergo - it isn't)
     if (expression->Member()->Kind() != ast::NodeType::kIdentifier) {

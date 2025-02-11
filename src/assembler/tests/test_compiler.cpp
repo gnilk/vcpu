@@ -41,6 +41,7 @@ extern "C" {
     DLL_EXPORT int test_compiler_const_literal(ITesting *t);
     DLL_EXPORT int test_compiler_const_string(ITesting *t);
     DLL_EXPORT int test_compiler_structref(ITesting *t);
+    DLL_EXPORT int test_compiler_struct_in_structref(ITesting *t);
     DLL_EXPORT int test_compiler_orgdecl(ITesting *t);
     DLL_EXPORT int test_compiler_addtovar(ITesting *t);
     DLL_EXPORT int test_compiler_cmpbne(ITesting *t);
@@ -851,6 +852,48 @@ DLL_EXPORT int test_compiler_structref(ITesting *t) {
 
 }
 
+DLL_EXPORT int test_compiler_struct_in_structref(ITesting *t) {
+    const char srcCode[]= {
+        "struct table {\n"\
+        // offset 1
+        "   some_byte dc.b 1\n"\
+        // offset 2
+        "   some_word dc.w 1\n"\
+        // offset 4
+        "   some_dword dc.d 1\n"\
+        // offset 8
+        "   some_long dc.l 1\n"\
+        "}\n"\
+        ""
+        "struct table_2 {\n"\
+        // offset 0
+        "   tlb2_byte dc.b 1\n"\
+        "   tableref dc.struct table,1\n"\
+        "}\n"\
+        ".code\n"\
+        "   move.l (a0+table_2.tableref.some_long),d0\n"\
+        ""
+    };
+
+    std::vector<uint8_t> expectedBinary = {
+        0x20, 0x03, 0x88, 0x03, 0x08,
+    };
+
+    Parser parser;
+    Compiler compiler;
+
+    auto ast = parser.ProduceAST(srcCode);
+    TR_ASSERT(t, ast != nullptr);
+    ast->Dump();
+    auto res = compiler.CompileAndLink(ast);
+    auto binary = compiler.Data();
+    TR_ASSERT(t, binary == expectedBinary);
+
+    TR_ASSERT(t, binary.size() == 5);
+    return kTR_Pass;
+}
+
+
 DLL_EXPORT int test_compiler_orgdecl(ITesting *t) {
     const char srcCode[]= {
         "  .code \n"\
@@ -1110,3 +1153,4 @@ DLL_EXPORT int test_compiler_includefile(ITesting *t) {
 
     return kTR_Pass;
 }
+
